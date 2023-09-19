@@ -1,0 +1,36 @@
+
+server:
+  port: 8080
+  max-http-header-size: 16000
+
+spring:
+  application:
+    name: file-importer
+  datasource:
+    url: jdbc:postgresql://localhost:5432/database?currentSchema=new_schema,public;
+    username: root
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.spatial.dialect.postgis.PostgisDialect
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: true
+        temp:
+          use_jdbc_metadata_defaults: false
+        jdbc:
+          time_zone: UTC
+          batch_size: 25
+          batch_versioned_data: true
+        default_batch_fetch_size: 25
+        batch_fetch_style: PADDED
+        order_inserts: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    contexts: development, production
+#    default-schema: new_schema

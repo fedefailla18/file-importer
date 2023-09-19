@@ -1,0 +1,55 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '2.7.15'
+	id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+	id "groovy"
+}
+
+//ext['groovy.version'] = "2.5.7"
+
+group = 'com.importer'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	sourceCompatibility = '11'
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.hibernate:hibernate-spatial'
+	implementation 'org.liquibase:liquibase-core'
+	implementation 'org.postgresql:postgresql:42.2.23'
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
+	implementation 'org.codehaus.groovy:groovy:3.0.16'
+
+	implementation 'com.google.guava:guava:31.1-jre'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	implementation('commons-io:commons-io:2.13.0')
+
+	implementation('org.apache.tomcat:tomcat-annotations-api:9.0.10')
+
+	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation('org.spockframework:spock-core:2.0-M3-groovy-3.0')
+	testImplementation('org.spockframework:spock-spring:2.0-M3-groovy-3.0')
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
