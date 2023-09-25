@@ -1,5 +1,5 @@
 databaseChangeLog:
   - include:
-      file: classpath:/db/changelog/changes/schema.sql
+      file: classpath:/db/changelog/changes/2023-09-03-001-initial-schema.sql
   - include:
-      file: classpath:/db/changelog/changes/2023-09-30-001-initial-schema.sql
+      file: classpath:/db/changelog/changes/2023-09-23-002-inserting-coins.sql
