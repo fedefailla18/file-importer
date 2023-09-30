@@ -37,3 +37,6 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     contexts: development, production
     default-schema: file_importer_schema
+
+crypto-compare:
+  api-key: 53bdd104b9bb83f976930c67a45bf29bf7f8d3f9808ab350aa742f45a505417d

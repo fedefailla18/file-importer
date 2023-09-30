@@ -1,1 +1,2 @@
-CREATE SCHEMA IF NOT EXISTS new_schema
+
+CREATE SCHEMA IF NOT EXISTS file_importer_schema;

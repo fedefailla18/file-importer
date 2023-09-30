@@ -23,7 +23,7 @@ class WebControllerSpec extends Specification {
     @Autowired
     FileImporterService fileImporterService
     @Autowired
-    def processFile = new ProcessFile(fileImporterService)
+    ProcessFile processFile
     def controller = new WebController(processFile)
 
     def "should not allow public access to GET /hello"() {
