@@ -1,5 +1,6 @@
 package com.importer.fileimporter.config.security;
 
+// Is it AuthTokenFilter?
 public class JwtAuthenticationFilter {
 //        extends BasicAuthenticationFilter {
 //
