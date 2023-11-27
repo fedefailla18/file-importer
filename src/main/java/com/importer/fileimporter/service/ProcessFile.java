@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import static java.math.BigDecimal.ZERO;
@@ -25,9 +26,9 @@ import static java.math.BigDecimal.ZERO;
 @Slf4j
 public class ProcessFile {
 
-    public static final List<String> SYMBOL = List.of("WAVES");
-//    public static final List<String> SYMBOL = List.of("XVG", "BAND", "RSR", "AKRO", "DOT", "OP", "WAVES",
-//            "VET", "RLC", "BTC", "ETH");
+//    public static final List<String> SYMBOL = List.of("WAVES");
+    public static final List<String> SYMBOL = List.of("XVG", "BAND", "RSR", "AKRO", "DOT", "OP",
+            "VET", "RLC", "BTC", "ETH");
     public static final List<String> GRAND_SYMBOLS = List.of("BTC", "ETH");
     public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USDC");
 
@@ -49,17 +50,19 @@ public class ProcessFile {
 //        Map<String, AtomicInteger> counter = getAmountOfTransactionsByCoin(rows);
         Map<String, CoinInformationResponse> transactionDetailInformation = getTransactionDetailInformation(rows, symbols);
 
-        calculateAvgPrice(transactionDetailInformation);
+        BigDecimal bigDecimal = calculateAvgPrice(transactionDetailInformation);
 
         return FileInformationResponse.builder()
 //                .rows(rows)
 //                .each(counter)
                 .amount(rows.size())
+                .totalSpent(bigDecimal)
                 .coinInformationResponse(transactionDetailInformation.values())
                 .build();
     }
 
-    private void calculateAvgPrice(Map<String, CoinInformationResponse> transactionDetailInformation) {
+    private BigDecimal calculateAvgPrice(Map<String, CoinInformationResponse> transactionDetailInformation) {
+        BigDecimal totalSpent = ZERO;
 
         transactionDetailInformation.values().stream()
                 .parallel()
@@ -92,13 +95,20 @@ public class ProcessFile {
                                 }
                             });
                     detail.calculateAvgPrice();
+                    totalSpent.add(detail.getTotalStable());
                 });
+        return totalSpent;
     }
 
     private Map<String, CoinInformationResponse> getTransactionDetailInformation(List<Map<?, ?>> rows, List<String> symbols) {
         Map<String, CoinInformationResponse> informationResponseMap = new HashMap<>();
 
-        rows.forEach(row -> {
+        rows.forEach(processRow(symbols, informationResponseMap));
+        return informationResponseMap;
+    }
+
+    private Consumer<Map<?, ?>> processRow(List<String> symbols, Map<String, CoinInformationResponse> informationResponseMap) {
+        return row -> {
             String pair = getPair(row);
             final var symbol = findTokenTransaction(pair, symbols);
             symbol.ifPresent(s -> {
@@ -133,15 +143,13 @@ public class ProcessFile {
 
                 Optional<String> first = STABLE.stream().filter(symbolPair::contains)
                         .findFirst();
-                if (first.isPresent()) {
-                    a.setUsdSpent(getAmountSpent(a.getUsdSpent(), getAmount(row, first.get()), isBuy));
-                }
+                first.ifPresent(value ->
+                        a.setUsdSpent(getAmountSpent(a.getUsdSpent(), getAmount(row, value), isBuy)));
 
                 calculateSpent(getAmount(row, symbolPair), a, symbolPair, isBuy);
                 a.addRows(row);
             });
-        });
-        return informationResponseMap;
+        };
     }
 
     private Optional<String> findTokenTransaction(String pair, List<String> symbols) {

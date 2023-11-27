@@ -1,6 +1,5 @@
-package com.importer.fileimporter.config.security;
+package com.importer.fileimporter.config.security.jwt;
 
-// Is it AuthTokenFilter?
 public class JwtAuthenticationFilter {
 //        extends BasicAuthenticationFilter {
 //

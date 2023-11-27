@@ -40,4 +40,9 @@ public class WebController {
         return processFile.processFile(file, symbols);
     }
 
+    @GetMapping("/transactions")
+    public void getTransactions(@RequestParam String symbol) {
+
+    }
+
 }

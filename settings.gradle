@@ -1,3 +1,4 @@
 rootProject.name = 'file-importer'
 include 'Groovy'
 
+//exclude(':docker')  // Exclude the 'docker' subproject or folder

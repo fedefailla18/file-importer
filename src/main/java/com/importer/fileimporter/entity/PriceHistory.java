@@ -32,7 +32,6 @@ public class PriceHistory {
 
     private String symbol;
 
-    @Column(name = "symbolpair")
     private String symbolPair;
 
     private BigDecimal high;

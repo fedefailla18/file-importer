@@ -1,74 +1,26 @@
 package com.importer.fileimporter.service;
 
-import com.importer.fileimporter.dto.integration.CryptoCompareResponse;
-import com.importer.fileimporter.entity.PriceHistory;
-import com.importer.fileimporter.repository.PriceHistoryRepository;
+import com.importer.fileimporter.entity.Transaction;
+import com.importer.fileimporter.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class PriceHistoryService {
+public class TransactionService {
 
-    private final PriceHistoryRepository repository;
+    private final TransactionRepository transactionRepository;
 
-    public List<PriceHistory> saveAll(String symbolPair, String usdt, CryptoCompareResponse cryptoCompareResponse) {
-
-        List<CryptoCompareResponse.ChartData> dataList = cryptoCompareResponse.getData().getChartDataList();
-
-        List<CryptoCompareResponse.ChartData> chartDataNotStored = validateData(symbolPair, usdt, dataList);
-
-        if (chartDataNotStored.isEmpty()) {
-            log.info("No new data to store");
+    public List<Transaction> getTransactions(String symbol) {
+        if (StringUtils.hasText(symbol)) {
+            return transactionRepository.findAllBySymbol(symbol);
+        } else {
+            return transactionRepository.findAll();
         }
-
-        List<PriceHistory> pricesHistory = chartDataNotStored.stream().map(e -> {
-            return PriceHistory.builder()
-                    .time(e.getTime())
-                    .pair(symbolPair + usdt)
-                    .symbol(symbolPair)
-                    .symbolPair(usdt)
-                    .high(e.getHigh())
-                    .low(e.getLow())
-                    .open(e.getOpen())
-                    .close(e.getClose())
-                    .volumeto(e.getVolumeto())
-                    .volumefrom(e.getVolumefrom())
-                    .created(LocalDateTime.now())
-                    .modified(LocalDateTime.now())
-                    .createdBy("Request to CryptoCompare when Processing File")
-                    .modifiedBy("Request to CryptoCompare when Processing File")
-                    .build();
-        }).collect(Collectors.toList());
-
-        return repository.saveAll(pricesHistory);
-    }
-
-    private List<CryptoCompareResponse.ChartData> validateData(String symbolPair, String usdt, List<CryptoCompareResponse.ChartData> dataList) {
-        String collect = repository.findAll().stream()
-                .filter(e -> e.getSymbol().equals(symbolPair) &&
-                             e.getSymbolPair().equals(usdt))
-                .map(PriceHistory::getTime)
-                .map(LocalDateTime::toString)
-                .collect(Collectors.joining());
-        return dataList.stream()
-                .filter(e -> !collect.contains(e.getTime().toString()))
-                .collect(Collectors.toList());
-    }
-
-    public Optional<PriceHistory> findData(String symbolPair, String usdt, LocalDateTime dateTime) {
-        List<PriceHistory> allBySymbolAndSymbolPair = repository.findAllBySymbolAndSymbolPair(symbolPair, usdt);
-        return allBySymbolAndSymbolPair.stream()
-                .filter(e -> e.getTime().truncatedTo(ChronoUnit.HOURS)
-                        .isEqual(dateTime.truncatedTo(ChronoUnit.HOURS)))
-                .findFirst();
     }
 }
