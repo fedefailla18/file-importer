@@ -5,15 +5,12 @@ import com.importer.fileimporter.service.ProcessFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
@@ -29,15 +26,6 @@ public class WebController {
             return null;
         }
         return processFile.processFile(file);
-    }
-
-    @PostMapping
-    public FileInformationResponse salutation(@RequestBody MultipartFile file,
-                                              @RequestParam(required = false) List<String> symbols) throws IOException {
-        if (file.isEmpty()) {
-            return null;
-        }
-        return processFile.processFile(file, symbols);
     }
 
 }

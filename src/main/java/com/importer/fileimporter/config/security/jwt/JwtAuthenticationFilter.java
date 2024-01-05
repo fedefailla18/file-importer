@@ -1,4 +1,4 @@
-package com.importer.fileimporter.config.security;
+package com.importer.fileimporter.config.security.jwt;
 
 public class JwtAuthenticationFilter {
 //        extends BasicAuthenticationFilter {

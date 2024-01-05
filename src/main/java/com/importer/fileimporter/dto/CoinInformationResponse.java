@@ -26,6 +26,8 @@ public class CoinInformationResponse {
 
     private BigDecimal usdSpent;
 
+    private BigDecimal totalStable;
+
     private Map<String, BigDecimal> spent = new HashMap<>();
 
     private int totalTransactions;
@@ -48,21 +50,14 @@ public class CoinInformationResponse {
                 return pondering.subtract(v);
             }
         });
-
     }
 
     public void calculateAvgPrice() {
-//        avgEntryPrice.forEach((k, v) ->
-//            this.avgEntryPrice.put(k,
-//                    v.divide(this.getAmount(), 5,
-//                            RoundingMode.HALF_UP))
-//        );
-
         BigDecimal reduce = avgEntryPrice.values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(7, RoundingMode.UP);
 
-        avgEntryPrice.put("TOTAL STABLE", reduce);
+        this.setTotalStable(reduce);
 
         if (!BigDecimal.ZERO.equals(this.getAmount())) {
             avgEntryPrice.put("AVG", reduce.divide(amount, 3, RoundingMode.HALF_UP));

@@ -35,7 +35,7 @@ public class PriceHistoryService {
                     .time(e.getTime())
                     .pair(symbolPair + usdt)
                     .symbol(symbolPair)
-                    .symbolPair(usdt)
+                    .symbolpair(usdt)
                     .high(e.getHigh())
                     .low(e.getLow())
                     .open(e.getOpen())
@@ -55,7 +55,7 @@ public class PriceHistoryService {
     private List<CryptoCompareResponse.ChartData> validateData(String symbolPair, String usdt, List<CryptoCompareResponse.ChartData> dataList) {
         String collect = repository.findAll().stream()
                 .filter(e -> e.getSymbol().equals(symbolPair) &&
-                             e.getSymbolPair().equals(usdt))
+                             e.getSymbolpair().equals(usdt))
                 .map(PriceHistory::getTime)
                 .map(LocalDateTime::toString)
                 .collect(Collectors.joining());
@@ -64,8 +64,8 @@ public class PriceHistoryService {
                 .collect(Collectors.toList());
     }
 
-    public Optional<PriceHistory> findData(String symbolPair, String usdt, LocalDateTime dateTime) {
-        List<PriceHistory> allBySymbolAndSymbolPair = repository.findAllBySymbolAndSymbolPair(symbolPair, usdt);
+    public Optional<PriceHistory> findData(String symbolPair, String pair, LocalDateTime dateTime) {
+        List<PriceHistory> allBySymbolAndSymbolPair = repository.findAllBySymbolAndSymbolpair(symbolPair, pair);
         return allBySymbolAndSymbolPair.stream()
                 .filter(e -> e.getTime().truncatedTo(ChronoUnit.HOURS)
                         .isEqual(dateTime.truncatedTo(ChronoUnit.HOURS)))

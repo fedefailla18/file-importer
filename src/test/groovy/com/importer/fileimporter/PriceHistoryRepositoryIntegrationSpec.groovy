@@ -33,7 +33,7 @@ class PriceHistoryRepositoryIntegrationSpec extends Specification {
                 .time(LocalDateTime.now())
                 .pair("Sample Pair")
                 .symbol("BTC")
-                .symbolPair("USD")
+                .symbolpair("USD")
                 .high(100.0)
                 .low(90.0)
                 .open(95.0)

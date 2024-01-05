@@ -1,5 +1,6 @@
 package com.importer.fileimporter.config.security;
 
+// Is it webSecurityConfig?
 public class WebSecurityConfigurerAdapterImpl {
 //        extends WebSecurityConfigurerAdapter {
 //
