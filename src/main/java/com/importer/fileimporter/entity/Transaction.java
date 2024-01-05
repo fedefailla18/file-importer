@@ -4,12 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Type;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+import javax.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -19,41 +20,47 @@ import java.util.UUID;
 @Table(name = "transactions")
 public class Transaction {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Type(type = "uuid-char")
-    private UUID id;
+    @Column(name = "id", nullable = true)
+    private Long id;
 
-    private String name;
+    @EmbeddedId
+    private TransactionId transactionId;
 
-    @Column(name = "date_utc")
-    private LocalDateTime dateUtc;
-
-    private String pair;
-
-    private String side;
-
+    @Column(name = "symbol", length = 8)
     private String symbol;
 
-    @Column(name = "symbolPair")
-    private String symbolPair;
+    @Column(name = "payed_with", length = 12)
+    private String payedWith;
 
-    private BigDecimal price;
+    @Column(name = "payed_amount", precision = 12, scale = 5)
+    private BigDecimal payedAmount;
 
-    private BigDecimal executed;
+    @Column(name = "fee", length = 12)
+    private String fee;
 
-    private BigDecimal amount;
+    @Column(name = "fee_amount", precision = 12, scale = 5)
+    private BigDecimal feeAmount;
 
-    private BigDecimal fee;
+    @Column(name = "fee_symbol", length = 8)
+    private String feeSymbol;
 
+    @Column(name = "created")
     private LocalDateTime created;
 
-    @Column(name = "created_by")
+    @Column(name = "created_by", length = 255)
     private String createdBy;
 
+    @Column(name = "modified")
     private LocalDateTime modified;
 
-    @Column(name = "modified_by")
+    @Column(name = "modified_by", length = 255)
     private String modifiedBy;
 
+    @Override
+    public String toString() {
+        return "Transaction{" +
+                "id=" + id +
+                ", symbol='" + symbol + '\'' +
+                '}';
+    }
 }

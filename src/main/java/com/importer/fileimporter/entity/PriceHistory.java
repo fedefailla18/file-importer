@@ -32,7 +32,7 @@ public class PriceHistory {
 
     private String symbol;
 
-    private String symbolPair;
+    private String symbolpair;
 
     private BigDecimal high;
 

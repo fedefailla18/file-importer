@@ -10,5 +10,5 @@ import java.util.UUID;
 @Repository
 public interface PriceHistoryRepository extends JpaRepository<PriceHistory, UUID> {
 
-    List<PriceHistory> findAllBySymbolAndSymbolPair(String symbol, String symbolPair);
+    List<PriceHistory> findAllBySymbolAndSymbolpair(String symbol, String symbolPair);
 }

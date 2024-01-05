@@ -24,7 +24,7 @@ public class Symbol {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Type(type = "uuid-char")
+    @Type(type = "pg-uuid")
     private UUID id;
 
     private String name;

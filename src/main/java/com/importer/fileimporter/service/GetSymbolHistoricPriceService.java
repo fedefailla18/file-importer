@@ -17,6 +17,8 @@ import java.util.Optional;
 @Slf4j
 public class GetSymbolHistoricPriceService {
 
+    private final String USDT = "USDT";
+
     private final CryptoCompareService cryptoCompareService;
     private final PriceHistoryService priceHistoryService;
 
@@ -25,17 +27,17 @@ public class GetSymbolHistoricPriceService {
         LocalDateTime dateTime = LocalDateTime.parse(date, formatter);
         try {
             BigDecimal priceInUsdt;
-            Optional<PriceHistory> usdt = priceHistoryService.findData(symbolPair, "USDT", dateTime);
+            Optional<PriceHistory> usdtPriceHistory = priceHistoryService.findData(symbolPair, USDT, dateTime);
 
-            if (usdt.isEmpty()) {
-                CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(symbolPair, "USDT",
+            if (usdtPriceHistory.isEmpty()) {
+                CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(symbolPair, USDT,
                         dateTime.toEpochSecond(ZoneOffset.UTC));
 
                 CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
                 priceInUsdt = exactTime.getHigh();
-                priceHistoryService.saveAll(symbolPair, "USDT", cryptoCompareResponse);
+                priceHistoryService.saveAll(symbolPair, USDT, cryptoCompareResponse);
             } else {
-                priceInUsdt = usdt.get().getHigh();
+                priceInUsdt = usdtPriceHistory.get().getHigh();
             }
 
         return price.multiply(priceInUsdt);

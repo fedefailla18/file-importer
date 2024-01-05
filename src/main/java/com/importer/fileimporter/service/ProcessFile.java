@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class ProcessFile {
 
     private final FileImporterService fileImporterService;
     private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
+    private final TransactionService transactionService;
 
     public FileInformationResponse processFile(MultipartFile file) throws IOException {
         return processFile(file, SYMBOL);
@@ -101,13 +103,14 @@ public class ProcessFile {
     }
 
     private Map<String, CoinInformationResponse> getTransactionDetailInformation(List<Map<?, ?>> rows, List<String> symbols) {
-        Map<String, CoinInformationResponse> informationResponseMap = new HashMap<>();
+        Map<String, CoinInformationResponse> transactionsDetailsMap = new HashMap<>();
 
-        rows.forEach(processRow(symbols, informationResponseMap));
-        return informationResponseMap;
+        rows.forEach(processRow(symbols, transactionsDetailsMap));
+        return transactionsDetailsMap;
     }
 
-    private Consumer<Map<?, ?>> processRow(List<String> symbols, Map<String, CoinInformationResponse> informationResponseMap) {
+    private Consumer<Map<?, ?>> processRow(List<String> symbols,
+                                           Map<String, CoinInformationResponse> transactionsDetailsMap) {
         return row -> {
             String pair = getPair(row);
             final var symbol = findTokenTransaction(pair, symbols);
@@ -115,8 +118,8 @@ public class ProcessFile {
                 String symbolPair = pair.replace(s, "");
                 boolean isBuy = isBuy(row);
 
-                if (!informationResponseMap.containsKey(s)) {
-                    informationResponseMap.computeIfAbsent(s, k -> {
+                if (!transactionsDetailsMap.containsKey(s)) {
+                    transactionsDetailsMap.computeIfAbsent(s, k -> {
                         var a = CoinInformationResponse.builder()
                                 .amount(ZERO)
                                 .usdSpent(ZERO)
@@ -127,6 +130,7 @@ public class ProcessFile {
                                 .build();
                         a.setAmount(calculateAmount(a.getAmount(), isBuy, getExecuted(row, s)));
 
+                        // TODO:
                         Optional<String> first = STABLE.stream().filter(symbolPair::contains).findFirst();
                         first.ifPresent(value ->
                                 a.setUsdSpent(getAmountSpent(a.getUsdSpent(), getAmount(row, value), isBuy)));
@@ -134,11 +138,15 @@ public class ProcessFile {
                         calculateSpent(getAmount(row, symbolPair), a, symbolPair, isBuy);
 
                         a.addRows(row);
+
+                        transactionService.saveTransaction(a.getCoinName(), symbolPair, row.get("Date(UTC)").toString(), pair,
+                                row.get("Side").toString(), getPrice(row), getExecuted(row, a.getCoinName()),
+                                getAmount(row, a.getCoinName()), getFee(row), "Process File - New Coin");
                         return a;
                     });
                     return;
                 }
-                CoinInformationResponse a = informationResponseMap.get(s);
+                CoinInformationResponse a = transactionsDetailsMap.get(s);
                 a.setAmount(calculateAmount(a.getAmount(), isBuy, getExecuted(row, s)));
 
                 Optional<String> first = STABLE.stream().filter(symbolPair::contains)
@@ -148,6 +156,8 @@ public class ProcessFile {
 
                 calculateSpent(getAmount(row, symbolPair), a, symbolPair, isBuy);
                 a.addRows(row);
+                transactionService.saveTransaction(a.getCoinName(), symbolPair, row.get("Date(UTC)").toString(), pair, row.get("Side").toString(), getPrice(row),
+                        getExecuted(row, a.getCoinName()), getAmount(row, a.getCoinName()), getFee(row), "Process File");
             });
         };
     }
@@ -225,10 +235,26 @@ public class ProcessFile {
     }
 
     private BigDecimal getAmount(Map<?, ?> row, String symbolPair) {
-        String amount = row.get("Amount").toString()
-                .replace(symbolPair, "")
+        String amount1 = row.get("Amount").toString();
+        String amount = amount1
+                .substring(0, amount1.length()-6)
                 .replace(",", "");
         return getBigDecimalWithScale(Double.valueOf(amount));
+    }
+
+    // TODO: retrieve de symbol that affected the fee
+    private BigDecimal getFee(Map<?, ?> row) {
+        String feeString = row.get("Fee").toString();
+        String fee = feeString.substring(0, feeString.length()-6);
+        return getBigDecimalWithScale(Double.valueOf(fee));
+    }
+    private String getFeeSymbol(String feeString, String symbol) {
+        Optional<String> first = Arrays.asList("BNB", "USDT", "BTC").stream()
+                .filter(e -> feeString.contains(e))
+                .findFirst();
+
+        String fee2 = feeString.replace(first.get(), "");
+        return first.get();
     }
 
     private BigDecimal getPrice(Map<?, ?> row) {
