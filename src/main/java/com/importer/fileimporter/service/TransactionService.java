@@ -8,9 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -21,12 +21,9 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
 
-    public Page<Transaction> getTransactions(String symbol, Pageable pageable) {
-        if (StringUtils.hasText(symbol)) {
-            return transactionRepository.findAllBySymbol(symbol, pageable);
-        } else {
-            return transactionRepository.findAll(pageable);
-        }
+    public Page<Transaction> getTransactionsByRangeDate(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),
+                endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable);
     }
 
     public Transaction saveTransaction(String coinName,

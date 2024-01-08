@@ -25,6 +25,10 @@ public class GetSymbolHistoricPriceService {
     public BigDecimal getPriceInUsdt(String symbolPair, BigDecimal price, String date) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime dateTime = LocalDateTime.parse(date, formatter);
+        return getPriceInUsdt(symbolPair, price, dateTime);
+    }
+
+    public BigDecimal getPriceInUsdt(String symbolPair, BigDecimal price, LocalDateTime dateTime) {
         try {
             BigDecimal priceInUsdt;
             Optional<PriceHistory> usdtPriceHistory = priceHistoryService.findData(symbolPair, USDT, dateTime);
@@ -42,7 +46,7 @@ public class GetSymbolHistoricPriceService {
 
         return price.multiply(priceInUsdt);
         } catch (Exception e ) {
-            String msg = String.format("Error when requesting historical data for % on %", symbolPair, date);
+            String msg = String.format("Error when requesting historical data for % on %", symbolPair, dateTime);
             log.error(msg, e);
             return BigDecimal.ZERO;
         }
