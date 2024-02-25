@@ -28,27 +28,35 @@ public class CalculateAmountSpent {
         List<Transaction> transactions = transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),
                 endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable).getContent();
 
+        return execute(symbol, transactions);
+    }
+
+    public BigDecimal execute(String symbol, List<Transaction> transactions) {
         AtomicReference<BigDecimal> amountSpent = new AtomicReference<>(BigDecimal.ZERO);
         transactions.forEach(transaction -> {
-            String payedWithSymbol = transaction.getPayedWith();
-            String side = transaction.getTransactionId().getSide();
-            BigDecimal payedAmount = transaction.getPayedAmount();
-
-            if (OperationUtils.isStable(payedWithSymbol)) {
-                amountSpent.set(OperationUtils.sumAmount(amountSpent, payedAmount, side));
-            } else {
-                BigDecimal priceInUsdt;
-                Optional<PriceHistory> priceHistory = priceHistoryService.findData(symbol, payedWithSymbol, transaction.getTransactionId().getDateUtc());
-                if (priceHistory.isEmpty()) {
-                    priceInUsdt = getSymbolHistoricPriceService.getPriceInUsdt(payedWithSymbol,
-                            transaction.getPayedAmount(),
-                            transaction.getTransactionId().getDateUtc());
-                } else {
-                    priceInUsdt = priceHistory.get().getHigh();
-                }
-                amountSpent.set(OperationUtils.sumAmount(amountSpent, priceInUsdt, side));
-            }
+            getAmountSpentPerTransaction(symbol, amountSpent, transaction);
         });
         return amountSpent.get();
+    }
+
+    private void getAmountSpentPerTransaction(String symbol, AtomicReference<BigDecimal> amountSpent, Transaction transaction) {
+        String payedWithSymbol = transaction.getPayedWith();
+        String side = transaction.getTransactionId().getSide();
+        BigDecimal payedAmount = transaction.getPayedAmount();
+
+        if (OperationUtils.isStable(payedWithSymbol)) {
+            amountSpent.set(OperationUtils.sumAmount(amountSpent, payedAmount, side));
+        } else {
+            BigDecimal priceInUsdt;
+            Optional<PriceHistory> priceHistory = priceHistoryService.findData(symbol, payedWithSymbol, transaction.getTransactionId().getDateUtc());
+            if (priceHistory.isEmpty()) {
+                priceInUsdt = getSymbolHistoricPriceService.getPriceInUsdt(payedWithSymbol,
+                        transaction.getPayedAmount(),
+                        transaction.getTransactionId().getDateUtc());
+            } else {
+                priceInUsdt = priceHistory.get().getHigh();
+            }
+            amountSpent.set(OperationUtils.sumAmount(amountSpent, priceInUsdt, side));
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.integration.CryptoCompareResponse;
 import com.importer.fileimporter.entity.PriceHistory;
+import com.sun.istack.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.Optional;
 public class GetSymbolHistoricPriceService {
 
     private final String USDT = "USDT";
+    private final String BTC = "BTC";
 
     private final CryptoCompareService cryptoCompareService;
     private final PriceHistoryService priceHistoryService;
@@ -29,17 +31,26 @@ public class GetSymbolHistoricPriceService {
     }
 
     public BigDecimal getPriceInUsdt(String symbolPair, BigDecimal price, LocalDateTime dateTime) {
+        return getBigDecimal(symbolPair, price, dateTime, USDT);
+    }
+
+    public BigDecimal getPriceInBTC(String symbolPair, BigDecimal price, LocalDateTime dateTime) {
+        return getBigDecimal(symbolPair, price, dateTime, BTC);
+    }
+
+    @NotNull
+    private BigDecimal getBigDecimal(String symbolPair, BigDecimal price, LocalDateTime dateTime, String symbol) {
         try {
             BigDecimal priceInUsdt;
-            Optional<PriceHistory> usdtPriceHistory = priceHistoryService.findData(symbolPair, USDT, dateTime);
+            Optional<PriceHistory> usdtPriceHistory = priceHistoryService.findData(symbolPair, symbol, dateTime);
 
             if (usdtPriceHistory.isEmpty()) {
-                CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(symbolPair, USDT,
+                CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(symbolPair, symbol,
                         dateTime.toEpochSecond(ZoneOffset.UTC));
 
                 CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
                 priceInUsdt = exactTime.getHigh();
-                priceHistoryService.saveAll(symbolPair, USDT, cryptoCompareResponse);
+                priceHistoryService.saveAll(symbolPair, symbol, cryptoCompareResponse);
             } else {
                 priceInUsdt = usdtPriceHistory.get().getHigh();
             }

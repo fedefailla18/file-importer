@@ -1,5 +1,6 @@
 package com.importer.fileimporter.controller;
 
+import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.service.ProcessFile;
@@ -40,6 +41,14 @@ public class TransactionController {
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                                       @PageableDefault Pageable pageable) {
         return transactionService.getTransactionsByRangeDate(symbol, startDate, endDate, pageable);
+    }
+
+    @GetMapping("/information")
+    public CoinInformationResponse getSymbolInformation(@RequestParam(required = false) String symbol,
+                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                                              @PageableDefault Pageable pageable) {
+        return transactionService.getTransactionsInformation(symbol, startDate, endDate, pageable);
     }
 
     @GetMapping("/spentAmount")

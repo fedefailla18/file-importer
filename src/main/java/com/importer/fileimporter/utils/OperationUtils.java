@@ -5,6 +5,7 @@ import lombok.experimental.UtilityClass;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -37,5 +38,11 @@ public class OperationUtils {
 
     public static BigDecimal sumAmount(BigDecimal amountSpent, BigDecimal payedAmount, String side) {
         return isBuy(side) ? amountSpent.add(payedAmount) : amountSpent.subtract(payedAmount);
+    }
+
+    public static Optional<String> hasStable(String pair) {
+        return STABLE.stream()
+                .filter(pair::contains) // this is to catch the executed coin which should be at the beginning of the pair
+                .findFirst();
     }
 }

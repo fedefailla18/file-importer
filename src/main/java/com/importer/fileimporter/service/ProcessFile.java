@@ -32,8 +32,8 @@ public class ProcessFile {
 //    public static final List<String> SYMBOL = List.of("WAVES");
 
     private final FileImporterService fileImporterService;
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
     private final TransactionService transactionService;
+    private final CoinInformationService coinInformationService;
 
     public FileInformationResponse processFile(MultipartFile file) throws IOException {
         return processFile(file, SYMBOL);
@@ -75,21 +75,7 @@ public class ProcessFile {
                                 var executed = getExecuted(row, symbol);
                                 BigDecimal price = getPrice(row);
 
-                                if (isStable(symbolPair).isPresent()) {
-
-                                    detail.setAvgEntryPrice(symbolPair, price, executed, isBuy);
-                                } else {
-                                    log.info("No a Stable Coin transaction. " + symbolPair);
-                                    String date = row.get("Date(UTC)").toString();
-
-                                    BigDecimal priceInUsdt = getSymbolHistoricPriceService.getPriceInUsdt(symbolPair, price, date);
-                                    // save transaction. store priceInUsdt so it's easier to calculate in the future
-                                    if (0 <= priceInUsdt.doubleValue()) {
-                                        detail.setAvgEntryPrice("USDT", priceInUsdt, executed, isBuy);
-                                    } else {
-                                        log.warn("Check transaction for date " + date);
-                                    }
-                                }
+                                coinInformationService.calculateAvgEntryPrice(detail, row.get("Date(UTC)").toString(), symbolPair, isBuy, executed, price);
                             });
                     detail.calculateAvgPrice();
                     totalSpent.add(detail.getTotalStable());
@@ -160,12 +146,6 @@ public class ProcessFile {
     private Optional<String> findTokenTransaction(String pair, List<String> symbols) {
         return symbols.stream()
                 .filter(pair.substring(0,4)::contains) // this is to catch the executed coin which should be at the beginning of the pair
-                .findFirst();
-    }
-
-    private Optional<String> isStable(String pair) {
-        return STABLE.stream()
-                .filter(pair::contains) // this is to catch the executed coin which should be at the beginning of the pair
                 .findFirst();
     }
 
