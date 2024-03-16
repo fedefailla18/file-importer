@@ -19,6 +19,7 @@ import java.util.UUID;
 @Table(name = "price_history")
 public class PriceHistory {
 
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Type(type = "pg-uuid")

@@ -2,6 +2,7 @@ package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
+import com.importer.fileimporter.utils.OperationUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
+import static com.importer.fileimporter.utils.OperationUtils.STABLE;
+import static com.importer.fileimporter.utils.OperationUtils.SYMBOL;
 import static java.math.BigDecimal.ZERO;
 
 @AllArgsConstructor
@@ -28,17 +30,10 @@ import static java.math.BigDecimal.ZERO;
 public class ProcessFile {
 
 //    public static final List<String> SYMBOL = List.of("WAVES");
-    public static final List<String> SYMBOL = List.of("XVG", "BAND", "RSR", "AKRO", "DOT", "OP",
-            "VET", "RLC", "BTC", "ETH");
-    public static final List<String> GRAND_SYMBOLS = List.of("BTC", "ETH");
-    public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USDC");
-
-    public static final Predicate<String> IS_BUY = "BUY"::equals;
-    public static final Predicate<String> IS_SELL = "SELL"::equals;
 
     private final FileImporterService fileImporterService;
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
     private final TransactionService transactionService;
+    private final CoinInformationService coinInformationService;
 
     public FileInformationResponse processFile(MultipartFile file) throws IOException {
         return processFile(file, SYMBOL);
@@ -76,25 +71,11 @@ public class ProcessFile {
                             .forEach(row -> {
                                 String pair = getPair(row);
                                 String symbolPair = pair.replace(symbol, "");
-                                boolean isBuy = isBuy(row);
+                                boolean isBuy = OperationUtils.isBuy(row);
                                 var executed = getExecuted(row, symbol);
                                 BigDecimal price = getPrice(row);
 
-                                if (isStable(symbolPair).isPresent()) {
-
-                                    detail.setAvgEntryPrice(symbolPair, price, executed, isBuy);
-                                } else {
-                                    log.info("No a Stable Coin transaction. " + symbolPair);
-                                    String date = row.get("Date(UTC)").toString();
-
-                                    BigDecimal priceInUsdt = getSymbolHistoricPriceService.getPriceInUsdt(symbolPair, price, date);
-                                    // save transaction. store priceInUsdt so it's easier to calculate in the future
-                                    if (0 <= priceInUsdt.doubleValue()) {
-                                        detail.setAvgEntryPrice("USDT", priceInUsdt, executed, isBuy);
-                                    } else {
-                                        log.warn("Check transaction for date " + date);
-                                    }
-                                }
+                                coinInformationService.calculateAvgEntryPrice(detail, row.get("Date(UTC)").toString(), symbolPair, isBuy, executed, price);
                             });
                     detail.calculateAvgPrice();
                     totalSpent.add(detail.getTotalStable());
@@ -116,7 +97,7 @@ public class ProcessFile {
             final var symbol = findTokenTransaction(pair, symbols);
             symbol.ifPresent(s -> {
                 String symbolPair = pair.replace(s, "");
-                boolean isBuy = isBuy(row);
+                boolean isBuy = OperationUtils.isBuy(row);
 
                 if (!transactionsDetailsMap.containsKey(s)) {
                     transactionsDetailsMap.computeIfAbsent(s, k -> {
@@ -168,12 +149,6 @@ public class ProcessFile {
                 .findFirst();
     }
 
-    private Optional<String> isStable(String pair) {
-        return STABLE.stream()
-                .filter(pair::contains) // this is to catch the executed coin which should be at the beginning of the pair
-                .findFirst();
-    }
-
     private String getPair(Map<?, ?> row) {
         return row.get("Pair").toString();
     }
@@ -219,11 +194,6 @@ public class ProcessFile {
                 counter.computeIfAbsent(symbol, k -> new AtomicInteger(0)).incrementAndGet();
             }
         });
-    }
-
-    private boolean isBuy(Map<?, ?> row) {
-        String side = row.get("Side").toString();
-        return IS_BUY.test(side);
     }
 
     private BigDecimal getExecuted(Map<?, ?> row, String coinName) {
