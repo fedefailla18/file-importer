@@ -41,4 +41,37 @@ class CryptoCompareServiceSpec extends Specification {
         and: "The response should have 'Success' as the Response field"
         response.getResponse() == "Success"
     }
+
+    def "Test getData method"() {
+        given: "Input parameters for the historical data request"
+        String fromSymbol = "BTC"
+        def toSymbol = "USDT"
+
+        when: "Calling the getHistoricalData method"
+        def response = cryptoCompareService.getData(
+                fromSymbol,
+                toSymbol
+        )
+
+        then: "The response should not be null"
+        response != null
+
+        and: "The response should have 'Success' as the Response field"
+        response.get(toSymbol) != null
+
+        and:
+        def fromSymbols = ["BTC", "ETH", "ADA", "XRP"]
+
+        when: "Calling the getHistoricalData method"
+        def responses = cryptoCompareService.getData(
+                fromSymbols,
+                toSymbol
+        )
+
+        then: "The response should not be null"
+        responses != null
+
+        and: "The response should have 'Success' as the Response field"
+        responses.get(toSymbol) != null
+    }
 }
