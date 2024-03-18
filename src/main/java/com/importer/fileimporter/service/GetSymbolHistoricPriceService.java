@@ -64,14 +64,14 @@ public class GetSymbolHistoricPriceService {
     }
 
     @NotNull
-    public BigDecimal getPricesAtDate(String symbolPair, String symbol, LocalDateTime dateTime) {
-        log.info("getting price for: " + symbol + " with: " + symbolPair);
-        CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(symbolPair, symbol,
+    public BigDecimal getPricesAtDate(String fromSymbol, String toSymbol, LocalDateTime dateTime) {
+        log.info("getting price for: " + toSymbol + " with: " + fromSymbol);
+        CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(fromSymbol, toSymbol,
                 dateTime.toEpochSecond(ZoneOffset.UTC));
 
         CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
         if (exactTime != null) {
-            priceHistoryService.saveAll(symbolPair, symbol, cryptoCompareResponse);
+            priceHistoryService.saveAll(fromSymbol, toSymbol, cryptoCompareResponse);
             return exactTime.getHigh().setScale(7, RoundingMode.DOWN);
         }
         return BigDecimal.ZERO;

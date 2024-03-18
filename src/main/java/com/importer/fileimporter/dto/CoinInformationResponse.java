@@ -7,8 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,17 +20,17 @@ public class CoinInformationResponse {
 
     private BigDecimal amount;
 
-    private Map<String, BigDecimal> avgEntryPrice = new HashMap<>();
+    private Map<String, BigDecimal> avgEntryPrice;
 
     private BigDecimal usdSpent;
 
     private BigDecimal totalStable;
 
-    private Map<String, BigDecimal> spent = new HashMap<>();
+    private Map<String, BigDecimal> spent;
 
     private int totalTransactions;
 
-    private List<Map<?, ?>> rows = new ArrayList<>();
+    private List<Map<?, ?>> rows;
 
     public void addRows(Map<?, ?> row) {
         rows.add(row);

@@ -31,10 +31,14 @@ public class TransactionService {
 
     public Page<Transaction> getTransactionsByRangeDate(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         if (symbol != null && (startDate == null && endDate == null)) {
-            return transactionRepository.findAllBySymbol(symbol, pageable);
+            return getAllBySymbol(symbol, pageable);
         }
         return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),
                 endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable);
+    }
+
+    public Page<Transaction> getAllBySymbol(String symbol, Pageable pageable) {
+        return transactionRepository.findAllBySymbol(symbol, pageable);
     }
 
     public CoinInformationResponse getTransactionsInformation(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {

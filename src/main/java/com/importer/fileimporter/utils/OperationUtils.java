@@ -40,6 +40,11 @@ public class OperationUtils {
         return isBuy(side) ? amountSpent.add(payedAmount) : amountSpent.subtract(payedAmount);
     }
 
+    public static BigDecimal accumulateExecutedAmount(BigDecimal accumulator, BigDecimal executed, String side) {
+        accumulator = isBuy(side) ? accumulator.add(executed) : accumulator.subtract(executed);
+        return accumulator;
+    }
+
     public static Optional<String> hasStable(String pair) {
         return STABLE.stream()
                 .filter(pair::contains) // this is to catch the executed coin which should be at the beginning of the pair

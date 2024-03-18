@@ -2,8 +2,10 @@ package com.importer.fileimporter.controller;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
+import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.service.ProcessFile;
+import com.importer.fileimporter.service.TransactionFacade;
 import com.importer.fileimporter.service.TransactionService;
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class TransactionController {
 
     private final ProcessFile processFile;
     private final TransactionService transactionService;
+    private final TransactionFacade transactionFacade;
     private final CalculateAmountSpent calculateAmountSpent;
 
     @GetMapping
@@ -66,6 +69,16 @@ public class TransactionController {
             return null;
         }
         return processFile.processFile(file, symbols);
+    }
+
+    @GetMapping(value = "/portfolio")
+    public List<TransactionHoldingDto> createPortfolio(@RequestParam(required = false) List<String> symbols) throws IOException {
+        return transactionFacade.buildPortfolio(symbols);
+    }
+
+    @GetMapping(value = "/portfolio/amount")
+    public List<TransactionHoldingDto> getAmount(@RequestParam(required = false) List<String> symbols) throws IOException {
+        return transactionFacade.getAmount(symbols);
     }
 
 }
