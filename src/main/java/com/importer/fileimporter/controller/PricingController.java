@@ -27,11 +27,11 @@ public class PricingController {
 
     @GetMapping
     public ResponseEntity getPriceAtDate(@RequestParam(required = false) String symbol,
-                                       @RequestParam(required = false) String symbolPair,
-                                       @RequestParam(required = false)  List<String> symbols,
-                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTime) {
+                                         @RequestParam(required = false)  List<String> symbols,
+                                         @RequestParam(required = false) String symbolPair,
+                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTime) {
         if (CollectionUtils.isEmpty(symbols)) {
-            return ResponseEntity.of(Optional.ofNullable(pricingFacade.getPrice(symbolPair, symbol, dateTime)));
+            return ResponseEntity.of(Optional.ofNullable(pricingFacade.getPrice(symbol, symbolPair, dateTime)));
         }
         return ResponseEntity.of(Optional.ofNullable(pricingFacade.getPrices(symbols)));
     }

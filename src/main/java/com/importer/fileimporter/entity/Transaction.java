@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @Table(name = "transactions")
 public class Transaction {
 
-    @Column(name = "id", nullable = true)
+    @Column(name = "id")
     private Long id;
 
     @EmbeddedId
@@ -32,13 +32,13 @@ public class Transaction {
     @Column(name = "payed_with", length = 12)
     private String payedWith;
 
-    @Column(name = "payed_amount", precision = 12, scale = 5)
+//    @Column(name = "payed_amount", precision = 13, scale = 13)
     private BigDecimal payedAmount;
 
     @Column(name = "fee", length = 12)
     private String fee;
 
-    @Column(name = "fee_amount", precision = 12, scale = 5)
+//    @Column(name = "fee_amount", precision = 13, scale = 13)
     private BigDecimal feeAmount;
 
     @Column(name = "fee_symbol", length = 8)
@@ -47,13 +47,13 @@ public class Transaction {
     @Column(name = "created")
     private LocalDateTime created;
 
-    @Column(name = "created_by", length = 255)
+    @Column(name = "created_by")
     private String createdBy;
 
     @Column(name = "modified")
     private LocalDateTime modified;
 
-    @Column(name = "modified_by", length = 255)
+    @Column(name = "modified_by")
     private String modifiedBy;
 
     @Override

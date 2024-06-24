@@ -2,12 +2,13 @@ package com.importer.fileimporter.service
 
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.entity.TransactionId
+import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import spock.lang.Specification
 
 import java.time.LocalDateTime
 
-class TransactionFacadeTest extends Specification {
+class TransactionFacadeSpec extends Specification {
 
     def transactionService = Mock(TransactionService)
     def calculateAmountSpent = Mock(CalculateAmountSpent)
@@ -15,9 +16,10 @@ class TransactionFacadeTest extends Specification {
     def symbolService = Mock(SymbolService)
     def portfolioService = Mock(PortfolioService)
     def getSymbolHistoricPriceService = Mock(GetSymbolHistoricPriceService)
+    def pricingFacade = Mock(PricingFacade)
 
     def sut = new TransactionFacade(transactionService, calculateAmountSpent,
-            coinInformationService, symbolService, portfolioService, getSymbolHistoricPriceService)
+            coinInformationService, symbolService, portfolioService, getSymbolHistoricPriceService, pricingFacade)
 
     def "BuildPortfolio"() {
     }

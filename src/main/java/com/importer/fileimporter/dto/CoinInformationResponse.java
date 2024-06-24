@@ -7,8 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static java.math.BigDecimal.ZERO;
 
 @Data
 @Builder
@@ -32,6 +36,17 @@ public class CoinInformationResponse {
 
     private List<Map<?, ?>> rows;
 
+    public static CoinInformationResponse createEmpty(String coinName) {
+        return CoinInformationResponse.builder()
+                .amount(ZERO)
+                .usdSpent(ZERO)
+                .rows(new ArrayList<>())
+                .coinName(coinName)
+                .spent(new HashMap<>())
+                .avgEntryPrice(new HashMap<>())
+                .build();
+    }
+
     public void addRows(Map<?, ?> row) {
         rows.add(row);
         totalTransactions++;
@@ -53,12 +68,12 @@ public class CoinInformationResponse {
     public void calculateAvgPrice() {
         BigDecimal reduce = avgEntryPrice.values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(7, RoundingMode.UP);
+                .setScale(10, RoundingMode.UP);
 
         this.setTotalStable(reduce);
 
         if (!BigDecimal.ZERO.equals(this.getAmount())) {
-            avgEntryPrice.put("AVG", reduce.divide(amount, 3, RoundingMode.HALF_UP));
+            avgEntryPrice.put("AVG", reduce.divide(amount, 10, RoundingMode.HALF_UP));
         }
     }
 }

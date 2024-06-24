@@ -14,10 +14,6 @@ public class FileInformationResponse {
 
     private BigDecimal totalSpent;
 
-//    private Map<String, AtomicInteger> each;
-
     private Collection<CoinInformationResponse> coinInformationResponse;
-
-//    private List<Map<?, ?>> rows;
 
 }

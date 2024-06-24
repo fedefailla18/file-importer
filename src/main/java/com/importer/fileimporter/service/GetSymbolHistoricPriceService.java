@@ -72,7 +72,7 @@ public class GetSymbolHistoricPriceService {
         CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
         if (exactTime != null) {
             priceHistoryService.saveAll(fromSymbol, toSymbol, cryptoCompareResponse);
-            return exactTime.getHigh().setScale(7, RoundingMode.DOWN);
+            return exactTime.getHigh().setScale(10, RoundingMode.DOWN);
         }
         return BigDecimal.ZERO;
     }
@@ -106,7 +106,11 @@ public class GetSymbolHistoricPriceService {
     private CryptoCompareResponse.ChartData getExactTimeExecuted(LocalDateTime dateTime, CryptoCompareResponse cryptoCompareResponse) {
         return cryptoCompareResponse.getResponse().equals("Error") ? null : cryptoCompareResponse.getData().getChartDataList().stream()
                 .filter(e -> e.getTime().getHour() == dateTime.getHour())
-                .findFirst().orElse(cryptoCompareResponse.getData().getChartDataList().stream().findAny().get());
+                .findFirst()
+                .orElseGet(() -> cryptoCompareResponse.getData()
+                        .getChartDataList().stream()
+                        .findAny()
+                        .get());
     }
 
     public Map<String, Double> getPrice(List<String> symbol) {

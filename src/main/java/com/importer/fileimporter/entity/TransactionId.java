@@ -28,10 +28,10 @@ public class TransactionId implements Serializable {
     @Column(name = "pair", nullable = false, length = 12)
     private String pair;
 
-    @Column(name = "price", nullable = false, precision = 12, scale = 5)
+//    @Column(name = "price", nullable = false, precision = 13, scale = 13)
     private BigDecimal price;
 
-    @Column(name = "executed", nullable = false, precision = 20, scale = 5)
+//    @Column(name = "executed", nullable = false, precision = 20, scale = 20)
     private BigDecimal executed;
     
     @Override

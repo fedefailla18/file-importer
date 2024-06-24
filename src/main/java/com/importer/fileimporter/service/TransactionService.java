@@ -41,6 +41,10 @@ public class TransactionService {
         return transactionRepository.findAllBySymbol(symbol, pageable);
     }
 
+    public List<Transaction> getAll() {
+        return transactionRepository.findAll();
+    }
+
     public CoinInformationResponse getTransactionsInformation(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         List<Transaction> transactions = getTransactionsByRangeDate(symbol, startDate, endDate, pageable).getContent();
         BigDecimal amountSpent = calculateAmountSpent.execute(symbol, transactions);

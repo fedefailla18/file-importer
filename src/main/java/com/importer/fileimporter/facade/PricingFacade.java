@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.BTC;
 import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.USDT;
@@ -24,7 +25,7 @@ public class PricingFacade {
     private final PriceHistoryService priceHistoryService;
     private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
 
-    public BigDecimal getPrice(String symbolPair, String symbol, LocalDateTime dateTime) {
+    public BigDecimal getPrice(String symbol, String symbolPair, LocalDateTime dateTime) {
         if (StringUtils.trimAllWhitespace(symbol).isEmpty()) {
             symbol = BTC;
         }
@@ -37,7 +38,8 @@ public class PricingFacade {
         String finalSymbol = symbol.toUpperCase();
         String finalSymbolPair = symbolPair.toUpperCase();
         LocalDateTime finalDateTime = dateTime;
-        return priceHistoryService.findData(symbolPair, symbol, dateTime)
+        Optional<PriceHistory> data = priceHistoryService.findData(symbolPair, symbol, dateTime);
+        return data
                 .map(PriceHistory::getHigh)
                 .orElseGet(() ->
                     getSymbolHistoricPriceService.getPricesAtDate(finalSymbol, finalSymbolPair,
