@@ -122,6 +122,18 @@ class ProcessFileServiceUtilsSpec extends Specification {
         result == 'FET'
     }
 
+    def "test getSymbolFromExecuted - without symbols"() {
+        given:
+        def row = [Executed: '170.0000000000FET']
+        def symbols = ['USDT', 'BTC']
+
+        when:
+        def result = getSymbolFromExecuted(row, symbols)
+
+        then:
+        result == 'FET'
+    }
+
     def "test getBigDecimalWithScale"() {
         when:
         def result = getBigDecimalWithScale(123.456)

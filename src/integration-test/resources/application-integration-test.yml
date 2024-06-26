@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: file_importer_schema
+    enabled: true
+    drop-first: true  # Drop all existing tables first, useful for testing
+    url: ${DB_URL}
+    user: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+#logging:
+#  level:
+#    org:
+#      liquibase: DEBUG
+#      springframework: DEBUG

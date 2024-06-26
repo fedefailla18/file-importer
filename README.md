@@ -7,3 +7,8 @@ to allow the users upload a Binance transactions file and get accurate informati
 To get prices in real time we use:
         
         https://www.cryptocompare.com/cryptopian/api-keys
+
+
+## Running integration-tests
+
+        ./gradlew integrationTest

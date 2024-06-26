@@ -1,15 +1,11 @@
 package com.importer.fileimporter.service
 
+import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.config.integration.CryptoCompareConfig
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.reactive.function.client.WebClient
-import spock.lang.Specification
 
-@SpringBootTest
-@ActiveProfiles("test")
-class CryptoCompareServiceSpec extends Specification {
+class CryptoCompareServiceSpec extends BaseIntegrationSpec {
 
     @Autowired
     CryptoCompareConfig config

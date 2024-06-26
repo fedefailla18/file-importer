@@ -2,11 +2,8 @@ package com.importer.fileimporter
 
 import com.importer.fileimporter.controller.WebController
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import spock.lang.Specification
 
-@SpringBootTest
-class LoadContextTest extends Specification {
+class LoadContextSpec extends BaseIntegrationSpec {
 
     @Autowired (required = false)
     private WebController webController

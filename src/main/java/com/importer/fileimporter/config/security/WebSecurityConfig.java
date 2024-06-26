@@ -29,12 +29,12 @@ public class WebSecurityConfig {
 
     private final AuthEntryPointJwt unauthorizedHandler;
 
-    @Bean
+//    @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
         return new AuthTokenFilter();
     }
 
-    @Bean
+//    @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
 

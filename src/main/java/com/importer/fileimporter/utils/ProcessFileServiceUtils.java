@@ -11,13 +11,13 @@ import java.util.Optional;
 @UtilityClass
 public class ProcessFileServiceUtils {
 
-    final String PAIR_KEY = "Pair";
-    final String EXECUTED_KEY = "Executed";
-    final String AMOUNT_KEY = "Amount";
-    final String FEE_KEY = "Fee";
-    final String PRICE_KEY = "Price";
-    final String DATE_KEY = "Date(UTC)";
-    final String SIDE_KEY = "Side";
+    public final String PAIR_KEY = "Pair";
+    public final String EXECUTED_KEY = "Executed";
+    public final String AMOUNT_KEY = "Amount";
+    public final String FEE_KEY = "Fee";
+    public final String PRICE_KEY = "Price";
+    public final String DATE_KEY = "Date(UTC)";
+    public final String SIDE_KEY = "Side";
 
     public String getPair(Map<?, ?> row) {
         return row.get(PAIR_KEY).toString();
@@ -47,21 +47,7 @@ public class ProcessFileServiceUtils {
 
     public String getFeeSymbol(String feeString, String symbol) {
         // Check if the feeString is empty or null
-        if (feeString == null || feeString.trim().isEmpty()) {
-            throw new IllegalArgumentException("Fee string cannot be null or empty");
-        }
-
-        // Use a regular expression to match the numeric part
-        String regex = "[0-9.,]+";
-        String[] parts = feeString.split(regex);
-
-        // If no parts found, raise an exception
-        if (parts.length == 0) {
-            throw new IllegalArgumentException("Invalid fee string format");
-        }
-
-        // The symbol will be the non-numeric part at the end of the string
-        String feeSymbol = parts[parts.length - 1];
+        String feeSymbol = getSymbolFromNumber(feeString);
 
         // Check if the symbol is non-numeric and non-empty
         if (feeSymbol.matches("\\s*")) {
@@ -113,6 +99,25 @@ public class ProcessFileServiceUtils {
                 .filter(executedString::contains)
                 .findFirst();
         return first
-                .orElseThrow(() -> new RuntimeException("Missing symbol for: " + executedString));
+                .orElseGet(() -> getSymbolFromNumber(executedString));
+    }
+
+    private String getSymbolFromNumber(String feeString) {
+        if (feeString == null || feeString.trim().isEmpty()) {
+            throw new IllegalArgumentException("Fee string cannot be null or empty");
+        }
+
+        // Use a regular expression to match the numeric part
+        String regex = "[0-9.,]+";
+        String[] parts = feeString.split(regex);
+
+        // If no parts found, raise an exception
+        if (parts.length == 0) {
+            throw new IllegalArgumentException("Invalid fee string format");
+        }
+
+        // The symbol will be the non-numeric part at the end of the string
+        String feeSymbol = parts[parts.length - 1];
+        return feeSymbol;
     }
 }

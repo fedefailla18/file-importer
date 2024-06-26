@@ -27,7 +27,6 @@ public class ProcessFile {
 
     private final FileImporterService fileImporterService;
     private final TransactionService transactionService;
-    private final CoinInformationService coinInformationService;
     private final SymbolService symbolService;
 
     public FileInformationResponse processFile(MultipartFile file) throws IOException {

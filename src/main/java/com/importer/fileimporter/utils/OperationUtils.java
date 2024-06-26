@@ -32,17 +32,16 @@ public class OperationUtils {
         return IS_BUY.test(side);
     }
 
-    public static BigDecimal sumAmount(AtomicReference<BigDecimal> amountSpent, BigDecimal payedAmount, String side) {
+    public BigDecimal sumAmount(AtomicReference<BigDecimal> amountSpent, BigDecimal payedAmount, String side) {
         return sumAmount(amountSpent.get(), payedAmount, side);
     }
 
-    public static BigDecimal sumAmount(BigDecimal amountSpent, BigDecimal payedAmount, String side) {
-        return isBuy(side) ? amountSpent.add(payedAmount) : amountSpent.subtract(payedAmount);
+    public BigDecimal sumAmount(BigDecimal currentAmount, BigDecimal payedAmount, String side) {
+        return isBuy(side) ? currentAmount.add(payedAmount) : currentAmount.subtract(payedAmount);
     }
 
-    public static BigDecimal accumulateExecutedAmount(BigDecimal accumulator, BigDecimal executed, String side) {
-        accumulator = isBuy(side) ? accumulator.add(executed) : accumulator.subtract(executed);
-        return accumulator;
+    public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, String side) {
+        return isBuy(side) ? currentAmount.add(executed) : currentAmount.subtract(executed);
     }
 
     public static Optional<String> hasStable(String pair) {
