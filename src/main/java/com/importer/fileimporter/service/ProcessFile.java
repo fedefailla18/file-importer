@@ -6,7 +6,6 @@ import com.importer.fileimporter.utils.OperationUtils;
 import com.importer.fileimporter.utils.ProcessFileServiceUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -53,89 +52,74 @@ public class ProcessFile {
         return transactionsDetailsMap;
     }
 
-    private Consumer<Map<?, ?>> processRow(List<String> symbols,
-                                           Map<String, CoinInformationResponse> transactionsDetailsMap) {
+    private Consumer<Map<?, ?>> processRow(List<String> symbols, Map<String, CoinInformationResponse> transactionDetails) {
         return row -> {
             String pair = getPair(row);
+            String symbol = getSymbolFromExecuted(row, symbols);
+            if (symbol.isEmpty()) return;
+
             try {
-                String symbol = getSymbolFromExecuted(row, symbols);
-                if (Strings.isNotEmpty(symbol)) {
-                    String symbolPair = pair.replace(symbol, "");
-                    boolean isBuy = OperationUtils.isBuy(row);
-
-                    if (!transactionsDetailsMap.containsKey(symbol)) {
-                        transactionsDetailsMap.computeIfAbsent(symbol, k -> {
-                            CoinInformationResponse coinInformationResponse = CoinInformationResponse.createEmpty(k);
-                            coinInformationResponse
-                                    .setAmount(calculateAmount(coinInformationResponse.getAmount(), isBuy, getExecuted(row, symbol)));
-
-                            // TODO:
-                            STABLE.stream()
-                                    .filter(symbolPair::contains)
-                                    .findFirst()
-                                    .ifPresent(value -> {
-                                        final BigDecimal amount = getAmount(row, value);
-                                        final BigDecimal amountSpent = getAmountSpent(coinInformationResponse.getUsdSpent(), amount, isBuy);
-                                        coinInformationResponse.setUsdSpent(amountSpent);
-                                    });
-
-                            calculateSpent(getAmount(row, symbolPair), coinInformationResponse, symbolPair, isBuy);
-
-                            coinInformationResponse.addRows(row);
-
-                            transactionService.saveTransaction(coinInformationResponse.getCoinName(), symbolPair, getDate(row), pair,
-                                    getSide(row), getPrice(row), getExecuted(row, coinInformationResponse.getCoinName()),
-                                    getAmount(row, coinInformationResponse.getCoinName()), getFee(row), "Process File - New Coin");
-                            return coinInformationResponse;
-                        });
-                        return;
-                    }
-                    CoinInformationResponse existingCoinInfo = transactionsDetailsMap.get(symbol);
-                    existingCoinInfo.setAmount(calculateAmount(existingCoinInfo.getAmount(), isBuy, getExecuted(row, symbol)));
-
-                    STABLE.stream()
-                            .filter(symbolPair::contains)
-                            .findFirst()
-                            .ifPresent(value -> {
-                                BigDecimal amount = getAmount(row, value);
-                                BigDecimal amountSpent = getAmountSpent(existingCoinInfo.getUsdSpent(), amount, isBuy);
-                                existingCoinInfo.setUsdSpent(amountSpent);
-                            });
-
-                    calculateSpent(getAmount(row, symbolPair), existingCoinInfo, symbolPair, isBuy);
-                    existingCoinInfo.addRows(row);
-                    transactionService.saveTransaction(existingCoinInfo.getCoinName(), symbolPair, getDate(row), pair, row.get("Side").toString(), getPrice(row),
-                            getExecuted(row, existingCoinInfo.getCoinName()), getAmount(row, existingCoinInfo.getCoinName()), getFee(row), "Process File");
-                }
+                processTransactionRow(row, pair, symbol, transactionDetails);
             } catch (Exception e) {
-                log.info(e.getMessage(), e);
+                log.error("Error processing row: {}", e.getMessage(), e);
             }
         };
     }
 
-    private void calculateSpent(BigDecimal amount, CoinInformationResponse a, String symbolPair, boolean isBuy) {
-        a.getSpent().computeIfAbsent(symbolPair, k -> new BigDecimal(0));
-        if (isBuy) {
-            a.getSpent().computeIfPresent(symbolPair, (k, v) -> v.add(amount));
-        } else {
-            a.getSpent().computeIfPresent(symbolPair, (k, v) -> v.subtract(amount));
-        }
+    private void processTransactionRow(Map<?, ?> row, String pair, String symbol, Map<String, CoinInformationResponse> transactionDetails) {
+        String symbolPair = pair.replace(symbol, "");
+        boolean isBuy = OperationUtils.isBuy(row);
+
+        transactionDetails.computeIfAbsent(symbol, k -> createNewCoinInfo(symbol, row, symbolPair, isBuy));
+        CoinInformationResponse coinInfo = transactionDetails.get(symbol);
+
+        updateCoinInfo(coinInfo, row, symbol, symbolPair, isBuy);
+        transactionService.saveTransaction(
+                coinInfo.getCoinName(), symbolPair, getDate(row), pair,
+                getSide(row), getPrice(row), getExecuted(row, symbol),
+                getAmount(row, symbol), getFee(row), "Process File"
+        );
     }
 
-    private BigDecimal getAmountSpent(BigDecimal usdSpent, BigDecimal amount, boolean isBuy) {
-        if (isBuy) {
-            return usdSpent.add(amount);
-        } else {
-            return usdSpent.subtract(amount);
-        }
+    private CoinInformationResponse createNewCoinInfo(String symbol, Map<?, ?> row, String symbolPair, boolean isBuy) {
+        CoinInformationResponse coinInfo = CoinInformationResponse.createEmpty(symbol);
+//        coinInfo.setAmount(calculateAmount(coinInfo.getAmount(), isBuy, getExecuted(row, symbol)));
+//        updateSpentAndAvgPrice(coinInfo, row, symbolPair, isBuy);
+//        coinInfo.addRows(row);
+        return coinInfo;
     }
 
-    private BigDecimal calculateAmount(BigDecimal amount, boolean isBuy, BigDecimal amountAdded) {
-        if (isBuy) {
-            return amount.add(amountAdded);
-        } else {
-            return amount.subtract(amountAdded);
-        }
+    private void updateCoinInfo(CoinInformationResponse coinInfo, Map<?, ?> row, String symbol, String symbolPair, boolean isBuy) {
+        coinInfo.setAmount(calculateAmount(coinInfo.getAmount(), isBuy, getExecuted(row, symbol)));
+        updateSpentAndAvgPrice(coinInfo, row, symbolPair, isBuy);
+        coinInfo.addRows(row);
+    }
+
+    private void updateSpentAndAvgPrice(CoinInformationResponse coinInfo, Map<?, ?> row, String symbolPair, boolean isBuy) {
+        STABLE.stream()
+                .filter(symbolPair::contains)
+                .findFirst()
+                .ifPresent(stableCoin -> {
+                    BigDecimal amount = getAmount(row, stableCoin);
+                    BigDecimal updatedSpent = updateAmountSpent(coinInfo.getUsdSpent(), amount, isBuy);
+                    coinInfo.setUsdSpent(updatedSpent);
+                });
+
+        calculateSpent(getAmount(row, symbolPair), coinInfo, symbolPair, isBuy);
+    }
+
+    private BigDecimal updateAmountSpent(BigDecimal currentSpent, BigDecimal amount, boolean isBuy) {
+        return isBuy ? currentSpent.add(amount) : currentSpent.subtract(amount);
+    }
+
+    void calculateSpent(BigDecimal amount, CoinInformationResponse coinInfo, String symbolPair, boolean isBuy) {
+        coinInfo.getSpent().merge(symbolPair, amount, (current, newAmount) -> isBuy ? current.add(newAmount) : current.subtract(newAmount));
+    }
+
+    BigDecimal calculateAmount(BigDecimal currentAmount, boolean isBuy, BigDecimal amountToAdjust) {
+        return isBuy ?
+                currentAmount.add(amountToAdjust) :
+                currentAmount.subtract(amountToAdjust);
     }
 
     private String getSymbolFromExecuted(Map<?, ?> row, List<String> symbols) {
@@ -158,21 +142,12 @@ public class ProcessFile {
         return ProcessFileServiceUtils.getAmount(row, symbolPair);
     }
 
-    // TODO: retrieve the symbol that affected the fee
     private BigDecimal getFee(Map<?, ?> row) {
         return ProcessFileServiceUtils.getFee(row);
     }
 
-    private String getFeeSymbol(String feeString, String symbol) {
-        return ProcessFileServiceUtils.getFeeSymbol(feeString, symbol);
-    }
-
     private BigDecimal getPrice(Map<?, ?> row) {
         return ProcessFileServiceUtils.getPrice(row);
-    }
-
-    private BigDecimal getBigDecimalWithScale(Number number) {
-        return ProcessFileServiceUtils.getBigDecimalWithScale(number);
     }
 
     private String getSide(Map<?, ?> row) {

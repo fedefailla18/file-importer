@@ -95,11 +95,15 @@ public class ProcessFileServiceUtils {
 
     public static String getSymbolFromExecuted(Map<?, ?> row, List<String> symbols) {
         String executedString = row.get(EXECUTED_KEY).toString();
-        Optional<String> first = symbols.stream()
-                .filter(executedString::contains)
-                .findFirst();
-        return first
-                .orElseGet(() -> getSymbolFromNumber(executedString));
+
+        // symbols makes it easy if you wanna import just a few symbols from the file
+        if (symbols != null) {
+            Optional<String> first = symbols.stream()
+                    .filter(executedString::contains)
+                    .findFirst();
+            return first.orElseGet(() -> getSymbolFromNumber(executedString)); // TODO: here we should return null and handle
+        }
+        return getSymbolFromNumber(executedString);
     }
 
     private String getSymbolFromNumber(String feeString) {
