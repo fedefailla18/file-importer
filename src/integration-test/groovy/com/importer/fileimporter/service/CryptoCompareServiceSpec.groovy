@@ -67,7 +67,19 @@ class CryptoCompareServiceSpec extends BaseIntegrationSpec {
         then: "The response should not be null"
         responses != null
 
-        and: "The response should have 'Success' as the Response field"
-        responses.get(toSymbol) != null
+        and: "The response is present for all fromSymbols"
+        fromSymbols.findAll {
+            responses.get(it)
+        }.size() == fromSymbols.size()
+
+        and: "all fromSymbols response should have a USDT Double amount"
+        fromSymbols.stream()
+                .map {
+                    responses.get(it)
+                }.map {
+            it.getAt("USDT")
+        }.filter {
+            it != null && it instanceof Double
+        }.collect().size() == fromSymbols.size()
     }
 }

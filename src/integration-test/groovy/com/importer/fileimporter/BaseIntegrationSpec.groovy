@@ -23,7 +23,6 @@ import spock.lang.Specification
 @AutoConfigureMockMvc
 abstract class BaseIntegrationSpec extends Specification {
 
-
     @Autowired
     MockMvc mockMvc
 
@@ -40,20 +39,16 @@ abstract class BaseIntegrationSpec extends Specification {
 
     static  {
         postgres.setPortBindings(["60366:5432"])
-//        postgres.withNetworkMode("host")
         postgres.start()
-        println("JDBC URL: ${postgres.getJdbcUrl()}")
-        println("Username: ${postgres.getUsername()}")
-        println("Password: ${postgres.getPassword()}")
         // Execute schema.sql to create the schema
         String jdbcUrl = postgres.getJdbcUrl()
         String username = postgres.getUsername()
         String password = postgres.getPassword()
 
         // Set system properties for Spring Boot
-        System.setProperty("DB_URL", postgres.getJdbcUrl())
-        System.setProperty("DB_USERNAME", postgres.getUsername())
-        System.setProperty("DB_PASSWORD", postgres.getPassword())
+        System.setProperty("DB_URL", jdbcUrl)
+        System.setProperty("DB_USERNAME", username)
+        System.setProperty("DB_PASSWORD", password)
 
         def dataSource = new SimpleDriverDataSource(
                 new Driver(),
