@@ -45,6 +45,10 @@ public class TransactionService {
         return transactionRepository.findAll();
     }
 
+    public Page<Transaction> getAll(Pageable pageable) {
+        return transactionRepository.findAll(pageable);
+    }
+
     public CoinInformationResponse getTransactionsInformation(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         List<Transaction> transactions = getTransactionsByRangeDate(symbol, startDate, endDate, pageable).getContent();
         BigDecimal amountSpent = calculateAmountSpent.execute(symbol, transactions);
@@ -93,5 +97,9 @@ public class TransactionService {
                 .build();
 
         return transactionRepository.save(transaction);
+    }
+
+    public void deleteTransactions() {
+        transactionRepository.deleteAll();
     }
 }

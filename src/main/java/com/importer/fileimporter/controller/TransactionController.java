@@ -14,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,8 +40,8 @@ public class TransactionController {
     private final TransactionFacade transactionFacade;
     private final CalculateAmountSpent calculateAmountSpent;
 
-    @GetMapping
-    public Page<Transaction> getTransactionsRangeDate(@RequestParam(required = false) String symbol,
+    @GetMapping(value = "/filter")
+    public Page<Transaction> getTransactionsRangeDate(@RequestParam(required = true) String symbol,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                                       @PageableDefault Pageable pageable) {
@@ -79,6 +81,17 @@ public class TransactionController {
     @GetMapping(value = "/portfolio/amount")
     public List<TransactionHoldingDto> getAmount(@RequestParam(required = false) List<String> symbols) throws IOException {
         return transactionFacade.getAmount(symbols);
+    }
+
+    @DeleteMapping
+    public ResponseEntity.BodyBuilder deleteTransactions() {
+        transactionService.deleteTransactions();
+        return ResponseEntity.accepted();
+    }
+
+    @GetMapping
+    public Page<Transaction> getAllTransactions(Pageable pageable) {
+        return transactionService.getAll(pageable);
     }
 
 }

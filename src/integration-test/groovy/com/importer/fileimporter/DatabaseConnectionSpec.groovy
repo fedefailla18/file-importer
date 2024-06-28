@@ -25,11 +25,5 @@ class DatabaseConnectionSpec extends BaseIntegrationSpec {
         then: "the connection is valid"
         assert connection != null
         assert !connection.isClosed()
-
-        try (Connection connectionTest = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
-            System.out.println("Connection successful!");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
     }
 }

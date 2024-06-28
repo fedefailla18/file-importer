@@ -32,4 +32,17 @@ public class TransactionHoldingDto {
     private BigDecimal priceInUsdt;
     private BigDecimal amountInUsdt;
     private BigDecimal percentage;
+
+    public static TransactionHoldingDto emptyTransactionHoldingDto(String symbol, BigDecimal totalAmount) {
+        return TransactionHoldingDto.builder()
+                .symbol(symbol)
+                .amount(totalAmount)
+                .buyPrice(BigDecimal.ZERO)
+                .buyPriceInBtc(BigDecimal.ZERO)
+                .sellPrice(BigDecimal.ZERO)
+                .sellPriceInBtc(BigDecimal.ZERO)
+                .payedInUsdt(BigDecimal.ZERO)
+                .payedInBtc(BigDecimal.ZERO)
+                .build();
+    }
 }
