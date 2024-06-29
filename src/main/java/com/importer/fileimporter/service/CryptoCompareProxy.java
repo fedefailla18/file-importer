@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Service
 @Slf4j
-public class CryptoCompareService {
+public class CryptoCompareProxy {
 
     private static final String BASE_URL = "https://min-api.cryptocompare.com/data/v2/histohour";
     private static final String BASE_URL_PRICE = "https://min-api.cryptocompare.com/data/price";
@@ -34,7 +34,7 @@ public class CryptoCompareService {
     private final WebClient webClientPricingSymbols;
     private final CryptoCompareConfig config;
 
-    public CryptoCompareService(WebClient.Builder webClientBuilder, CryptoCompareConfig config) {
+    public CryptoCompareProxy(WebClient.Builder webClientBuilder, CryptoCompareConfig config) {
         this.webClient = webClientBuilder.baseUrl(BASE_URL).build();
         this.webClientPricing = webClientBuilder.baseUrl(BASE_URL_PRICE).build();
         this.webClientPricingSymbols = webClientBuilder.baseUrl(BASE_URL_PRICES).build();

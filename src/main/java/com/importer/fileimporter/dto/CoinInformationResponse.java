@@ -32,6 +32,8 @@ public class CoinInformationResponse {
 
     private Map<String, BigDecimal> spent;
 
+    private BigDecimal totalExecuted; // Track total executed amount for average calculation
+
     private int totalTransactions;
 
     private List<Map<?, ?>> rows;
@@ -44,6 +46,7 @@ public class CoinInformationResponse {
                 .coinName(coinName)
                 .spent(new HashMap<>())
                 .avgEntryPrice(new HashMap<>())
+                .totalExecuted(ZERO)
                 .build();
     }
 
@@ -52,28 +55,19 @@ public class CoinInformationResponse {
         totalTransactions++;
     }
 
-    public void setAvgEntryPrice(String symbolPair, BigDecimal price, BigDecimal executed, boolean isBuy) {
-        avgEntryPrice.computeIfAbsent(symbolPair, k -> BigDecimal.ZERO);
-
-        avgEntryPrice.computeIfPresent(symbolPair, (k, v) -> {
-            var pondering = price.multiply(executed);
-            if (isBuy) {
-                return pondering.add(v);
-            } else {
-                return pondering.subtract(v);
-            }
-        });
+    public void setAvgEntryPrice(String payedWith, BigDecimal priceInUsdt, BigDecimal executed, boolean isBuy) {
+        if (isBuy) {
+            usdSpent = usdSpent.add(priceInUsdt.multiply(executed));
+            amount = amount.add(executed);
+        } else {
+            usdSpent = usdSpent.subtract(priceInUsdt.multiply(executed));
+            amount = amount.subtract(executed);
+        }
     }
 
     public void calculateAvgPrice() {
-        BigDecimal reduce = avgEntryPrice.values().stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(10, RoundingMode.UP);
-
-        this.setTotalStable(reduce);
-
-        if (!BigDecimal.ZERO.equals(this.getAmount())) {
-            avgEntryPrice.put("AVG", reduce.divide(amount, 10, RoundingMode.HALF_UP));
+        if (totalExecuted.compareTo(BigDecimal.ZERO) > 0) {
+            totalStable = usdSpent.divide(totalExecuted, 10, RoundingMode.HALF_UP);
         }
     }
 }

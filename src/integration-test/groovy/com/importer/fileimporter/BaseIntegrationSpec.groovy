@@ -11,7 +11,6 @@ import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.SimpleDriverDataSource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.web.servlet.MockMvc
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
 import spock.lang.Specification
@@ -22,9 +21,6 @@ import spock.lang.Specification
 @AutoConfigureTestEntityManager
 @AutoConfigureMockMvc
 abstract class BaseIntegrationSpec extends Specification {
-
-    @Autowired
-    MockMvc mockMvc
 
     @Autowired
     FileImporterService fileImporterService

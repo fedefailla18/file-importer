@@ -16,10 +16,10 @@ class TransactionFacadeSpec extends Specification {
 
     def transactionService = Mock(TransactionService)
     def calculateAmountSpent = Mock(CalculateAmountSpent)
-    def coinInformationService = Mock(CoinInformationService)
+    def coinInformationService = Mock(CoinInformationHelper)
     def symbolService = Mock(SymbolService)
     def portfolioService = Mock(PortfolioService)
-    def getSymbolHistoricPriceService = Mock(GetSymbolHistoricPriceService)
+    def getSymbolHistoricPriceService = Mock(GetSymbolHistoricPriceHelper)
     def pricingFacade = Mock(PricingFacade)
 
     def sut = new TransactionFacade(transactionService, calculateAmountSpent,

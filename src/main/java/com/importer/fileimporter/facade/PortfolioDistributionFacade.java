@@ -7,7 +7,7 @@ import com.importer.fileimporter.entity.Holding;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
-import com.importer.fileimporter.service.GetSymbolHistoricPriceService;
+import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
 import com.importer.fileimporter.service.SymbolService;
@@ -40,8 +40,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.BTC;
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.USDT;
+import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.BTC;
+import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.USDT;
 
 @Service
 @RequiredArgsConstructor
@@ -51,7 +51,7 @@ public class PortfolioDistributionFacade {
     private final SymbolService symbolService;
     private final PortfolioService portfolioService;
     private final HoldingService holdingService;
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
+    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
 
     public HoldingDto addPortfolioHolding(AddHoldingRequest request) {
         Symbol savedSymbol = symbolService.findOrSaveSymbol(request.getSymbol(), request.getName());
@@ -116,7 +116,7 @@ public class PortfolioDistributionFacade {
 
         portfolio.getHoldings()
                 .forEach(e -> {
-                    Map<String, Double> price = getSymbolHistoricPriceService.getPrice(e.getSymbol());
+                    Map<String, Double> price = getSymbolHistoricPriceHelper.getPrice(e.getSymbol());
                     BigDecimal btcprice = BigDecimal.valueOf(price.get(BTC) != null ? price.get(BTC) : 0d);
                     BigDecimal usdtprice = BigDecimal.valueOf(price.get(USDT) != null ? price.get(USDT) : 0d);
                     portfolioDistribution.getHoldings().add(HoldingDto.builder()

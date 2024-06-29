@@ -18,7 +18,7 @@ class TransactionServiceSpec extends Specification {
 
     TransactionRepository transactionRepository = Mock(TransactionRepository)
     CalculateAmountSpent calculateAmountSpent = Mock(CalculateAmountSpent)
-    CoinInformationService coinInformationService = Mock(CoinInformationService)
+    CoinInformationHelper coinInformationService = Mock(CoinInformationHelper)
     TransactionService transactionService = new TransactionService(transactionRepository, calculateAmountSpent, coinInformationService)
 
     def "test getTransactionsByRangeDate - symbol only"() {

@@ -20,12 +20,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class GetSymbolHistoricPriceService {
+public class GetSymbolHistoricPriceHelper {
 
     public static final String USDT = "USDT";
     public static final String BTC = "BTC";
 
-    private final CryptoCompareService cryptoCompareService;
+    private final CryptoCompareProxy cryptoCompareProxy;
     private final PriceHistoryService priceHistoryService;
 
     public BigDecimal getPriceInUsdt(String symbolPair, BigDecimal price, String date) {
@@ -66,7 +66,7 @@ public class GetSymbolHistoricPriceService {
     @NotNull
     public BigDecimal getPricesAtDate(String fromSymbol, String toSymbol, LocalDateTime dateTime) {
         log.info("getting price for: " + toSymbol + " with: " + fromSymbol);
-        CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(fromSymbol, toSymbol,
+        CryptoCompareResponse cryptoCompareResponse = cryptoCompareProxy.getHistoricalData(fromSymbol, toSymbol,
                 dateTime.toEpochSecond(ZoneOffset.UTC));
 
         CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
@@ -81,7 +81,7 @@ public class GetSymbolHistoricPriceService {
     private Map<String, Double> getPricesAtDate(String symbol, String ...symbols) {
         String toSymbols = String.join(",", symbols);
         log.info("getting price for: " + symbol + " to: " + toSymbols);
-        return cryptoCompareService.getData(symbol, toSymbols);
+        return cryptoCompareProxy.getData(symbol, toSymbols);
     }
 
     private BigDecimal getPriceBySymbol(String symbolPair, BigDecimal price, LocalDateTime dateTime, String symbol) {
@@ -114,6 +114,6 @@ public class GetSymbolHistoricPriceService {
     }
 
     public Map<String, Double> getPrice(List<String> symbol) {
-        return cryptoCompareService.getData(symbol, BTC + "," + USDT);
+        return cryptoCompareProxy.getData(symbol, BTC + "," + USDT);
     }
 }

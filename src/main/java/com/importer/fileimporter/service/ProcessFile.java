@@ -82,15 +82,11 @@ public class ProcessFile {
     }
 
     private CoinInformationResponse createNewCoinInfo(String symbol, Map<?, ?> row, String symbolPair, boolean isBuy) {
-        CoinInformationResponse coinInfo = CoinInformationResponse.createEmpty(symbol);
-//        coinInfo.setAmount(calculateAmount(coinInfo.getAmount(), isBuy, getExecuted(row, symbol)));
-//        updateSpentAndAvgPrice(coinInfo, row, symbolPair, isBuy);
-//        coinInfo.addRows(row);
-        return coinInfo;
+        return CoinInformationResponse.createEmpty(symbol);
     }
 
     private void updateCoinInfo(CoinInformationResponse coinInfo, Map<?, ?> row, String symbol, String symbolPair, boolean isBuy) {
-        coinInfo.setAmount(calculateAmount(coinInfo.getAmount(), isBuy, getExecuted(row, symbol)));
+        coinInfo.setTotalExecuted(calculateAmount(coinInfo.getAmount(), isBuy, getExecuted(row, symbol)));
         updateSpentAndAvgPrice(coinInfo, row, symbolPair, isBuy);
         coinInfo.addRows(row);
     }

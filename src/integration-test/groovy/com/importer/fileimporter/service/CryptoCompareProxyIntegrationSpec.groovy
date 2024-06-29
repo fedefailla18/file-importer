@@ -5,7 +5,7 @@ import com.importer.fileimporter.config.integration.CryptoCompareConfig
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.reactive.function.client.WebClient
 
-class CryptoCompareServiceSpec extends BaseIntegrationSpec {
+class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
 
     @Autowired
     CryptoCompareConfig config
@@ -14,7 +14,7 @@ class CryptoCompareServiceSpec extends BaseIntegrationSpec {
     WebClient.Builder webClientBuilder
 
     @Autowired
-    CryptoCompareService cryptoCompareService
+    CryptoCompareProxy cryptoCompareProxy
 
     def "Test getHistoricalData method"() {
         given: "Input parameters for the historical data request"
@@ -24,7 +24,7 @@ class CryptoCompareServiceSpec extends BaseIntegrationSpec {
         long toTimestamp = 1632625200L
 
         when: "Calling the getHistoricalData method"
-        def response = cryptoCompareService.getHistoricalData(
+        def response = cryptoCompareProxy.getHistoricalData(
                 fromSymbol,
                 toSymbol
                 ,
@@ -44,7 +44,7 @@ class CryptoCompareServiceSpec extends BaseIntegrationSpec {
         def toSymbol = "USDT"
 
         when: "Calling the getHistoricalData method"
-        def response = cryptoCompareService.getData(
+        def response = cryptoCompareProxy.getData(
                 fromSymbol,
                 toSymbol
         )
@@ -59,7 +59,7 @@ class CryptoCompareServiceSpec extends BaseIntegrationSpec {
         def fromSymbols = ["BTC", "ETH", "ADA", "XRP"]
 
         when: "Calling the getHistoricalData method"
-        def responses = cryptoCompareService.getData(
+        def responses = cryptoCompareProxy.getData(
                 fromSymbols,
                 toSymbol
         )

@@ -15,12 +15,12 @@ public class OperationUtils {
     public static final List<String> SYMBOL = List.of("XVG", "BAND", "RSR", "AKRO", "DOT", "OP",
             "VET", "RLC", "BTC", "ETH");
     public static final List<String> GRAND_SYMBOLS = List.of("BTC", "ETH");
-    public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USDC");
+    public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USD", "USDC");
 
     public static final Predicate<String> IS_BUY = "BUY"::equals;
 
     public boolean isStable(String payedWithSymbol) {
-        return OperationUtils.STABLE.contains(payedWithSymbol);
+        return STABLE.contains(payedWithSymbol);
     }
 
     public boolean isBuy(Map<?, ?> row) {

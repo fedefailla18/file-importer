@@ -27,7 +27,7 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final CalculateAmountSpent calculateAmountSpent;
-    private final CoinInformationService coinInformationService;
+    private final CoinInformationHelper coinInformationHelper;
 
     public Page<Transaction> getTransactionsByRangeDate(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         if (symbol != null && (startDate == null && endDate == null)) {
@@ -65,7 +65,7 @@ public class TransactionService {
                 .usdSpent(amountSpent)
                 .spent(new HashMap<>())
                 .build();
-        coinInformationService.calculateAvgEntryPrice(response, transactions);
+        coinInformationHelper.calculateAvgEntryPrice(response, transactions);
         return response;
     }
 

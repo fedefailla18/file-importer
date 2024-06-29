@@ -1,7 +1,7 @@
 package com.importer.fileimporter.facade;
 
 import com.importer.fileimporter.entity.PriceHistory;
-import com.importer.fileimporter.service.GetSymbolHistoricPriceService;
+import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.PriceHistoryService;
 import com.importer.fileimporter.service.SymbolService;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.BTC;
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.USDT;
+import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.BTC;
+import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.USDT;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ public class PricingFacade {
 
     private final SymbolService symbolService;
     private final PriceHistoryService priceHistoryService;
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
+    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
 
     public BigDecimal getPrice(String symbol, String symbolPair, LocalDateTime dateTime) {
         if (StringUtils.trimAllWhitespace(symbol).isEmpty()) {
@@ -42,15 +42,15 @@ public class PricingFacade {
         return data
                 .map(PriceHistory::getHigh)
                 .orElseGet(() ->
-                    getSymbolHistoricPriceService.getPricesAtDate(finalSymbol, finalSymbolPair,
+                    getSymbolHistoricPriceHelper.getPricesAtDate(finalSymbol, finalSymbolPair,
                             finalDateTime.minusMinutes(1L)));
     }
 
     public Map<String, Double> getPrices(String symbol) {
-        return getSymbolHistoricPriceService.getPrice(symbol);
+        return getSymbolHistoricPriceHelper.getPrice(symbol);
     }
     public Map<String, Double> getPrices(List<String> symbol) {
-        return getSymbolHistoricPriceService.getPrice(symbol);
+        return getSymbolHistoricPriceHelper.getPrice(symbol);
     }
 
 }

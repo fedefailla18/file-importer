@@ -1,21 +1,26 @@
 package com.importer.fileimporter.controller
 
-import com.importer.fileimporter.BaseIntegrationSpec
+
 import com.importer.fileimporter.config.security.jwt.AuthTokenFilter
 import com.importer.fileimporter.config.security.jwt.JwtUtils
 import com.importer.fileimporter.config.security.services.UserDetailsImpl
 import com.importer.fileimporter.config.security.services.UserDetailsServiceImpl
 import com.importer.fileimporter.dto.FileInformationResponse
 import com.importer.fileimporter.service.ProcessFile
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.security.test.context.support.WithMockUser
+import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import spock.lang.Ignore
+import spock.lang.Specification
 
-class WebControllerIntegrationSpec extends BaseIntegrationSpec {
+class WebControllerSpec extends Specification {
+
+    @Autowired
+    MockMvc mockMvc
 
     @MockBean
     ProcessFile processFile
@@ -28,7 +33,6 @@ class WebControllerIntegrationSpec extends BaseIntegrationSpec {
     def authTokenFilter = new AuthTokenFilter(jwtUtils, userDetailsService)
 
     @Ignore
-    @WithMockUser
     def "should return processed file information"() {
         given: "a valid file and JWT token"
         def mockFile = new MockMultipartFile(
@@ -42,7 +46,7 @@ class WebControllerIntegrationSpec extends BaseIntegrationSpec {
         def jwtToken = "Bearer valid.jwt.token.here"
 
         when: "the processFile method is mocked"
-        1 * processFile.processFile(_) >> response
+        1 * processFile.processFile(Specification._) >> response
 
         and: "a file is uploaded to the endpoint"
         def result = mockMvc.perform(
@@ -62,7 +66,6 @@ class WebControllerIntegrationSpec extends BaseIntegrationSpec {
     }
 
     @Ignore
-    @WithMockUser(username="admin",roles = ["USER","ADMIN"])
     def "should return null for empty file"() {
         given: "an empty file and JWT token"
         def mockFile = new MockMultipartFile(

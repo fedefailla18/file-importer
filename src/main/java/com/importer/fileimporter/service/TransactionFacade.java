@@ -3,7 +3,6 @@ package com.importer.fileimporter.service;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.facade.PricingFacade;
-import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -23,8 +22,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.BTC;
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.USDT;
+import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.BTC;
+import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.USDT;
 
 @RequiredArgsConstructor
 @Service
@@ -32,11 +31,7 @@ import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.US
 public class TransactionFacade {
 
     private final TransactionService transactionService;
-    private final CalculateAmountSpent calculateAmountSpent;
-    private final CoinInformationService coinInformationService;
-    private final SymbolService symbolService;
-    private final PortfolioService portfolioService;
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
+    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
     private final PricingFacade pricingFacade;
 
     public List<TransactionHoldingDto> buildPortfolio(List<String> symbols) {
@@ -138,7 +133,7 @@ public class TransactionFacade {
                     .payedInBtc(BigDecimal.ZERO)
                     .build();
 
-            Map<String, Double> price = getSymbolHistoricPriceService.getPrice(symbol);
+            Map<String, Double> price = getSymbolHistoricPriceHelper.getPrice(symbol);
             holdingDto.setPriceInBtc(BigDecimal.valueOf(price.get(BTC)));
             holdingDto.setAmountInBtc(totalAmount.get().multiply(BigDecimal.valueOf(price.get(BTC))));
 
