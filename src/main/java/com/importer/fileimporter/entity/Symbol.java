@@ -35,10 +35,12 @@ public class Symbol {
 
     private LocalDateTime created;
 
-    private String created_by;
+    private String createdBy;
 
     private LocalDateTime modified;
 
-    private String modified_by;
+    private String modifiedBy;
 
+//    @OneToMany(mappedBy = "symbol")
+//    private Set<Holding> holdings;
 }

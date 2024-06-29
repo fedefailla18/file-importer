@@ -29,12 +29,12 @@ public class WebSecurityConfig {
 
     private final AuthEntryPointJwt unauthorizedHandler;
 
-    @Bean
+//    @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
         return new AuthTokenFilter();
     }
 
-    @Bean
+//    @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
 
@@ -71,7 +71,6 @@ public class WebSecurityConfig {
 //                .antMatchers("/api/test/**").permitAll()
 //                .anyRequest().permitAll();
                 .authorizeRequests().antMatchers("**/**").permitAll();
-
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
         http.authenticationProvider(authenticationProvider());

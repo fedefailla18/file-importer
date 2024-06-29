@@ -65,10 +65,9 @@ public class PriceHistoryService {
     }
 
     public Optional<PriceHistory> findData(String symbolPair, String pair, LocalDateTime dateTime) {
-        List<PriceHistory> allBySymbolAndSymbolPair = repository.findAllBySymbolAndSymbolpair(symbolPair, pair);
+        LocalDateTime localDateTime = dateTime.withMinute(0).truncatedTo(ChronoUnit.MINUTES);
+        List<PriceHistory> allBySymbolAndSymbolPair = repository.findAllBySymbolAndSymbolpairAndTime(pair, symbolPair, localDateTime);
         return allBySymbolAndSymbolPair.stream()
-                .filter(e -> e.getTime().truncatedTo(ChronoUnit.HOURS)
-                        .isEqual(dateTime.truncatedTo(ChronoUnit.HOURS)))
                 .findFirst();
     }
 }
