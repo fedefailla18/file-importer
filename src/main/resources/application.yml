@@ -1,4 +1,3 @@
-
 server:
   port: 8080
   max-http-header-size: 16000
@@ -10,8 +9,8 @@ spring:
   application:
     name: file-importer
   datasource:
-    url: jdbc:postgresql://localhost:5432/file_importer_db?currentSchema=file_importer_schema,public;
-    username: root
+    url: jdbc:postgresql://localhost:5555/testdb?currentSchema=file_importer_schema,public
+    username: facundo
     password: password
     driver-class-name: org.postgresql.Driver
   jpa:
@@ -37,7 +36,18 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     contexts: development, production
     default-schema: file_importer_schema
+    ignore-sql-exceptions: true
+    show-sql: true
+    should-run: true
+    fail-fast: false
+    throw-exceptions: false
+    ignore-classpath-prefix: false
+    check-change-log-location: true
+    update-on-checksum: false
+    context:
+      classpath: com.example.lntegration
 
+# Otras configuraciones de tu aplicación
 crypto-compare:
   api-key: 53bdd104b9bb83f976930c67a45bf29bf7f8d3f9808ab350aa742f45a505417d
 

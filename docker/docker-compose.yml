@@ -1,23 +1,23 @@
-version: '3'
+version: "3"
 
 services:
   postgres:
-    image: postgres:13.1
-    container_name: file_importer_db
+    image: postgres
+    container_name: postgres-contenedor-test
     healthcheck:
-      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root" ]
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root"]
       timeout: 45s
       interval: 10s
       retries: 10
     restart: always
     environment:
-      - POSTGRES_USER=root
+      - POSTGRES_USER=facundo
       - POSTGRES_PASSWORD=password
       - APP_DB_USER=user1
       - APP_DB_PASS=passuser1
-      - APP_DB_NAME=file_importer
+      - APP_DB_NAME=testdb
     volumes:
       - ./db:/docker-entrypoint-initdb.d/
       - ./data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5555:5432"
