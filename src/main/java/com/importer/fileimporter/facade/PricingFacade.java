@@ -3,7 +3,6 @@ package com.importer.fileimporter.facade;
 import com.importer.fileimporter.entity.PriceHistory;
 import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.PriceHistoryService;
-import com.importer.fileimporter.service.SymbolService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -14,16 +13,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.BTC;
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.USDT;
+import static com.importer.fileimporter.utils.OperationUtils.BTC;
+import static com.importer.fileimporter.utils.OperationUtils.USDT;
 
 @Service
 @RequiredArgsConstructor
 public class PricingFacade {
 
-    private final SymbolService symbolService;
     private final PriceHistoryService priceHistoryService;
     private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
+
+    public BigDecimal getPriceInUsdt(String symbol, LocalDateTime dateTime) {
+        return getPrice(symbol, USDT, dateTime);
+    }
+    public BigDecimal getPriceInBTC(String symbol, LocalDateTime dateTime) {
+        return getPrice(symbol, BTC, dateTime);
+    }
+
+    public Optional<BigDecimal> findHighPrice(String symbol, String symbolPair, LocalDateTime dateTime) {
+        return priceHistoryService.findHighPrice(symbol, symbolPair, dateTime);
+    }
 
     public BigDecimal getPrice(String symbol, String symbolPair, LocalDateTime dateTime) {
         if (StringUtils.trimAllWhitespace(symbol).isEmpty()) {
@@ -38,8 +47,7 @@ public class PricingFacade {
         String finalSymbol = symbol.toUpperCase();
         String finalSymbolPair = symbolPair.toUpperCase();
         LocalDateTime finalDateTime = dateTime;
-        Optional<PriceHistory> data = priceHistoryService.findData(symbolPair, symbol, dateTime);
-        return data
+        return priceHistoryService.findData(symbolPair, symbol, dateTime)
                 .map(PriceHistory::getHigh)
                 .orElseGet(() ->
                     getSymbolHistoricPriceHelper.getPricesAtDate(finalSymbol, finalSymbolPair,
@@ -49,6 +57,10 @@ public class PricingFacade {
     public Map<String, Double> getPrices(String symbol) {
         return getSymbolHistoricPriceHelper.getPrice(symbol);
     }
+    public BigDecimal getCurrentMarketPrice(String symbol) {
+        return BigDecimal.valueOf(getSymbolHistoricPriceHelper.getPrice(symbol).get(USDT));
+    }
+
     public Map<String, Double> getPrices(List<String> symbol) {
         return getSymbolHistoricPriceHelper.getPrice(symbol);
     }

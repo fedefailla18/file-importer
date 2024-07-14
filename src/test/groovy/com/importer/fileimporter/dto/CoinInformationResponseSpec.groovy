@@ -9,15 +9,15 @@ class CoinInformationResponseSpec extends Specification {
         given:
         CoinInformationResponse response = CoinInformationResponse.builder()
                 .coinName("BTC")
-                .usdSpent(BigDecimal.ZERO)
+                .stableTotalCost(BigDecimal.ZERO)
                 .amount(BigDecimal.ZERO)
                 .build()
 
         when:
-        response.setAvgEntryPrice("USDT", new BigDecimal("1000"), new BigDecimal("1"), true)
+        response.setAvgEntryPriceInUsdt(new BigDecimal("1000"), new BigDecimal("1"), true)
 
         then:
-        response.getUsdSpent() == new BigDecimal("1000")
+        response.getStableTotalCost() == new BigDecimal("1000")
         response.getAmount() == new BigDecimal("1")
     }
 
@@ -25,16 +25,16 @@ class CoinInformationResponseSpec extends Specification {
         given:
         CoinInformationResponse response = CoinInformationResponse.builder()
                 .coinName("BTC")
-                .usdSpent(BigDecimal.ZERO)
+                .stableTotalCost(BigDecimal.ZERO)
                 .amount(BigDecimal.ZERO)
                 .build()
 
         when:
-        response.setAvgEntryPrice("USDT", new BigDecimal("1000"), new BigDecimal("1"), true) // Initial buy
-        response.setAvgEntryPrice("USDT", new BigDecimal("500"), new BigDecimal("0.5"), false) // Sell half
+        response.setAvgEntryPriceInUsdt(new BigDecimal("1000"), new BigDecimal("1"), true) // Initial buy
+        response.setAvgEntryPriceInUsdt(new BigDecimal("500"), new BigDecimal("0.5"), false) // Sell half
 
         then:
-        response.getUsdSpent() == new BigDecimal("750")
+        response.getStableTotalCost() == new BigDecimal("750")
         response.getAmount() == new BigDecimal("0.5")
     }
 
@@ -43,7 +43,7 @@ class CoinInformationResponseSpec extends Specification {
         CoinInformationResponse response = CoinInformationResponse.builder()
                 .coinName("BTC")
                 .avgEntryPrice(new HashMap<>())
-                .usdSpent(new BigDecimal("1500"))
+                .stableTotalCost(new BigDecimal("1500"))
                 .totalExecuted(new BigDecimal("1"))
                 .build()
 
@@ -51,7 +51,7 @@ class CoinInformationResponseSpec extends Specification {
         response.calculateAvgPrice()
 
         then:
-        response.getTotalStable() == new BigDecimal("1500.0000000000")
+        response.getTotalStablePosition() == new BigDecimal("1500.0000000000")
     }
 
     def "calculateAvgPrice with no executed amount"() {
@@ -59,16 +59,39 @@ class CoinInformationResponseSpec extends Specification {
         CoinInformationResponse response = CoinInformationResponse.builder()
                 .coinName("BTC")
                 .avgEntryPrice(new HashMap<>())
-                .usdSpent(BigDecimal.ZERO)
+                .stableTotalCost(BigDecimal.ZERO)
                 .totalExecuted(BigDecimal.ZERO)
-                .totalStable(BigDecimal.ZERO)
+                .totalStablePosition(BigDecimal.ZERO)
                 .build()
 
         when:
         response.calculateAvgPrice()
 
         then:
-        response.getTotalStable() == BigDecimal.ZERO
+        response.getTotalStablePosition() == BigDecimal.ZERO
+    }
+
+    def "addTotalAmountBought"() {
+        given:
+        def coinInfo = CoinInformationResponse.builder()
+                .totalAmountBought(amountBought)
+                .build()
+
+        when:
+        coinInfo.addTotalAmountBought(purchasedAmount, side)
+
+        then:
+        coinInfo != null
+        coinInfo.totalAmountBought == expected
+
+        where:
+        purchasedAmount | amountBought    | side   || expected
+        BigDecimal.ZERO | BigDecimal.ZERO | "BUY"  || BigDecimal.ZERO
+        1               | 1               | "BUY"  || 2
+        1               | BigDecimal.ZERO | "BUY"  || 1
+        BigDecimal.ZERO | BigDecimal.ZERO | "SELL" || BigDecimal.ZERO
+        1               | 1               | "SELL" || 1
+        1               | BigDecimal.ZERO | "SELL" || 0
     }
 
 

@@ -11,45 +11,25 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static com.importer.fileimporter.utils.OperationUtils.BTC;
+import static com.importer.fileimporter.utils.OperationUtils.USDT;
 
 @RequiredArgsConstructor
 @Service
 @Slf4j
 public class GetSymbolHistoricPriceHelper {
 
-    public static final String USDT = "USDT";
-    public static final String BTC = "BTC";
-
     private final CryptoCompareProxy cryptoCompareProxy;
     private final PriceHistoryService priceHistoryService;
-
-    public BigDecimal getPriceInUsdt(String symbolPair, BigDecimal price, String date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime dateTime = LocalDateTime.parse(date, formatter);
-        return getPriceInUsdt(symbolPair, price, dateTime);
-    }
 
     public BigDecimal getPriceInUsdt(String symbol, BigDecimal price, LocalDateTime dateTime) {
         return getPriceBySymbol(symbol, price, dateTime, USDT);
     }
-
-    public BigDecimal getPriceInBTC(String symbol, BigDecimal price, LocalDateTime dateTime) {
-        return getPriceBySymbol(symbol, price, dateTime, BTC);
-    }
-
-    public BigDecimal getPriceInBTC(String symbol) {
-        return getPricesAtDate(symbol, BTC, LocalDateTime.now());
-    }
-
-    public BigDecimal getPriceInUSDT(String symbol) {
-        return getPricesAtDate(symbol, USDT, LocalDateTime.now());
-    }
-
 
     public Map<String, Double> getPrice(String symbol) {
         String symbols;
@@ -65,7 +45,7 @@ public class GetSymbolHistoricPriceHelper {
 
     @NotNull
     public BigDecimal getPricesAtDate(String fromSymbol, String toSymbol, LocalDateTime dateTime) {
-        log.info("getting price for: " + toSymbol + " with: " + fromSymbol);
+        log.info(String.format("Fetching price for: %s, with: %s. Date: %s", toSymbol, fromSymbol, dateTime));
         CryptoCompareResponse cryptoCompareResponse = cryptoCompareProxy.getHistoricalData(fromSymbol, toSymbol,
                 dateTime.toEpochSecond(ZoneOffset.UTC));
 

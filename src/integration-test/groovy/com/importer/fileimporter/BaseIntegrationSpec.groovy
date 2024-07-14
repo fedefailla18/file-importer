@@ -25,6 +25,8 @@ abstract class BaseIntegrationSpec extends Specification {
     @Autowired
     FileImporterService fileImporterService
 
+
+
     // Define a PostgreSQL container
     @ClassRule
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.1")

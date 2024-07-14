@@ -19,6 +19,9 @@ public class OperationUtils {
 
     public static final Predicate<String> IS_BUY = "BUY"::equals;
 
+    public static final String USDT = "USDT";
+    public static final String BTC = "BTC";
+
     public boolean isStable(String payedWithSymbol) {
         return STABLE.contains(payedWithSymbol);
     }
