@@ -4,10 +4,10 @@ import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
+import com.importer.fileimporter.facade.CoinInformationFacade;
 import com.importer.fileimporter.service.ProcessFile;
 import com.importer.fileimporter.service.TransactionFacade;
 import com.importer.fileimporter.service.TransactionService;
-import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -38,10 +37,10 @@ public class TransactionController {
     private final ProcessFile processFile;
     private final TransactionService transactionService;
     private final TransactionFacade transactionFacade;
-    private final CalculateAmountSpent calculateAmountSpent;
+    private final CoinInformationFacade coinInformationFacade;
 
     @GetMapping(value = "/filter")
-    public Page<Transaction> getTransactionsRangeDate(@RequestParam(required = true) String symbol,
+    public Page<Transaction> getTransactionsRangeDate(@RequestParam String symbol,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                                       @PageableDefault Pageable pageable) {
@@ -49,19 +48,8 @@ public class TransactionController {
     }
 
     @GetMapping("/information")
-    public CoinInformationResponse getSymbolInformation(@RequestParam(required = false) String symbol,
-                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-                                                              @PageableDefault Pageable pageable) {
-        return transactionService.getTransactionsInformation(symbol, startDate, endDate, pageable);
-    }
-
-    @GetMapping("/spentAmount")
-    public BigDecimal getAmountSpent(@RequestParam(required = false) String symbol,
-                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-                                     @PageableDefault Pageable pageable) {
-        return calculateAmountSpent.execute(symbol, startDate, endDate, pageable);
+    public CoinInformationResponse getSymbolInformation(@RequestParam String symbol) {
+        return coinInformationFacade.getTransactionsInformation(symbol);
     }
 
     @PostMapping(value = "/upload")

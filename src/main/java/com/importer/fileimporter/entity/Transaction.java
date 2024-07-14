@@ -59,7 +59,7 @@ public class Transaction {
     @Override
     public String toString() {
         return "Transaction{" +
-                "id=" + id +
+                "date=" + transactionId.getDateUtc() +
                 ", symbol='" + symbol + '\'' +
                 '}';
     }

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -30,5 +31,14 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, UUID
     List<PriceHistory> findAllBySymbolAndSymbolpairAndTime(@Param("symbol") String symbol,
                                                            @Param("symbolPair") String symbolPair,
                                                            @Param("time") LocalDateTime time);
+
+    @Query(value = "SELECT max(high) " +
+            "FROM price_history ph " +
+            "WHERE ph.symbol = :symbol " +
+            "AND ph.symbolpair = :symbolPair " +
+            "AND DATE_TRUNC('hour', ph.time) = :time", nativeQuery = true)
+    BigDecimal findHighestPriceBySymbolAndSymbolpairAndTime(@Param("symbol") String symbol,
+                                                            @Param("symbolPair") String symbolPair,
+                                                            @Param("time") LocalDateTime time);
 
 }

@@ -19,7 +19,7 @@ public class CoinInformationHelper {
 
     private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
 
-    public void calculateAvgEntryPrice(CoinInformationResponse detail, List<Transaction> transactionList) {
+    public void calculateAvgEntryPriceInStable(CoinInformationResponse detail, List<Transaction> transactionList) {
         transactionList.forEach(e -> {
             TransactionId transactionId = e.getTransactionId();
             boolean isBuy = OperationUtils.isBuy(transactionId.getSide());
@@ -29,26 +29,26 @@ public class CoinInformationHelper {
             BigDecimal executed = transactionId.getExecuted();
             BigDecimal price = transactionId.getPrice();
 
-            calculateAvgEntryPrice(detail, dateTime, payedWith, isBuy, executed, price);
+            calculateAvgEntryPriceInStable(detail, dateTime, payedWith, isBuy, executed, price);
         });
         // Calculate the final average price
         detail.calculateAvgPrice();
     }
 
-    public void calculateAvgEntryPrice(CoinInformationResponse detail,
-                                       LocalDateTime date,
-                                       String payedWith,
-                                       boolean isBuy,
-                                       BigDecimal executed,
-                                       BigDecimal price) {
+    public void calculateAvgEntryPriceInStable(CoinInformationResponse detail,
+                                               LocalDateTime date,
+                                               String payedWith,
+                                               boolean isBuy,
+                                               BigDecimal executed,
+                                               BigDecimal price) {
         if (OperationUtils.isStable(payedWith)) {
-            detail.setAvgEntryPrice(payedWith, price, executed, isBuy);
+            detail.setAvgEntryPriceInUsdt(price, executed, isBuy);
         } else {
             log.info("Not a Stable Coin transaction. " + payedWith);
 
             BigDecimal priceInUsdt = getSymbolHistoricPriceHelper.getPriceInUsdt(payedWith, price, date);
             if (priceInUsdt.compareTo(BigDecimal.ZERO) >= 0) {
-                detail.setAvgEntryPrice("USDT", priceInUsdt, executed, isBuy);
+                detail.setAvgEntryPriceInUsdt(priceInUsdt, executed, isBuy);
             } else {
                 log.warn("Check transaction for date " + date);
             }

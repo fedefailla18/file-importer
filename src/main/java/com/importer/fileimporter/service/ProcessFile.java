@@ -97,8 +97,8 @@ public class ProcessFile {
                 .findFirst()
                 .ifPresent(stableCoin -> {
                     BigDecimal amount = getAmount(row, stableCoin);
-                    BigDecimal updatedSpent = updateAmountSpent(coinInfo.getUsdSpent(), amount, isBuy);
-                    coinInfo.setUsdSpent(updatedSpent);
+                    BigDecimal updatedSpent = updateAmountSpent(coinInfo.getStableTotalCost(), amount, isBuy);
+                    coinInfo.setStableTotalCost(updatedSpent);
                 });
 
         calculateSpent(getAmount(row, symbolPair), coinInfo, symbolPair, isBuy);
@@ -109,7 +109,8 @@ public class ProcessFile {
     }
 
     void calculateSpent(BigDecimal amount, CoinInformationResponse coinInfo, String symbolPair, boolean isBuy) {
-        coinInfo.getSpent().merge(symbolPair, amount, (current, newAmount) -> isBuy ? current.add(newAmount) : current.subtract(newAmount));
+        coinInfo.getSpent().merge(symbolPair, amount,
+                (current, newAmount) -> isBuy ? current.add(newAmount) : current.subtract(newAmount));
     }
 
     BigDecimal calculateAmount(BigDecimal currentAmount, boolean isBuy, BigDecimal amountToAdjust) {

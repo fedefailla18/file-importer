@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.BTC;
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.USDT;
+import static com.importer.fileimporter.utils.OperationUtils.BTC;
+import static com.importer.fileimporter.utils.OperationUtils.USDT;
 
 @RequiredArgsConstructor
 @Service
@@ -31,7 +31,6 @@ import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.USD
 public class TransactionFacade {
 
     private final TransactionService transactionService;
-    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
     private final PricingFacade pricingFacade;
 
     public List<TransactionHoldingDto> buildPortfolio(List<String> symbols) {
@@ -63,12 +62,12 @@ public class TransactionFacade {
                 LocalDateTime dateUtc = tr.getTransactionId().getDateUtc();
 
                 if (BTC.equals(payedWith)) {
-                    priceInUsdt = pricingFacade.getPrice(symbol, USDT, dateUtc);
+                    priceInUsdt = pricingFacade.getPriceInUsdt(symbol, dateUtc);
                     payedAmountInUsdt = priceInUsdt.multiply(executed).setScale(8, RoundingMode.HALF_UP);
                     payedAmountInBtc = payedAmount;
                     priceInBtc = price;
                 } else if (USDT.equals(payedWith)) {
-                    priceInBtc = pricingFacade.getPrice(symbol, BTC, dateUtc);
+                    priceInBtc = pricingFacade.getPriceInBTC(symbol, dateUtc);
                     payedAmountInBtc = priceInBtc.multiply(executed).setScale(8, RoundingMode.HALF_UP);
                     payedAmountInUsdt = payedAmount;
                     priceInUsdt = price;
@@ -133,7 +132,7 @@ public class TransactionFacade {
                     .payedInBtc(BigDecimal.ZERO)
                     .build();
 
-            Map<String, Double> price = getSymbolHistoricPriceHelper.getPrice(symbol);
+            Map<String, Double> price = pricingFacade.getPrices(symbol);
             holdingDto.setPriceInBtc(BigDecimal.valueOf(price.get(BTC)));
             holdingDto.setAmountInBtc(totalAmount.get().multiply(BigDecimal.valueOf(price.get(BTC))));
 

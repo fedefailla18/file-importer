@@ -24,7 +24,7 @@ import static java.math.BigDecimal.ZERO;
  * totalAmountBought: is the executed amount bought
  * totalAmountSold: is the executed amount historically sold
  * stableTotalCost: is the total amount payed
- * totalStablePosition: is the amount times the current price
+ * currentPositionInUsdt: is the amount times the current price
  * spent: is use to keep track of the spent amount by symbolPair
  *
  */
@@ -39,18 +39,22 @@ public class CoinInformationResponse {
     private BigDecimal amount;
     private BigDecimal totalAmountBought;
     private BigDecimal totalAmountSold;
-    private Map<String, BigDecimal> avgEntryPrice;
     private BigDecimal stableTotalCost;
-    private BigDecimal totalStablePosition;
-    private Map<String, BigDecimal> spent;
+
+    private BigDecimal currentPrice;
+    private BigDecimal currentPositionInUsdt;
+
     private BigDecimal totalExecuted; // Track total executed amount for average calculation
-    private int totalTransactions;
-    private List<Map<?, ?>> rows;
+    private Map<String, BigDecimal> avgEntryPrice;
+    private Map<String, BigDecimal> spent;
+
     private BigDecimal realizedProfit; // Realized profit from sold transactions
     private BigDecimal totalRealizedProfitUsdt; // Realized profit from sold transactions
     private BigDecimal unrealizedProfit; // Potential profit from current holdings
-    private BigDecimal currentPositionInUsdt;
     private BigDecimal unrealizedTotalProfitMinusTotalCost;
+
+    private int totalTransactions;
+    private List<Map<?, ?>> rows;
 
     public static CoinInformationResponse createEmpty(String coinName) {
         return CoinInformationResponse.builder()
@@ -61,6 +65,12 @@ public class CoinInformationResponse {
                 .spent(new HashMap<>())
                 .avgEntryPrice(new HashMap<>())
                 .totalExecuted(ZERO)
+                .totalAmountBought(ZERO)
+                .totalAmountSold(ZERO)
+                .currentPositionInUsdt(ZERO)
+                .realizedProfit(ZERO)
+                .unrealizedProfit(ZERO)
+                .totalRealizedProfitUsdt(ZERO)
                 .build();
     }
 
@@ -82,7 +92,7 @@ public class CoinInformationResponse {
 
     public void calculateAvgPrice() {
         if (totalExecuted.compareTo(BigDecimal.ZERO) > 0) {
-            totalStablePosition = stableTotalCost.divide(totalExecuted, 10, RoundingMode.HALF_UP);
+            currentPositionInUsdt = stableTotalCost.divide(totalExecuted, 10, RoundingMode.HALF_UP);
         }
     }
 
@@ -118,5 +128,15 @@ public class CoinInformationResponse {
                         totalProfit -> setTotalRealizedProfitUsdt(totalProfit.add(payedAmount)),
                         () -> setTotalRealizedProfitUsdt(payedAmount)
                 );
+    }
+
+    /**
+     * Only add the spent for original spent transactions
+     * @param paidWithSymbol
+     * @param paidAmount
+     */
+    public void addSpent(String paidWithSymbol, BigDecimal paidAmount) {
+        getSpent().computeIfPresent(paidWithSymbol, (k, v) -> paidAmount.add(v));
+        getSpent().computeIfAbsent(paidWithSymbol, k -> paidAmount);
     }
 }

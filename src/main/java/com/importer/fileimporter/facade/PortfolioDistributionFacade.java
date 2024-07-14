@@ -40,8 +40,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.BTC;
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceHelper.USDT;
+import static com.importer.fileimporter.utils.OperationUtils.BTC;
+import static com.importer.fileimporter.utils.OperationUtils.USDT;
 
 @Service
 @RequiredArgsConstructor

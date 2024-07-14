@@ -1,10 +1,8 @@
 package com.importer.fileimporter.service
 
-import com.importer.fileimporter.dto.CoinInformationResponse
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.entity.TransactionId
 import com.importer.fileimporter.repository.TransactionRepository
-import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import com.importer.fileimporter.utils.DateUtils
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -17,9 +15,7 @@ import java.time.LocalDateTime
 class TransactionServiceSpec extends Specification {
 
     TransactionRepository transactionRepository = Mock(TransactionRepository)
-    CalculateAmountSpent calculateAmountSpent = Mock(CalculateAmountSpent)
-    CoinInformationHelper coinInformationService = Mock(CoinInformationHelper)
-    TransactionService transactionService = new TransactionService(transactionRepository, calculateAmountSpent, coinInformationService)
+    TransactionService transactionService = new TransactionService(transactionRepository)
 
     def "test getTransactionsByRangeDate - symbol only"() {
         given:
@@ -77,29 +73,6 @@ class TransactionServiceSpec extends Specification {
         then:
         1 * transactionRepository.findAll() >> transactions
         result == transactions
-    }
-
-    def "test getTransactionsInformation"() {
-        given:
-        String symbol = "BTC"
-        LocalDate startDate = LocalDate.of(2023, 1, 1)
-        LocalDate endDate = LocalDate.of(2023, 1, 31)
-        Pageable pageable = Pageable.unpaged()
-        List<Transaction> transactions = []
-        BigDecimal amountSpent = BigDecimal.valueOf(100)
-        CoinInformationResponse response = new CoinInformationResponse()
-
-        when:
-        def result = transactionService.getTransactionsInformation(symbol, startDate, endDate, pageable)
-
-        then:
-        1 * transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(), endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable) >> new PageImpl<>(transactions)
-        1 * calculateAmountSpent.execute(symbol, transactions) >> amountSpent
-        1 * coinInformationService.calculateAvgEntryPrice(_, _) >> { CoinInformationResponse resp, List<Transaction> trans -> }
-        result != null
-        result.coinName == symbol
-        result.usdSpent == amountSpent
-        result.totalTransactions == transactions.size()
     }
 
     def "test saveTransaction"() {
