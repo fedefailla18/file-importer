@@ -18,7 +18,7 @@ class CryptoCompareServiceSpec extends Specification {
     WebClient.Builder webClientBuilder
 
     @Autowired
-    CryptoCompareService cryptoCompareService
+    CryptoCompareProxy cryptoCompareService
 
     def "Test getHistoricalData method"() {
         given: "Input parameters for the historical data request"
