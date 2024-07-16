@@ -47,7 +47,7 @@ public class GetSymbolHistoricPriceHelper {
     public BigDecimal getPricesAtDate(String fromSymbol, String toSymbol, LocalDateTime dateTime) {
         log.info(String.format("Fetching price for: %s, with: %s. Date: %s", toSymbol, fromSymbol, dateTime));
         CryptoCompareResponse cryptoCompareResponse = cryptoCompareProxy.getHistoricalData(fromSymbol, toSymbol,
-                dateTime.toEpochSecond(ZoneOffset.UTC));
+                                                                                           dateTime.toEpochSecond(ZoneOffset.UTC));
 
         CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
         if (exactTime != null) {
@@ -75,7 +75,7 @@ public class GetSymbolHistoricPriceHelper {
                 priceInUsdt = usdtPriceHistory.get().getHigh();
             }
 
-        return price.multiply(priceInUsdt);
+            return price.multiply(priceInUsdt);
         } catch (Exception e ) {
             String msg = String.format("Error when requesting historical data for % on %", symbolPair, dateTime);
             log.error(msg, e);

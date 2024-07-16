@@ -8,7 +8,6 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
 import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
-import com.importer.fileimporter.service.GetSymbolHistoricPriceService;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
 import com.importer.fileimporter.service.SymbolService;
@@ -41,8 +40,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.BTC;
-import static com.importer.fileimporter.service.GetSymbolHistoricPriceService.USDT;
+import static com.importer.fileimporter.utils.OperationUtils.BTC;
+import static com.importer.fileimporter.utils.OperationUtils.USDT;
 
 @Service
 @RequiredArgsConstructor

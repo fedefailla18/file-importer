@@ -3,7 +3,7 @@ package com.importer.fileimporter.service.usecase;
 import com.importer.fileimporter.entity.PriceHistory;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.repository.TransactionRepository;
-import com.importer.fileimporter.service.GetSymbolHistoricPriceService;
+import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.PriceHistoryService;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ public class CalculateAmountSpent {
 
     private final TransactionRepository transactionRepository;
     private final PriceHistoryService priceHistoryService;
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
+    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceService;
 
     public BigDecimal execute(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         List<Transaction> transactions = transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),

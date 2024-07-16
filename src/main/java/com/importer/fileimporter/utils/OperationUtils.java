@@ -15,12 +15,15 @@ public class OperationUtils {
     public static final List<String> SYMBOL = List.of("XVG", "BAND", "RSR", "AKRO", "DOT", "OP",
             "VET", "RLC", "BTC", "ETH");
     public static final List<String> GRAND_SYMBOLS = List.of("BTC", "ETH");
-    public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USDC");
+    public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USD", "USDC");
 
     public static final Predicate<String> IS_BUY = "BUY"::equals;
 
+    public static final String USDT = "USDT";
+    public static final String BTC = "BTC";
+
     public boolean isStable(String payedWithSymbol) {
-        return OperationUtils.STABLE.contains(payedWithSymbol);
+        return STABLE.contains(payedWithSymbol);
     }
 
     public boolean isBuy(Map<?, ?> row) {
@@ -32,12 +35,16 @@ public class OperationUtils {
         return IS_BUY.test(side);
     }
 
-    public static BigDecimal sumAmount(AtomicReference<BigDecimal> amountSpent, BigDecimal payedAmount, String side) {
+    public BigDecimal sumAmount(AtomicReference<BigDecimal> amountSpent, BigDecimal payedAmount, String side) {
         return sumAmount(amountSpent.get(), payedAmount, side);
     }
 
-    public static BigDecimal sumAmount(BigDecimal amountSpent, BigDecimal payedAmount, String side) {
-        return isBuy(side) ? amountSpent.add(payedAmount) : amountSpent.subtract(payedAmount);
+    public BigDecimal sumAmount(BigDecimal currentAmount, BigDecimal payedAmount, String side) {
+        return isBuy(side) ? currentAmount.add(payedAmount) : currentAmount.subtract(payedAmount);
+    }
+
+    public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, String side) {
+        return isBuy(side) ? currentAmount.add(executed) : currentAmount.subtract(executed);
     }
 
     public static Optional<String> hasStable(String pair) {
