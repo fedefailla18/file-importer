@@ -24,9 +24,9 @@ public class HoldingService {
     private final HoldingRepository holdingRepository;
 
     public Holding saveSymbolHolding(Symbol symbol, Portfolio portfolio, BigDecimal amount) {
-        Optional<Holding> holding = getBySymbolAndPortfolioName(portfolio, symbol.getSymbol());
-        holding.ifPresent(e -> saveBasicEntity(e, symbol.getSymbol(), portfolio, amount));
-        return holding.orElse(saveBasicEntity(null, symbol.getSymbol(), portfolio, amount));
+        return getBySymbolAndPortfolioName(portfolio, symbol.getSymbol())
+                .map(existingHolding -> saveBasicEntity(existingHolding, symbol.getSymbol(), portfolio, amount))
+                .orElseGet(() -> saveBasicEntity(symbol.getSymbol(), portfolio, amount));
     }
 
     public Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
@@ -52,24 +52,31 @@ public class HoldingService {
         return HoldingConverter.Mapper.createFrom(saved);
     }
 
+    private Holding saveBasicEntity(String symbol, Portfolio portfolio, BigDecimal amount) {
+        return saveBasicEntity(null, symbol, portfolio, amount);
+    }
+
     private Holding saveBasicEntity(Holding e, String symbol, Portfolio portfolio, BigDecimal amount) {
-        String createdBy = e == null ? "Adding holding" : e.getCreatedBy();
-        String modifiedBy = e == null ? "Adding holding" : "Modifying holding";
-        UUID id = e == null ? null : e.getId();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime created = e == null ? now : e.getCreated();
+        boolean holdingIsNull = e == null;
+        String createdBy = holdingIsNull ? "Adding holding" : e.getCreatedBy();
+        String modifiedBy = holdingIsNull ? "Adding holding" : "Modifying holding";
+        UUID id = holdingIsNull ? null : e.getId();
+        LocalDateTime created = holdingIsNull ? now : e.getCreated();
+        BigDecimal priceInBtc = holdingIsNull ? null : e.getPriceInBtc();
+        BigDecimal priceInUsdt = holdingIsNull ? null : e.getPriceInUsdt();
         return holdingRepository.save(Holding.builder()
-                .id(id)
-                .symbol(symbol)
-                .portfolio(portfolio)
-                .amount(amount)
-                .priceInBtc(e.getPriceInBtc())
-                .priceInUsdt(e.getPriceInUsdt())
-                .created(created)
-                .createdBy(createdBy)
-                .modified(now)
-                .modifiedBy(modifiedBy)
-                .build());
+                                              .id(id)
+                                              .symbol(symbol)
+                                              .portfolio(portfolio)
+                                              .amount(amount)
+                                              .priceInBtc(priceInBtc)
+                                              .priceInUsdt(priceInUsdt)
+                                              .created(created)
+                                              .createdBy(createdBy)
+                                              .modified(now)
+                                              .modifiedBy(modifiedBy)
+                                              .build());
     }
 
     public Holding getHolding(String symbol) {

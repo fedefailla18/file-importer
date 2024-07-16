@@ -7,6 +7,7 @@ import com.importer.fileimporter.entity.Holding;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
+import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.GetSymbolHistoricPriceService;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
@@ -51,7 +52,7 @@ public class PortfolioDistributionFacade {
     private final SymbolService symbolService;
     private final PortfolioService portfolioService;
     private final HoldingService holdingService;
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
+    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
 
     public HoldingDto addPortfolioHolding(AddHoldingRequest request) {
         Symbol savedSymbol = symbolService.findOrSaveSymbol(request.getSymbol(), request.getName());
@@ -59,7 +60,7 @@ public class PortfolioDistributionFacade {
         Portfolio portfolio = portfolioService.findOrSave(request.getPortfolio());
 
         return Optional.ofNullable(
-                holdingService.saveSymbolHolding(savedSymbol, portfolio, request.getAmount()))
+                        holdingService.saveSymbolHolding(savedSymbol, portfolio, request.getAmount()))
                 .map(HoldingConverter.Mapper::createFrom)
                 .orElse(null);
     }
@@ -67,7 +68,7 @@ public class PortfolioDistributionFacade {
     public HoldingDto getHolding(String symbol) {
         Symbol foundSymbol = symbolService.findSymbol(symbol);
         return Optional.ofNullable(
-                holdingService.getHolding(foundSymbol.getSymbol()))
+                        holdingService.getHolding(foundSymbol.getSymbol()))
                 .map(HoldingConverter.Mapper::createFrom)
                 .orElse(null);
     }
@@ -116,29 +117,29 @@ public class PortfolioDistributionFacade {
 
         portfolio.getHoldings()
                 .forEach(e -> {
-                    Map<String, Double> price = getSymbolHistoricPriceService.getPrice(e.getSymbol());
-                    BigDecimal btcprice = BigDecimal.valueOf(price.get(BTC) != null ? price.get(BTC) : 0d);
-                    BigDecimal usdtprice = BigDecimal.valueOf(price.get(USDT) != null ? price.get(USDT) : 0d);
-                    portfolioDistribution.getHoldings().add(HoldingDto.builder()
-                            .symbol(e.getSymbol())
-                            .amount(e.getAmount())
-                            .priceInBtc(btcprice)
-                            .priceInUsdt(usdtprice)
-                            .amountInBtc(BTC.equals(e.getSymbol()) ? e.getAmount() :
-                                    btcprice.multiply(e.getAmount()))
-                            .amountInUsdt(USDT.equals(e.getSymbol()) ? e.getAmount() :
-                                    usdtprice.multiply(e.getAmount()))
-                            .build());
-                }
-        );
+                             Map<String, Double> price = getSymbolHistoricPriceHelper.getPrice(e.getSymbol());
+                             BigDecimal btcprice = BigDecimal.valueOf(price.get(BTC) != null ? price.get(BTC) : 0d);
+                             BigDecimal usdtprice = BigDecimal.valueOf(price.get(USDT) != null ? price.get(USDT) : 0d);
+                             portfolioDistribution.getHoldings().add(HoldingDto.builder()
+                                                                             .symbol(e.getSymbol())
+                                                                             .amount(e.getAmount())
+                                                                             .priceInBtc(btcprice)
+                                                                             .priceInUsdt(usdtprice)
+                                                                             .amountInBtc(BTC.equals(e.getSymbol()) ? e.getAmount() :
+                                                                                                  btcprice.multiply(e.getAmount()))
+                                                                             .amountInUsdt(USDT.equals(e.getSymbol()) ? e.getAmount() :
+                                                                                                   usdtprice.multiply(e.getAmount()))
+                                                                             .build());
+                         }
+                );
 
         BigDecimal totalUsdt = portfolioDistribution.getTotalInUsdt();
         portfolioDistribution.setTotalUsdt(totalUsdt);
         portfolioDistribution.getHoldings().forEach(
                 e -> {
                     e.setPercentage(e.getAmountInUsdt()
-                            .divide(totalUsdt, 7, RoundingMode.DOWN)
-                            .multiply(new BigDecimal(100)));
+                                            .divide(totalUsdt, 7, RoundingMode.DOWN)
+                                            .multiply(new BigDecimal(100)));
                     updateHolding(e, portfolio);
                 }
         );
@@ -151,8 +152,8 @@ public class PortfolioDistributionFacade {
 
     private PortfolioDistribution getPortfolios(List<Portfolio> portfolios) {
         return getPortfoliosWithHoldings(portfolios.stream()
-                .flatMap(e -> e.getHoldings().stream())
-                .collect(Collectors.toList()));
+                                                 .flatMap(e -> e.getHoldings().stream())
+                                                 .collect(Collectors.toList()));
     }
 
     public PortfolioDistribution getPortfoliosWithHoldings(List<Holding> holdings) {
@@ -173,25 +174,25 @@ public class PortfolioDistributionFacade {
     public Map<String, HoldingDto> groupHoldingsBySymbol(List<Holding> holdings) {
         return holdings.stream()
                 .collect(Collectors.toMap(Holding::getSymbol, // Group holdings by symbol
-                        HoldingConverter.Mapper::createFrom,
-                        (e1, e2) -> {
-                            log.info("Holding1:" + e1.getSymbol() + " - Holding2:" + e2.getSymbol());
-                            BigDecimal priceInUsdt = (e1.getPriceInUsdt() != null && e2.getPriceInUsdt() != null) ?
-                                    e1.getPriceInUsdt().add(e2.getPriceInUsdt()) :
-                                    BigDecimal.ZERO;
-                            BigDecimal priceInBtc = (e1.getPriceInBtc() != null && e2.getPriceInBtc() != null) ?
-                                    e1.getPriceInBtc().add(e2.getPriceInBtc()) : BigDecimal.ZERO;
-                            return HoldingDto.builder()
-                                    .symbol(e1.getSymbol())
-                                    .portfolioName(e1.getPortfolioName() + " - " + e2.getPortfolioName())
-                                    .priceInUsdt(priceInUsdt)
-                                    .priceInBtc(priceInBtc)
-                                    .amount(e1.getAmount().add(e2.getAmount()))
-                                    .amountInUsdt(e1.getAmountInUsdt().add(e2.getAmountInUsdt()).setScale(0, RoundingMode.DOWN))
-                                    .amountInBtc(e1.getAmountInBtc().add(e2.getAmountInBtc()))
-                                    .percentage(e1.getPercentage().add(e2.getPercentage()))
-                                    .build();
-                        }
+                                          HoldingConverter.Mapper::createFrom,
+                                          (e1, e2) -> {
+                                              log.info("Holding1:" + e1.getSymbol() + " - Holding2:" + e2.getSymbol());
+                                              BigDecimal priceInUsdt = (e1.getPriceInUsdt() != null && e2.getPriceInUsdt() != null) ?
+                                                      e1.getPriceInUsdt().add(e2.getPriceInUsdt()) :
+                                                      BigDecimal.ZERO;
+                                              BigDecimal priceInBtc = (e1.getPriceInBtc() != null && e2.getPriceInBtc() != null) ?
+                                                      e1.getPriceInBtc().add(e2.getPriceInBtc()) : BigDecimal.ZERO;
+                                              return HoldingDto.builder()
+                                                      .symbol(e1.getSymbol())
+                                                      .portfolioName(e1.getPortfolioName() + " - " + e2.getPortfolioName())
+                                                      .priceInUsdt(priceInUsdt)
+                                                      .priceInBtc(priceInBtc)
+                                                      .amount(e1.getAmount().add(e2.getAmount()))
+                                                      .amountInUsdt(e1.getAmountInUsdt().add(e2.getAmountInUsdt()).setScale(0, RoundingMode.DOWN))
+                                                      .amountInBtc(e1.getAmountInBtc().add(e2.getAmountInBtc()))
+                                                      .percentage(e1.getPercentage().add(e2.getPercentage()))
+                                                      .build();
+                                          }
                 ));
     }
 

@@ -11,21 +11,20 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.importer.fileimporter.utils.OperationUtils.BTC;
+import static com.importer.fileimporter.utils.OperationUtils.USDT;
+
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class GetSymbolHistoricPriceService {
+public class GetSymbolHistoricPriceHelper {
 
-    public static final String USDT = "USDT";
-    public static final String BTC = "BTC";
-
-    private final CryptoCompareService cryptoCompareService;
+    private final CryptoCompareProxy cryptoCompareProxy;
     private final PriceHistoryService priceHistoryService;
 
     public BigDecimal getPriceInUsdt(String symbol, BigDecimal price, LocalDateTime dateTime) {
@@ -45,15 +44,15 @@ public class GetSymbolHistoricPriceService {
     }
 
     @NotNull
-    public BigDecimal getPricesAtDate(String symbolPair, String symbol, LocalDateTime dateTime) {
-        log.info("getting price for: " + symbol + " with: " + symbolPair);
-        CryptoCompareResponse cryptoCompareResponse = cryptoCompareService.getHistoricalData(symbolPair, symbol,
+    public BigDecimal getPricesAtDate(String fromSymbol, String toSymbol, LocalDateTime dateTime) {
+        log.info(String.format("Fetching price for: %s, with: %s. Date: %s", toSymbol, fromSymbol, dateTime));
+        CryptoCompareResponse cryptoCompareResponse = cryptoCompareProxy.getHistoricalData(fromSymbol, toSymbol,
                 dateTime.toEpochSecond(ZoneOffset.UTC));
 
         CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
         if (exactTime != null) {
-            priceHistoryService.saveAll(symbolPair, symbol, cryptoCompareResponse);
-            return exactTime.getHigh().setScale(7, RoundingMode.DOWN);
+            priceHistoryService.saveAll(fromSymbol, toSymbol, cryptoCompareResponse);
+            return exactTime.getHigh().setScale(10, RoundingMode.DOWN);
         }
         return BigDecimal.ZERO;
     }
@@ -62,7 +61,7 @@ public class GetSymbolHistoricPriceService {
     private Map<String, Double> getPricesAtDate(String symbol, String ...symbols) {
         String toSymbols = String.join(",", symbols);
         log.info("getting price for: " + symbol + " to: " + toSymbols);
-        return cryptoCompareService.getData(symbol, toSymbols);
+        return cryptoCompareProxy.getData(symbol, toSymbols);
     }
 
     private BigDecimal getPriceBySymbol(String symbolPair, BigDecimal price, LocalDateTime dateTime, String symbol) {
@@ -87,10 +86,14 @@ public class GetSymbolHistoricPriceService {
     private CryptoCompareResponse.ChartData getExactTimeExecuted(LocalDateTime dateTime, CryptoCompareResponse cryptoCompareResponse) {
         return cryptoCompareResponse.getResponse().equals("Error") ? null : cryptoCompareResponse.getData().getChartDataList().stream()
                 .filter(e -> e.getTime().getHour() == dateTime.getHour())
-                .findFirst().orElse(cryptoCompareResponse.getData().getChartDataList().stream().findAny().get());
+                .findFirst()
+                .orElseGet(() -> cryptoCompareResponse.getData()
+                        .getChartDataList().stream()
+                        .findAny()
+                        .get());
     }
 
     public Map<String, Double> getPrice(List<String> symbol) {
-        return cryptoCompareService.getData(symbol, BTC + "," + USDT);
+        return cryptoCompareProxy.getData(symbol, BTC + "," + USDT);
     }
 }
