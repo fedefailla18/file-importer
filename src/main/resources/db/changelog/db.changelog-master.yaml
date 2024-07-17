@@ -13,3 +13,15 @@ databaseChangeLog:
       file: classpath:/db/changelog/changes/2024-01-04-006-adding-composite-key-into-transactions.sql
   - include:
       file: classpath:/db/changelog/changes/2024-01-04-007-making-transactions_id-nullable.sql
+
+  - include:
+      file: classpath:/db/changelog/changes/2024-02-25-008-creating-portfolio-distribution.sql
+#  - include:
+#      file: classpath:/db/changelog/changes/2024-02-26-009-importing-binance-holdings.sql
+
+  - include:
+      file: classpath:/db/changelog/changes/2024-02-26-010-adding-amountinothersymbol-in-holding.sql
+  - include:
+      file: classpath:/db/changelog/changes/2024-03-06-011-modifying-portfolio-holding-amount.sql
+  - include:
+      file: classpath:/db/changelog/changes/2024-03-06-012-adding-holding-prices.sql

@@ -18,7 +18,7 @@ import java.util.List;
 @Slf4j
 public class CoinInformationService {
 
-    private final GetSymbolHistoricPriceService getSymbolHistoricPriceService;
+    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceService;
 
     public void calculateAvgEntryPrice(CoinInformationResponse detail, List<Transaction> transactionList) {
         transactionList.forEach(e -> {
