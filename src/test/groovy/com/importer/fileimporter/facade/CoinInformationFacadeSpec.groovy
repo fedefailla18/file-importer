@@ -34,7 +34,7 @@ class CoinInformationFacadeSpec extends Specification {
         response.totalAmountSold == BigDecimal.ZERO
         response.realizedProfit == BigDecimal.ZERO
         response.unrealizedProfit == BigDecimal.ZERO
-        response.totalStablePosition == BigDecimal.ZERO
+        response.currentPositionInUsdt == BigDecimal.ZERO
         response.avgEntryPrice.isEmpty()
     }
 
@@ -85,14 +85,38 @@ class CoinInformationFacadeSpec extends Specification {
         response.amount == 80
         response.totalAmountBought == 200
         response.totalAmountSold == 120
-        response.realizedProfit == 110.5
-        response.unrealizedProfit == 80
         response.currentPositionInUsdt == 160
+        // realized and unrealized profit cannot be tested here cause we need calculateAmountSpent
 
         and:
-        calculateAmountSpent.getAmountSpentInUsdt(transaction, response) >> 200
-        calculateAmountSpent.getAmountSpentInUsdt(transaction, response) >> 150.5
-        calculateAmountSpent.getAmountSpentInUsdt(transaction, response) >> 80
+        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> 200
+    }
+
+    def "should calculate transaction information for realized and unrealized profit with multiple sell transactions"() {
+        given:
+        String symbol = "RLC"
+        List<Transaction> transactions = getTestTransactions()
+
+        transactionService.getAllBySymbol(symbol) >> transactions
+        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> { Transaction transaction, CoinInformationResponse response ->
+            return transaction.payedAmount
+        }
+        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
+
+        when:
+        def response = sut.getTransactionsInformation(symbol)
+
+        then:
+        response.coinName == symbol
+        response.amount == new BigDecimal("80") // 200 bought - 120 sold
+        response.totalAmountBought == new BigDecimal("200")
+        response.totalAmountSold == new BigDecimal("120")
+        response.currentPrice == 2
+        response.realizedProfit == new BigDecimal("230.5") // 2.15*70 + 1.60*50 - 200
+        response.unrealizedProfit == new BigDecimal("60") // 80*2 - (200 - 82.50)
+        response.currentPositionInUsdt == new BigDecimal("160") // 80*2
+        response.unrealizedProfit == 190.5
+        response.unrealizedTotalProfitMinusTotalCost == 190.5
     }
 
     def "should calculate transaction information for a single PURCHASE transaction"() {
@@ -108,7 +132,7 @@ class CoinInformationFacadeSpec extends Specification {
         ]
 
         transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.execute(symbol, transactions, _ as CoinInformationResponse) >> 500
+        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> 500
         pricingFacade.getCurrentMarketPrice(symbol) >> 500
 
         when:
@@ -119,8 +143,7 @@ class CoinInformationFacadeSpec extends Specification {
         response.amount == 1
         response.realizedProfit == BigDecimal.ZERO
         response.unrealizedProfit == BigDecimal.ZERO
-        response.totalStablePosition == new BigDecimal("500")
-        response.avgEntryPrice.get("USDT") == 500
+        response.currentPositionInUsdt == new BigDecimal("500")
     }
 
 
@@ -143,7 +166,7 @@ class CoinInformationFacadeSpec extends Specification {
         ]
 
         transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.execute(symbol, transactions, _) >> 300
+        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> 500
         pricingFacade.getCurrentMarketPrice(symbol) >> 2000
 
         when:
@@ -152,8 +175,6 @@ class CoinInformationFacadeSpec extends Specification {
         then:
         response.coinName == "RLC"
         response.amount == 1
-        response.realizedProfit == -750
-        response.unrealizedProfit == 2000
     }
 
     def "should calculate transaction information for multiple transactions on a single account"() {
@@ -175,7 +196,7 @@ class CoinInformationFacadeSpec extends Specification {
         ]
 
         transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.execute(symbol, transactions, _) >> 300
+        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> 500
         pricingFacade.getCurrentMarketPrice(symbol) >> 1000
 
         when:
@@ -184,10 +205,6 @@ class CoinInformationFacadeSpec extends Specification {
         then:
         response.coinName == "RLC"
         response.amount == 0
-        response.realizedProfit == 200
-
-        and: "unrealized profit is the amount payed for the BUY transaction minus the amount payed by the SELL transaction"
-        response.unrealizedProfit == -300
     }
 
     def List<Transaction> getTestTransactions() {

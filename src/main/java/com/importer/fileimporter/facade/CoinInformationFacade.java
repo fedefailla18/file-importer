@@ -32,7 +32,7 @@ public class CoinInformationFacade {
         }
 
         CoinInformationResponse response = CoinInformationResponse.createEmpty(symbol);
-        BigDecimal amountHeld = calculateAndSetAmountsOnlyInStable(transactions, response);
+        calculateAndSetAmountsOnlyInStable(transactions, response);
 
         return response;
     }
@@ -69,6 +69,7 @@ public class CoinInformationFacade {
             response.setAmount(totalHeldAmount);
 
             BigDecimal amountSpentInUsdt = calculateAmountSpent.getAmountSpentInUsdt(transaction, response);
+            realizedProfit = realizedProfit.subtract(amountSpentInUsdt);
             totalCost = totalCost.subtract(amountSpentInUsdt);
             response.addTotalAmountSold(executed, transaction.getTransactionId().getSide());
         }

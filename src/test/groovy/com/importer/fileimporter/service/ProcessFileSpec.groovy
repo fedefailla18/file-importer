@@ -116,7 +116,6 @@ class ProcessFileSpec extends Specification {
         and: "Transaction details for BAND are correct"
         def bandInfo = response.coinInformationResponse.find { it.coinName == 'BAND' }
         bandInfo.amount == new BigDecimal("50.0000000000")
-//        bandInfo.usdSpent == new BigDecimal("17.9751290000") Commenting since it's not used for now
     }
 
     def "calculateSpent test"() {

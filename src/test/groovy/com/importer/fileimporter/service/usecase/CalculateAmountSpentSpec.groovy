@@ -9,7 +9,7 @@ import spock.lang.Specification
 class CalculateAmountSpentSpec extends Specification {
 
     def pricingFacade = Mock(PricingFacade)
-    def service = new CalculateAmountSpent(pricingFacade)
+    def sut = new CalculateAmountSpent(pricingFacade)
 
     def "GetAmountSpentInUsdtPerTransaction. Single BUY transaction"() {
         given:
@@ -29,7 +29,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
-        def result = service.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response)
+        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response)
 
         then:
         result == 200
@@ -53,7 +53,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
-        def result = service.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response)
+        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response)
 
         then:
         result == BigDecimal.valueOf(-150.78)
@@ -101,12 +101,93 @@ class CalculateAmountSpentSpec extends Specification {
 
         when:
         transactions.each { tx ->
-            service.getAmountSpentInUsdtPerTransaction(tx.symbol, tx, response)
+            sut.getAmountSpentInUsdtPerTransaction(tx.symbol, tx, response)
         }
 
         then:
         response.spent.get("USDT") == 200
         response.stableTotalCost == 200
         response.totalRealizedProfitUsdt == 241.78
+    }
+
+    def "should return amount spent in USDT for a buy transaction paid with stable coin"() {
+        given:
+        def symbol = "RLC"
+        def transaction = createTransaction(symbol, "USDT", "BUY", new BigDecimal("1"), new BigDecimal("500"))
+        def response = CoinInformationResponse.createEmpty(symbol)
+
+        when:
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+
+        then:
+        amountSpent == new BigDecimal("500")
+        response.getSpent().get("USDT") == new BigDecimal("500")
+        response.getStableTotalCost() == new BigDecimal("500")
+    }
+
+    def "should return amount spent in USDT for a buy transaction paid with non-stable coin"() {
+        given:
+        def symbol = "RLC"
+        def transaction = createTransaction(symbol, "BTC", "BUY", new BigDecimal("1"), new BigDecimal("0.1"))
+        def response = CoinInformationResponse.createEmpty(symbol)
+
+        and:
+        pricingFacade.getPriceInUsdt(symbol, _) >> 1000
+
+        when:
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+
+        then:
+        amountSpent == 1000
+        response.getSpent().get("BTC") == new BigDecimal("0.1")
+        response.getStableTotalCost() == 1000
+    }
+
+    def "should return amount earned in USDT for a sell transaction"() {
+        given:
+        def symbol = "RLC"
+        def transaction = createTransaction(symbol, "USDT", "SELL", new BigDecimal("1"), new BigDecimal("500"))
+        def response = CoinInformationResponse.createEmpty(symbol)
+
+        when:
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+
+        then:
+        amountSpent == new BigDecimal("-500")
+        response.getSpent().isEmpty() // Spent should not include sell transactions
+        response.getTotalRealizedProfitUsdt() == new BigDecimal("500")
+    }
+
+    def "should return amount earned in USDT for a sell transaction paid with non-stable coin"() {
+        given:
+        def symbol = "RLC"
+        def transaction = createTransaction(symbol, "BTC", "SELL", new BigDecimal("1"), new BigDecimal("0.1"))
+        def response = CoinInformationResponse.createEmpty(symbol)
+
+        and:
+        pricingFacade.getPriceInUsdt(symbol, _) >> 1000
+
+        when:
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+
+        then:
+        amountSpent == -1000
+        response.getSpent().isEmpty() // Spent should not include sell transactions
+        response.totalRealizedProfitUsdt == 1000
+    }
+
+    private static Transaction createTransaction(String symbol, String payedWith, String side, BigDecimal executed, BigDecimal price) {
+        BigDecimal payedAmount = executed.multiply(price)
+        TransactionId transactionId = new TransactionId(
+                executed: executed,
+                side: side,
+                price: price
+        )
+        return new Transaction(
+                symbol: symbol,
+                payedWith: payedWith,
+                transactionId: transactionId,
+                payedAmount: payedAmount
+        )
     }
 }

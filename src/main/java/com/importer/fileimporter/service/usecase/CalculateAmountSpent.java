@@ -26,12 +26,19 @@ public class CalculateAmountSpent {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
-        return pricingFacade.getPriceInUsdt(symbol, dateUtc);
-    }
-
+    /**
+     * When transaction is sell I'm returning a negative number.
+     * TODO: revise this
+     * @param transaction
+     * @param response
+     * @return
+     */
     public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response) {
         return getAmountSpentInUsdtPerTransaction(transaction.getSymbol(), transaction, response);
+    }
+
+    private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
+        return pricingFacade.getPriceInUsdt(symbol, dateUtc);
     }
 
     /**
@@ -45,19 +52,20 @@ public class CalculateAmountSpent {
      * @param response
      * @return
      */
-    private BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response) {
+    BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response) {
         String paidWithSymbol = transaction.getPayedWith();
         BigDecimal paidAmount = transaction.getPayedAmount();
         BigDecimal executed = transaction.getTransactionId().getExecuted();
-        boolean isBuy = OperationUtils.isBuy(transaction.getTransactionId().getSide());
         BigDecimal totalHeldAmount = response.getAmount();
+        boolean isBuy = OperationUtils.isBuy(transaction.getTransactionId().getSide());
 
-        // I only add the spent for the original transaction spent
-        response.addSpent(paidWithSymbol, paidAmount);
+        // Only add the spent for the original transaction if it's a buy transaction
+        if (isBuy) {
+            response.addSpent(paidWithSymbol, paidAmount);
+        }
 
         BigDecimal priceInStable;
         if (!OperationUtils.isStable(paidWithSymbol)) {
-
             priceInStable = getPriceInStable(symbol, transaction.getTransactionId().getDateUtc());
             paidAmount = priceInStable.multiply(executed);
         }

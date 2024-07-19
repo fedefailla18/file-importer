@@ -7,11 +7,7 @@ class CoinInformationResponseSpec extends Specification {
 
     def "setAvgEntryPrice for buy transaction"() {
         given:
-        CoinInformationResponse response = CoinInformationResponse.builder()
-                .coinName("BTC")
-                .stableTotalCost(BigDecimal.ZERO)
-                .amount(BigDecimal.ZERO)
-                .build()
+        CoinInformationResponse response = CoinInformationResponse.createEmpty("")
 
         when:
         response.setAvgEntryPriceInUsdt(new BigDecimal("1000"), new BigDecimal("1"), true)
@@ -23,11 +19,7 @@ class CoinInformationResponseSpec extends Specification {
 
     def "setAvgEntryPrice for sell transaction"() {
         given:
-        CoinInformationResponse response = CoinInformationResponse.builder()
-                .coinName("BTC")
-                .stableTotalCost(BigDecimal.ZERO)
-                .amount(BigDecimal.ZERO)
-                .build()
+        CoinInformationResponse response = CoinInformationResponse.createEmpty("BTC")
 
         when:
         response.setAvgEntryPriceInUsdt(new BigDecimal("1000"), new BigDecimal("1"), true) // Initial buy
@@ -43,15 +35,15 @@ class CoinInformationResponseSpec extends Specification {
         CoinInformationResponse response = CoinInformationResponse.builder()
                 .coinName("BTC")
                 .avgEntryPrice(new HashMap<>())
-                .stableTotalCost(new BigDecimal("1500"))
-                .totalExecuted(new BigDecimal("1"))
+                .stableTotalCost(1500)
+                .totalExecuted(1)
                 .build()
 
         when:
         response.calculateAvgPrice()
 
         then:
-        response.getTotalStablePosition() == new BigDecimal("1500.0000000000")
+        response.currentPositionInUsdt == 1500
     }
 
     def "calculateAvgPrice with no executed amount"() {
@@ -61,14 +53,14 @@ class CoinInformationResponseSpec extends Specification {
                 .avgEntryPrice(new HashMap<>())
                 .stableTotalCost(BigDecimal.ZERO)
                 .totalExecuted(BigDecimal.ZERO)
-                .totalStablePosition(BigDecimal.ZERO)
+                .currentPositionInUsdt(BigDecimal.ZERO)
                 .build()
 
         when:
         response.calculateAvgPrice()
 
         then:
-        response.getTotalStablePosition() == BigDecimal.ZERO
+        response.currentPositionInUsdt == BigDecimal.ZERO
     }
 
     def "addTotalAmountBought"() {
@@ -93,6 +85,5 @@ class CoinInformationResponseSpec extends Specification {
         1               | 1               | "SELL" || 1
         1               | BigDecimal.ZERO | "SELL" || 0
     }
-
 
 }

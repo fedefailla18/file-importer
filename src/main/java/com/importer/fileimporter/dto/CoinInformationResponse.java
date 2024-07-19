@@ -104,7 +104,7 @@ public class CoinInformationResponse {
 
         Optional.ofNullable(this.totalAmountBought)
                 .ifPresentOrElse(
-                        totalAmountBought -> setTotalAmountBought(totalAmountBought.add(purchasedAmount)),
+                        amountBought -> setTotalAmountBought(amountBought.add(purchasedAmount)),
                         () -> setTotalAmountBought(ZERO.add(purchasedAmount))
                 );
     }
