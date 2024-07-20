@@ -7,6 +7,7 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.repository.HoldingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,6 +20,7 @@ import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class HoldingService {
 
     private final HoldingRepository holdingRepository;
@@ -34,7 +36,7 @@ public class HoldingService {
     }
 
     public Holding getHoldingByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return holdingRepository.findBySymbolAndPortfolioName(portfolio.getName(), symbol)
+        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName())
                 .orElse(Holding.builder()
                                 .portfolio(portfolio)
                                 .symbol(symbol)
@@ -42,7 +44,6 @@ public class HoldingService {
                                 .amountInUsdt(BigDecimal.ZERO)
                                 .build());
     }
-
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
         return holdingRepository.findAllByPortfolio(portfolio);

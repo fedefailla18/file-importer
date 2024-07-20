@@ -6,6 +6,7 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
+import com.importer.fileimporter.service.SymbolService;
 import com.importer.fileimporter.service.TransactionService;
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import com.importer.fileimporter.utils.OperationUtils;
@@ -15,9 +16,11 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -29,7 +32,13 @@ public class CoinInformationFacade {
     private final PricingFacade pricingFacade;
     private final HoldingService holdingService;
     private final PortfolioService portfolioService;
+    private final SymbolService symbolService;
 
+    public List<CoinInformationResponse> getTransactionsInformation() {
+        return symbolService.getAllSymbols().stream()
+                .map(this::getTransactionsInformation)
+                .collect(Collectors.toList());
+    }
     public CoinInformationResponse getTransactionsInformation(String symbol) {
         List<Transaction> transactions = transactionService.getAllBySymbol(symbol);
         if (CollectionUtils.isEmpty(transactions)) {
@@ -98,6 +107,8 @@ public class CoinInformationFacade {
         Holding holding = holdingService.getHoldingByPortfolioAndSymbol(portfolio.get(), symbol);
         holding.setAmount(totalHeldAmount);
         holding.setAmountInUsdt(currentMarketValue);
+        holding.setModified(LocalDateTime.now());
+        holding.setModifiedBy(this.getClass().getName());
         holdingService.save(holding);
 
         return totalHeldAmount;

@@ -38,6 +38,7 @@ public class SymbolService {
     public List<String> getAllSymbols() {
         return symbolRepository.findAll().stream()
                 .map(Symbol::getSymbol)
+                .distinct()
                 .collect(Collectors.toList());
     }
 }

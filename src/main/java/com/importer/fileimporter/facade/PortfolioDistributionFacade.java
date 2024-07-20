@@ -82,9 +82,14 @@ public class PortfolioDistributionFacade {
         }
         Portfolio portfolio = portfolioService.getByName(name)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Porfolio not found."));
+        List<Holding> holdings = portfolio.getHoldings().stream()
+                .sorted(Comparator.comparing(Holding::getPercent).reversed())
+                .filter(e -> e.getAmount().compareTo(BigDecimal.ZERO) != 0 &&
+                        !e.getSymbol().equals("BTC"))
+                .collect(Collectors.toList());
         return PortfolioDistribution.builder()
                 .portfolioName(portfolio.getName())
-                .holdings(HoldingConverter.Mapper.createFromEntities(portfolio.getHoldings()))
+                .holdings(HoldingConverter.Mapper.createFromEntities(holdings))
                 .build();
     }
 
