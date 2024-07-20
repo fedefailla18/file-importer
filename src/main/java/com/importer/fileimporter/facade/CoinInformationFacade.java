@@ -1,7 +1,11 @@
 package com.importer.fileimporter.facade;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
+import com.importer.fileimporter.entity.Holding;
+import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
+import com.importer.fileimporter.service.HoldingService;
+import com.importer.fileimporter.service.PortfolioService;
 import com.importer.fileimporter.service.TransactionService;
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import com.importer.fileimporter.utils.OperationUtils;
@@ -11,9 +15,9 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
@@ -23,6 +27,8 @@ public class CoinInformationFacade {
     private final CalculateAmountSpent calculateAmountSpent;
     private final TransactionService transactionService;
     private final PricingFacade pricingFacade;
+    private final HoldingService holdingService;
+    private final PortfolioService portfolioService;
 
     public CoinInformationResponse getTransactionsInformation(String symbol) {
         List<Transaction> transactions = transactionService.getAllBySymbol(symbol);
@@ -32,12 +38,12 @@ public class CoinInformationFacade {
         }
 
         CoinInformationResponse response = CoinInformationResponse.createEmpty(symbol);
-        calculateAndSetAmountsOnlyInStable(transactions, response);
+        calculateAndSetAmountsOnlyInStable(symbol, transactions, response);
 
         return response;
     }
 
-    BigDecimal calculateAndSetAmountsOnlyInStable(List<Transaction> transactions, CoinInformationResponse response) {
+    BigDecimal calculateAndSetAmountsOnlyInStable(String symbol, List<Transaction> transactions, CoinInformationResponse response) {
         BigDecimal totalHeldAmount = BigDecimal.ZERO;
         BigDecimal totalCost = BigDecimal.ZERO;
         List<Transaction> transactionsSelling = new ArrayList<>();
@@ -86,6 +92,13 @@ public class CoinInformationFacade {
         // TODO: is this the same? what
         response.setUnrealizedProfit(currentMarketValue);
         response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(totalCost));
+
+        // Update portfolio holding
+        Optional<Portfolio> portfolio = portfolioService.getByName("Binance");
+        Holding holding = holdingService.getHoldingByPortfolioAndSymbol(portfolio.get(), symbol);
+        holding.setAmount(totalHeldAmount);
+        holding.setAmountInUsdt(currentMarketValue);
+        holdingService.save(holding);
 
         return totalHeldAmount;
     }

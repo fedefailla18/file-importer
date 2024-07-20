@@ -24,21 +24,32 @@ public class HoldingService {
     private final HoldingRepository holdingRepository;
 
     public Holding saveSymbolHolding(Symbol symbol, Portfolio portfolio, BigDecimal amount) {
-        return getBySymbolAndPortfolioName(portfolio, symbol.getSymbol())
+        return getByPortfolioAndSymbol(portfolio, symbol.getSymbol())
                 .map(existingHolding -> saveBasicEntity(existingHolding, symbol.getSymbol(), portfolio, amount))
                 .orElseGet(() -> saveBasicEntity(symbol.getSymbol(), portfolio, amount));
     }
 
-    public Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
+    public Optional<Holding> getByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
         return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
     }
+
+    public Holding getHoldingByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
+        return holdingRepository.findBySymbolAndPortfolioName(portfolio.getName(), symbol)
+                .orElse(Holding.builder()
+                                .portfolio(portfolio)
+                                .symbol(symbol)
+                                .amount(BigDecimal.ZERO)
+                                .amountInUsdt(BigDecimal.ZERO)
+                                .build());
+    }
+
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
         return holdingRepository.findAllByPortfolio(portfolio);
     }
 
     public HoldingDto updatePercentageHolding(HoldingDto e, Portfolio portfolio) {
-        Holding holding = getBySymbolAndPortfolioName(portfolio, e.getSymbol())
+        Holding holding = getByPortfolioAndSymbol(portfolio, e.getSymbol())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbol not found"));
 
         holding.setPercent(e.getPercentage());
@@ -84,4 +95,7 @@ public class HoldingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbol not found"));
     }
 
+    public Holding save(Holding holding) {
+        return holdingRepository.save(holding);
+    }
 }
