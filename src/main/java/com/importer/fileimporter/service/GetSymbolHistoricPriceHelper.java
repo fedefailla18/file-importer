@@ -75,7 +75,7 @@ public class GetSymbolHistoricPriceHelper {
                 priceInUsdt = usdtPriceHistory.get().getHigh();
             }
 
-        return price.multiply(priceInUsdt);
+            return price.multiply(priceInUsdt);
         } catch (Exception e ) {
             String msg = String.format("Error when requesting historical data for % on %", symbolPair, dateTime);
             log.error(msg, e);

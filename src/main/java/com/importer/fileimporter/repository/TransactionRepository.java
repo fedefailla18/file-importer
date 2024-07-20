@@ -16,6 +16,7 @@ import java.util.List;
 public interface TransactionRepository extends JpaRepository<Transaction, TransactionId> {
 
     Page<Transaction> findAllBySymbol(String symbol, Pageable pageable);
+
     List<Transaction> findAllBySymbol(String symbol);
 
     @Query(value = "select transaction " +

@@ -56,7 +56,7 @@ public class PriceHistoryService {
     private List<CryptoCompareResponse.ChartData> validateData(String symbolPair, String usdt, List<CryptoCompareResponse.ChartData> dataList) {
         String collect = repository.findAll().stream()
                 .filter(e -> e.getSymbol().equals(symbolPair) &&
-                             e.getSymbolpair().equals(usdt))
+                        e.getSymbolpair().equals(usdt))
                 .map(PriceHistory::getTime)
                 .map(LocalDateTime::toString)
                 .collect(Collectors.joining());
@@ -76,4 +76,5 @@ public class PriceHistoryService {
         LocalDateTime localDateTime = dateTime.withMinute(0).truncatedTo(ChronoUnit.MINUTES);
         return Optional.ofNullable(repository.findHighestPriceBySymbolAndSymbolpairAndTime(pair, symbolPair, localDateTime));
     }
+
 }

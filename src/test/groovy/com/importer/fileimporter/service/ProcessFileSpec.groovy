@@ -70,6 +70,7 @@ class ProcessFileSpec extends Specification {
             // Additional assertions for each coin's information
         }
     }
+
     def "test transaction calculations"() {
         given: "Mock data for transactions"
         MultipartFile file = Mock(MultipartFile)

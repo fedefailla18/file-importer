@@ -75,14 +75,17 @@ public class CoinInformationFacade {
         }
 
         response.setRealizedProfit(realizedProfit);
+        response.setAmount(totalHeldAmount);
 
         BigDecimal currentMarketPrice = pricingFacade.getCurrentMarketPrice(transactions.get(0).getSymbol());
-        BigDecimal unrealizedProfit = totalHeldAmount.multiply(currentMarketPrice).subtract(totalCost).setScale(9, RoundingMode.UP);
-        response.setUnrealizedProfit(unrealizedProfit);
-        response.setCurrentPositionInUsdt(currentMarketPrice.multiply(totalHeldAmount));
-        response.setUnrealizedTotalProfitMinusTotalCost(currentMarketPrice.multiply(totalHeldAmount).subtract(totalCost));
-        response.setAmount(totalHeldAmount);
         response.setCurrentPrice(currentMarketPrice);
+
+        BigDecimal currentMarketValue = currentMarketPrice.multiply(totalHeldAmount);
+        response.setCurrentPositionInUsdt(currentMarketValue);
+
+        // TODO: is this the same? what
+        response.setUnrealizedProfit(currentMarketValue);
+        response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(totalCost));
 
         return totalHeldAmount;
     }

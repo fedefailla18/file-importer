@@ -98,4 +98,5 @@ public class CalculateAmountSpent {
                 totalCost.divide(totalHeldAmount, RoundingMode.HALF_UP) :
                 BigDecimal.ZERO;
     }
+
 }

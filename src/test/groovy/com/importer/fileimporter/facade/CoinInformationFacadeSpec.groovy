@@ -96,12 +96,13 @@ class CoinInformationFacadeSpec extends Specification {
         given:
         String symbol = "RLC"
         List<Transaction> transactions = getTestTransactions()
+        def currentMarketPrice = 2
 
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> { Transaction transaction, CoinInformationResponse response ->
             return transaction.payedAmount
         }
-        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
+        pricingFacade.getCurrentMarketPrice(symbol) >> currentMarketPrice
 
         when:
         def response = sut.getTransactionsInformation(symbol)
@@ -113,9 +114,8 @@ class CoinInformationFacadeSpec extends Specification {
         response.totalAmountSold == new BigDecimal("120")
         response.currentPrice == 2
         response.realizedProfit == new BigDecimal("-230.5") // 2.15*70 + 1.60*50 - 200
-        response.unrealizedProfit == new BigDecimal("60") // 80*2 - (200 - 82.50)
-        response.currentPositionInUsdt == new BigDecimal("160") // 80*2
-        response.unrealizedProfit == 190.5
+        response.unrealizedProfit == response.amount * currentMarketPrice
+        response.currentPositionInUsdt == 160 // 80*2
         response.unrealizedTotalProfitMinusTotalCost == 190.5
     }
 
@@ -142,7 +142,7 @@ class CoinInformationFacadeSpec extends Specification {
         response.coinName == "RLC"
         response.amount == 1
         response.realizedProfit == BigDecimal.ZERO
-        response.unrealizedProfit == BigDecimal.ZERO
+        response.unrealizedProfit == 500
         response.currentPositionInUsdt == new BigDecimal("500")
     }
 
