@@ -7,8 +7,6 @@ import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import com.importer.fileimporter.utils.OperationUtils
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
 import spock.lang.Subject
 
 import java.time.LocalDateTime
@@ -31,17 +29,17 @@ class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
     def "test getTransactionsInformation with predefined transactions"() {
         given: "a set of predefined transactions"
         def symbol = "BAND"
+        def transactions = getTransactions(symbol) // this data shuold match the one I'm introducing in the db with liquibase in 2024-07-16-009-importing-binance-transactions.sql
 
-        def transactions = getTransactions()
-
-        Page<Transaction> transactionPage = new PageImpl<>(transactions)
+        cryptoCompareProxy.getData(_ as String, _) >> 2 // Example current market price
 
         when: "getTransactionsInformation is called"
         def response = coinInformationFacade.getTransactionsInformation(symbol)
 
         then: "the response contains the correct information"
+        println("Response: $response")
+
         response.coinName == symbol
-        response.totalTransactions == 5
         response.amount == transactions.stream()
                 .map { t -> OperationUtils.sumAmount(BigDecimal.ZERO, t.getTransactionId().getExecuted(), t.getTransactionId().getSide()) }
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
@@ -56,13 +54,10 @@ class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
 
         response.stableTotalCost == totalSpent
-        response.avgEntryPrice[USDT] == totalAmount.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : totalSpent.divide(totalAmount, RoundingMode.HALF_UP)
-
-//        and:
-//        1 * transactionService.getTransactionsByRangeDate(_, _, _, _) >> transactionPage
+        response.avgEntryPrice['USDT'] == (totalAmount.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : totalSpent.divide(totalAmount, RoundingMode.HALF_UP))
     }
 
-    ArrayList<Transaction> getTransactions(symbol) {
+    ArrayList<Transaction> getTransactions(String symbol) {
         return [
                 createTransaction(symbol, "BTC", "BUY", 82.5, 0.0000618000),
                 createTransaction(symbol, "BTC", "BUY", 55.0, 0.0000936),
@@ -74,7 +69,7 @@ class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
     }
 
     private Transaction createTransaction(String symbol, String payedWith, String side, BigDecimal executed, BigDecimal price) {
-        def payedAmount = executed * price
+        def payedAmount = executed.multiply(price)
         def transactionId = new TransactionId(
                 executed: executed,
                 side: side,

@@ -62,6 +62,8 @@ public class CalculateAmountSpent {
         // Only add the spent for the original transaction if it's a buy transaction
         if (isBuy) {
             response.addSpent(paidWithSymbol, paidAmount);
+        } else {
+            response.addSold(paidWithSymbol, paidAmount);
         }
 
         BigDecimal priceInStable;

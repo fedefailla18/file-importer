@@ -47,6 +47,7 @@ public class CoinInformationResponse {
     private BigDecimal totalExecuted; // Track total executed amount for average calculation
     private Map<String, BigDecimal> avgEntryPrice;
     private Map<String, BigDecimal> spent;
+    private Map<String, BigDecimal> sold;
 
     private BigDecimal realizedProfit; // Realized profit from sold transactions
     private BigDecimal totalRealizedProfitUsdt; // Realized profit from sold transactions
@@ -63,6 +64,7 @@ public class CoinInformationResponse {
                 .rows(new ArrayList<>())
                 .coinName(coinName)
                 .spent(new HashMap<>())
+                .sold(new HashMap<>())
                 .avgEntryPrice(new HashMap<>())
                 .totalExecuted(ZERO)
                 .totalAmountBought(ZERO)
@@ -138,5 +140,10 @@ public class CoinInformationResponse {
     public void addSpent(String paidWithSymbol, BigDecimal paidAmount) {
         getSpent().computeIfPresent(paidWithSymbol, (k, v) -> paidAmount.add(v));
         getSpent().computeIfAbsent(paidWithSymbol, k -> paidAmount);
+    }
+
+    public void addSold(String paidWithSymbol, BigDecimal paidAmount) {
+        getSold().computeIfPresent(paidWithSymbol, (k, v) -> paidAmount.add(v));
+        getSold().computeIfAbsent(paidWithSymbol, k -> paidAmount);
     }
 }

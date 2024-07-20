@@ -1,5 +1,6 @@
 package com.importer.fileimporter
 
+import com.importer.fileimporter.service.CryptoCompareProxy
 import com.importer.fileimporter.service.FileImporterService
 import org.junit.ClassRule
 import org.postgresql.Driver
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.SimpleDriverDataSource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
@@ -25,7 +27,8 @@ abstract class BaseIntegrationSpec extends Specification {
     @Autowired
     FileImporterService fileImporterService
 
-
+    @MockBean
+    CryptoCompareProxy cryptoCompareProxy
 
     // Define a PostgreSQL container
     @ClassRule

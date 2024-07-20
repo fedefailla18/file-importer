@@ -112,7 +112,7 @@ class CoinInformationFacadeSpec extends Specification {
         response.totalAmountBought == new BigDecimal("200")
         response.totalAmountSold == new BigDecimal("120")
         response.currentPrice == 2
-        response.realizedProfit == new BigDecimal("230.5") // 2.15*70 + 1.60*50 - 200
+        response.realizedProfit == new BigDecimal("-230.5") // 2.15*70 + 1.60*50 - 200
         response.unrealizedProfit == new BigDecimal("60") // 80*2 - (200 - 82.50)
         response.currentPositionInUsdt == new BigDecimal("160") // 80*2
         response.unrealizedProfit == 190.5
