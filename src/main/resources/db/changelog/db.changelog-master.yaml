@@ -34,3 +34,5 @@ databaseChangeLog:
       file: classpath:/db/changelog/changes/2024-04-02-013-increase-decimals-in-holdings-price-amount.sql
   - include:
       file: classpath:/db/changelog/changes/2024-04-03-014-increase-decimals-in-transactions-price-amount.sql
+  - include:
+      file: classpath:/db/changelog/changes/2024-07-20-015-adding-transaction-portfolio.sql

@@ -78,7 +78,7 @@ class HoldingServiceSpec extends Specification {
         def holding = Optional.of(new Holding(symbol: "BTC", portfolio: portfolio))
 
         when:
-        def result = holdingService.getBySymbolAndPortfolioName(portfolio, symbol)
+        def result = holdingService.getByPortfolioAndSymbol(portfolio, symbol)
 
         then:
         1 * holdingRepository.findBySymbolAndPortfolioName(symbol, "Test Portfolio") >> holding
