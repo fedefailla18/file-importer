@@ -66,17 +66,17 @@ public class HoldingService {
         BigDecimal priceInBtc = holdingIsNull ? null : e.getPriceInBtc();
         BigDecimal priceInUsdt = holdingIsNull ? null : e.getPriceInUsdt();
         return holdingRepository.save(Holding.builder()
-                                              .id(id)
-                                              .symbol(symbol)
-                                              .portfolio(portfolio)
-                                              .amount(amount)
-                                              .priceInBtc(priceInBtc)
-                                              .priceInUsdt(priceInUsdt)
-                                              .created(created)
-                                              .createdBy(createdBy)
-                                              .modified(now)
-                                              .modifiedBy(modifiedBy)
-                                              .build());
+                .id(id)
+                .symbol(symbol)
+                .portfolio(portfolio)
+                .amount(amount)
+                .priceInBtc(priceInBtc)
+                .priceInUsdt(priceInUsdt)
+                .created(created)
+                .createdBy(createdBy)
+                .modified(now)
+                .modifiedBy(modifiedBy)
+                .build());
     }
 
     public Holding getHolding(String symbol) {

@@ -1,12 +1,9 @@
 package com.importer.fileimporter.service;
 
-import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.entity.TransactionId;
 import com.importer.fileimporter.repository.TransactionRepository;
-import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import com.importer.fileimporter.utils.DateUtils;
-import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,9 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 @RequiredArgsConstructor
 @Service
@@ -26,35 +21,29 @@ import java.util.concurrent.atomic.AtomicReference;
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
-    private final CalculateAmountSpent calculateAmountSpent;
-    private final CoinInformationService coinInformationService;
 
     public Page<Transaction> getTransactionsByRangeDate(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         if (symbol != null && (startDate == null && endDate == null)) {
-            return transactionRepository.findAllBySymbol(symbol, pageable);
+            return getAllBySymbol(symbol, pageable);
         }
         return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),
                 endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable);
     }
 
-    public CoinInformationResponse getTransactionsInformation(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        List<Transaction> transactions = getTransactionsByRangeDate(symbol, startDate, endDate, pageable).getContent();
-        BigDecimal amountSpent = calculateAmountSpent.execute(symbol, transactions);
+    public Page<Transaction> getAllBySymbol(String symbol, Pageable pageable) {
+        return transactionRepository.findAllBySymbol(symbol, pageable);
+    }
 
-        AtomicReference<BigDecimal> amount = new AtomicReference<>(BigDecimal.ZERO);
-        transactions.forEach(a ->
-                amount.set(OperationUtils.sumAmount(amount, a.getTransactionId().getExecuted(), a.getTransactionId().getSide())));
+    public List<Transaction> getAllBySymbol(String symbol) {
+        return transactionRepository.findAllBySymbol(symbol);
+    }
 
-        CoinInformationResponse response = CoinInformationResponse.builder()
-                .amount(amount.get())
-                .coinName(symbol)
-                .totalTransactions(transactions.size())
-                .avgEntryPrice(new HashMap<>())
-                .usdSpent(amountSpent)
-                .spent(new HashMap<>())
-                .build();
-        coinInformationService.calculateAvgEntryPrice(response, transactions);
-        return response;
+    public List<Transaction> getAll() {
+        return transactionRepository.findAll();
+    }
+
+    public Page<Transaction> getAll(Pageable pageable) {
+        return transactionRepository.findAll(pageable);
     }
 
     public Transaction saveTransaction(String coinName,
@@ -85,5 +74,9 @@ public class TransactionService {
                 .build();
 
         return transactionRepository.save(transaction);
+    }
+
+    public void deleteTransactions() {
+        transactionRepository.deleteAll();
     }
 }

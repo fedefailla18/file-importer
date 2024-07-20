@@ -18,6 +18,8 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
+	integrationTestImplementation.extendsFrom testImplementation
+	integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 repositories {
@@ -31,6 +33,19 @@ sourceSets {
 			// Exclude the 'docker' folder
 			exclude 'docker/**'
 		}
+	}
+	test {
+		java.srcDirs = ['src/test/java']
+		groovy.srcDirs = ['src/test/groovy']
+		resources.srcDirs = ['src/test/resources']
+	}
+
+	integrationTest {
+		groovy.srcDirs = ['src/integration-test/groovy']
+		resources.srcDirs = ['src/integration-test/resources']
+		compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+		println configurations.testRuntimeClasspath
+		runtimeClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
 	}
 }
 
@@ -61,8 +76,33 @@ dependencies {
 	testImplementation('org.springframework.boot:spring-boot-starter-test') {
 		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
 	}
+
+	// Add dependencies specific to integration tests
+	integrationTestImplementation sourceSets.main.output
+	integrationTestImplementation sourceSets.test.output
+	integrationTestImplementation 'org.spockframework:spock-core:2.0-M3-groovy-3.0'
+	integrationTestImplementation('org.spockframework:spock-spring:2.0-M3-groovy-3.0')
+	integrationTestImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+	integrationTestImplementation 'org.testcontainers:testcontainers:1.18.3'
+	integrationTestImplementation 'org.testcontainers:postgresql:1.18.3'
+	integrationTestImplementation 'org.springframework.security:spring-security-test:4.0.0.RELEASE'
+
 }
 
 test {
 	useJUnitPlatform()
 }
+
+// Task to run integration tests
+task integrationTest(type: Test) {
+	description = 'Runs the integration tests.'
+	group = 'verification'
+	testClassesDirs = sourceSets.integrationTest.output.classesDirs
+	classpath = sourceSets.integrationTest.runtimeClasspath
+	shouldRunAfter test
+	useJUnitPlatform()
+}
+
+// Ensure integration tests run after unit tests
+check.dependsOn integrationTest

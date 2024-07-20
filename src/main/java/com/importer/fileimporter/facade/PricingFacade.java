@@ -30,7 +30,11 @@ public class PricingFacade {
         return getPrice(symbol, BTC, dateTime);
     }
 
-    public BigDecimal getPrice(String symbolPair, String symbol, LocalDateTime dateTime) {
+    public Optional<BigDecimal> findHighPrice(String symbol, String symbolPair, LocalDateTime dateTime) {
+        return priceHistoryService.findHighPrice(symbol, symbolPair, dateTime);
+    }
+
+    public BigDecimal getPrice(String symbol, String symbolPair, LocalDateTime dateTime) {
         if (StringUtils.trimAllWhitespace(symbol).isEmpty()) {
             symbol = BTC;
         }
@@ -46,12 +50,16 @@ public class PricingFacade {
         return priceHistoryService.findData(symbolPair, symbol, dateTime)
                 .map(PriceHistory::getHigh)
                 .orElseGet(() ->
-                                   getSymbolHistoricPriceHelper.getPricesAtDate(finalSymbol, finalSymbolPair,
-                                                                                finalDateTime.minusMinutes(1L)));
+                    getSymbolHistoricPriceHelper.getPricesAtDate(finalSymbol, finalSymbolPair,
+                            finalDateTime.minusMinutes(1L)));
     }
 
     public Map<String, Double> getPrices(String symbol) {
         return getSymbolHistoricPriceHelper.getPrice(symbol);
+    }
+
+    public BigDecimal getCurrentMarketPrice(String symbol) {
+        return BigDecimal.valueOf(getSymbolHistoricPriceHelper.getPrice(symbol).get(USDT));
     }
 
     public Map<String, Double> getPrices(List<String> symbol) {

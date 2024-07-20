@@ -1,62 +1,102 @@
 package com.importer.fileimporter.service.usecase;
 
-import com.importer.fileimporter.entity.PriceHistory;
+import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.entity.Transaction;
-import com.importer.fileimporter.repository.TransactionRepository;
-import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
-import com.importer.fileimporter.service.PriceHistoryService;
+import com.importer.fileimporter.facade.PricingFacade;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 @RequiredArgsConstructor
-@Service
+@Component
+@Slf4j
 public class CalculateAmountSpent {
 
-    private final TransactionRepository transactionRepository;
-    private final PriceHistoryService priceHistoryService;
-    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceService;
+    private final PricingFacade pricingFacade;
 
-    public BigDecimal execute(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        List<Transaction> transactions = transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),
-                endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable).getContent();
-
-        return execute(symbol, transactions);
+    public BigDecimal execute(String symbol, List<Transaction> transactions, CoinInformationResponse response) {
+        return transactions.parallelStream()
+                .map(transaction -> getAmountSpentInUsdtPerTransaction(symbol, transaction, response))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public BigDecimal execute(String symbol, List<Transaction> transactions) {
-        AtomicReference<BigDecimal> amountSpent = new AtomicReference<>(BigDecimal.ZERO);
-        transactions.forEach(transaction -> {
-            getAmountSpentPerTransaction(symbol, amountSpent, transaction);
-        });
-        return amountSpent.get();
+    /**
+     * When transaction is sell I'm returning a negative number.
+     * TODO: revise this
+     * @param transaction
+     * @param response
+     * @return
+     */
+    public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response) {
+        return getAmountSpentInUsdtPerTransaction(transaction.getSymbol(), transaction, response);
     }
 
-    private void getAmountSpentPerTransaction(String symbol, AtomicReference<BigDecimal> amountSpent, Transaction transaction) {
-        String payedWithSymbol = transaction.getPayedWith();
-        String side = transaction.getTransactionId().getSide();
-        BigDecimal payedAmount = transaction.getPayedAmount();
+    private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
+        return pricingFacade.getPriceInUsdt(symbol, dateUtc);
+    }
 
-        if (OperationUtils.isStable(payedWithSymbol)) {
-            amountSpent.set(OperationUtils.sumAmount(amountSpent, payedAmount, side));
+    /**
+     * This method not only gets the payed amount in USDT per transaction but also keep track of other fields such as:
+     * spent: this field keeps the amount spent and since it's a key value pair, helps to keep track of the spent in each currency.
+     * stableTotalCost: the total amount paid historically for this coin
+     * totalRealizedProfit: the total amount sold historically. This is the gross usdt
+     *
+     * @param symbol
+     * @param transaction
+     * @param response
+     * @return
+     */
+    BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response) {
+        String paidWithSymbol = transaction.getPayedWith();
+        BigDecimal paidAmount = transaction.getPayedAmount();
+        BigDecimal executed = transaction.getTransactionId().getExecuted();
+        BigDecimal totalHeldAmount = response.getAmount();
+        boolean isBuy = OperationUtils.isBuy(transaction.getTransactionId().getSide());
+
+        // Only add the spent for the original transaction if it's a buy transaction
+        if (isBuy) {
+            response.addSpent(paidWithSymbol, paidAmount);
         } else {
-            BigDecimal priceInUsdt;
-            Optional<PriceHistory> priceHistory = priceHistoryService.findData(symbol, payedWithSymbol, transaction.getTransactionId().getDateUtc());
-            if (priceHistory.isEmpty()) {
-                priceInUsdt = getSymbolHistoricPriceService.getPriceInUsdt(payedWithSymbol,
-                        transaction.getPayedAmount(),
-                        transaction.getTransactionId().getDateUtc());
-            } else {
-                priceInUsdt = priceHistory.get().getHigh();
-            }
-            amountSpent.set(OperationUtils.sumAmount(amountSpent, priceInUsdt, side));
+            response.addSold(paidWithSymbol, paidAmount);
+        }
+
+        BigDecimal priceInStable;
+        if (!OperationUtils.isStable(paidWithSymbol)) {
+            priceInStable = getPriceInStable(symbol, transaction.getTransactionId().getDateUtc());
+            paidAmount = priceInStable.multiply(executed);
+        }
+
+        if (isBuy) {
+            response.setStableTotalCost(response.getStableTotalCost().add(paidAmount));
+            return paidAmount;
+        } else {
+            // Calculating profit for the sale
+//            BigDecimal profitFromSale = executed.multiply(priceInStable).subtract(paidAmount); // TODO: This is wrong. executed*price is transaction.paidAmount
+//            BigDecimal realizedProfit = response.getRealizedProfit() == null ? BigDecimal.ZERO : response.getRealizedProfit();
+//            response.setRealizedProfit(realizedProfit.add(profitFromSale).setScale(5, RoundingMode.UP));
+
+//            BigDecimal costBasis = getCostBasis(totalHeldAmount, totalCost);
+//            realizedProfit = realizedProfit.add(amountSold.multiply(price.subtract(costBasis)));
+//            BigDecimal transactionTotalCost = costBasis.compareTo(BigDecimal.ZERO) != 0 ?
+//                    amountSold.multiply(costBasis) :
+//                    paidAmount;
+//            totalCost = totalCost.subtract(transactionTotalCost);
+
+            response.addTotalRealizedProfit(paidAmount);
+            return paidAmount.negate();
         }
     }
+
+    private BigDecimal getCostBasis(BigDecimal totalHeldAmount, BigDecimal totalCost) {
+        return totalHeldAmount.compareTo(BigDecimal.ZERO) != 0 ?
+                totalCost.divide(totalHeldAmount, RoundingMode.HALF_UP) :
+                BigDecimal.ZERO;
+    }
+
 }

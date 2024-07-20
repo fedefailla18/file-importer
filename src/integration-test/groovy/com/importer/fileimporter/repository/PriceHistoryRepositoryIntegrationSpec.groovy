@@ -1,24 +1,13 @@
-package com.importer.fileimporter
+package com.importer.fileimporter.repository
 
+import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.entity.PriceHistory
-import com.importer.fileimporter.repository.PriceHistoryRepository
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
-import spock.lang.Specification
 
-import javax.transaction.Transactional
 import java.time.LocalDateTime
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Transactional
-@ActiveProfiles("test")
-@AutoConfigureTestEntityManager
-@AutoConfigureMockMvc
-class PriceHistoryRepositoryIntegrationSpec extends Specification {
+class PriceHistoryRepositoryIntegrationSpec extends BaseIntegrationSpec {
 
     @Autowired
     TestEntityManager entityManager
@@ -54,6 +43,5 @@ class PriceHistoryRepositoryIntegrationSpec extends Specification {
         retrievedPriceHistory.isPresent()
         retrievedPriceHistory.get().name == "Sample Price History"
         retrievedPriceHistory.get().pair == "Sample Pair"
-        // Add more assertions for other fields
     }
 }

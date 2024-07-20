@@ -10,11 +10,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, TransactionId> {
 
     Page<Transaction> findAllBySymbol(String symbol, Pageable pageable);
+
+    List<Transaction> findAllBySymbol(String symbol);
 
     @Query(value = "select transaction " +
             "from Transaction transaction " +

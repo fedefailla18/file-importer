@@ -47,7 +47,7 @@ public class GetSymbolHistoricPriceHelper {
     public BigDecimal getPricesAtDate(String fromSymbol, String toSymbol, LocalDateTime dateTime) {
         log.info(String.format("Fetching price for: %s, with: %s. Date: %s", toSymbol, fromSymbol, dateTime));
         CryptoCompareResponse cryptoCompareResponse = cryptoCompareProxy.getHistoricalData(fromSymbol, toSymbol,
-                                                                                           dateTime.toEpochSecond(ZoneOffset.UTC));
+                dateTime.toEpochSecond(ZoneOffset.UTC));
 
         CryptoCompareResponse.ChartData exactTime = getExactTimeExecuted(dateTime, cryptoCompareResponse);
         if (exactTime != null) {

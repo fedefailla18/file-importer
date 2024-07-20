@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -65,11 +66,15 @@ public class PriceHistoryService {
     }
 
     public Optional<PriceHistory> findData(String symbolPair, String pair, LocalDateTime dateTime) {
-        List<PriceHistory> allBySymbolAndSymbolPair = repository.findAllBySymbolAndSymbolpair(symbolPair, pair);
+        LocalDateTime localDateTime = dateTime.withMinute(0).truncatedTo(ChronoUnit.MINUTES);
+        List<PriceHistory> allBySymbolAndSymbolPair = repository.findAllBySymbolAndSymbolpairAndTime(pair, symbolPair, localDateTime);
         return allBySymbolAndSymbolPair.stream()
-                .filter(e -> e.getTime().truncatedTo(ChronoUnit.HOURS)
-                        .isEqual(dateTime.truncatedTo(ChronoUnit.HOURS)))
                 .findFirst();
+    }
+
+    public Optional<BigDecimal> findHighPrice(String symbolPair, String pair, LocalDateTime dateTime) {
+        LocalDateTime localDateTime = dateTime.withMinute(0).truncatedTo(ChronoUnit.MINUTES);
+        return Optional.ofNullable(repository.findHighestPriceBySymbolAndSymbolpairAndTime(pair, symbolPair, localDateTime));
     }
 
 }
