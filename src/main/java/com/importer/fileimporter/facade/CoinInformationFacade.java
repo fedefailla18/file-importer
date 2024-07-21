@@ -97,6 +97,10 @@ public class CoinInformationFacade {
         Optional<Portfolio> portfolio = portfolioService.getByName("Binance");
         Holding holding = holdingService.getHoldingByPortfolioAndSymbol(portfolio.get(), symbol);
         holding.setAmount(totalHeldAmount);
+        holding.setTotalAmountBought(response.getTotalAmountBought());
+        holding.setTotalAmountSold(response.getTotalAmountSold());
+        holding.setStableTotalCost(response.getStableTotalCost());
+        holding.setCurrentPositionInUsdt(response.getCurrentPositionInUsdt());
         holding.setAmountInUsdt(currentMarketValue);
         holdingService.save(holding);
 

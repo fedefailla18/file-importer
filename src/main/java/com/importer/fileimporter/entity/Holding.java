@@ -51,6 +51,14 @@ public class Holding {
 
     private BigDecimal percent;
 
+    private BigDecimal totalAmountBought;
+
+    private BigDecimal totalAmountSold;
+
+    private BigDecimal stableTotalCost;
+
+    private BigDecimal currentPositionInUsdt;
+
     private LocalDateTime created;
 
     private String createdBy;
