@@ -16,4 +16,9 @@ public class HoldingDto {
     private BigDecimal priceInBtc;
     private BigDecimal priceInUsdt;
     private BigDecimal percentage;
+    private BigDecimal totalAmountBought;
+    private BigDecimal totalAmountSold;
+    private BigDecimal stableTotalCost;
+    private BigDecimal currentPositionInUsdt;
+    private BigDecimal totalRealizedProfitUsdt;
 }

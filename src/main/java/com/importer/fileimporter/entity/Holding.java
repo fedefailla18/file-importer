@@ -59,6 +59,8 @@ public class Holding {
 
     private BigDecimal currentPositionInUsdt;
 
+    private BigDecimal totalRealizedProfitUsdt;
+
     private LocalDateTime created;
 
     private String createdBy;

@@ -11,8 +11,8 @@ databaseChangeLog:
       file: classpath:/db/changelog/changes/2023-11-26-005-transactions-symbol-pair.sql
   - include:
       file: classpath:/db/changelog/changes/2024-01-04-006-adding-composite-key-into-transactions.sql
-  - include:
-      file: classpath:/db/changelog/changes/2024-01-04-007-making-transactions_id-nullable.sql
+#  - include:
+#      file: classpath:/db/changelog/changes/2024-01-04-007-making-transactions_id-nullable.sql
   - include:
       file: classpath:/db/changelog/changes/2024-02-25-008-creating-portfolio-distribution.sql
 #  - include:
@@ -37,4 +37,4 @@ databaseChangeLog:
   - include:
       file: classpath:/db/changelog/changes/2024-07-20-015-adding-transaction-portfolio.sql
   - include:
-      file: classpath:/db/changelog/changes/2024-02-26-010-adding-relevant-fields-from-CoinInformationResponse.sql
+      file: classpath:/db/changelog/changes/2024-07-20-016-adding-relevant-fields-to-holdings.sql

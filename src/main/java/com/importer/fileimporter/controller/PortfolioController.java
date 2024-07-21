@@ -42,8 +42,7 @@ public class PortfolioController {
 
     @PostMapping("/holding/distributions")
     public List<PortfolioDistribution> calculatePortfolioInSymbol() {
-        return portfolioDistributionFacade.
-                calculatePortfolioInBtcAndUsdt();
+        return portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt();
     }
 
     @GetMapping("/holding")

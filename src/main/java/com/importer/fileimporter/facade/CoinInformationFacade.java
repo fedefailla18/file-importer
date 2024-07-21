@@ -6,6 +6,7 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
+import com.importer.fileimporter.service.SymbolService;
 import com.importer.fileimporter.service.TransactionService;
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import com.importer.fileimporter.utils.OperationUtils;
@@ -18,6 +19,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -29,6 +31,14 @@ public class CoinInformationFacade {
     private final PricingFacade pricingFacade;
     private final HoldingService holdingService;
     private final PortfolioService portfolioService;
+    private final SymbolService symbolService;
+
+    public List<CoinInformationResponse> getTransactionsInformation() {
+        return symbolService.getAllSymbols().stream()
+                .distinct()
+                .map(this::getTransactionsInformation)
+                .collect(Collectors.toList());
+    }
 
     public CoinInformationResponse getTransactionsInformation(String symbol) {
         List<Transaction> transactions = transactionService.getAllBySymbol(symbol);
@@ -101,6 +111,7 @@ public class CoinInformationFacade {
         holding.setTotalAmountSold(response.getTotalAmountSold());
         holding.setStableTotalCost(response.getStableTotalCost());
         holding.setCurrentPositionInUsdt(response.getCurrentPositionInUsdt());
+        holding.setTotalRealizedProfitUsdt(response.getTotalRealizedProfitUsdt());
         holding.setAmountInUsdt(currentMarketValue);
         holdingService.save(holding);
 
