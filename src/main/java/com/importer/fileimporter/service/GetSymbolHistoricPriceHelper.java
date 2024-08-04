@@ -43,6 +43,12 @@ public class GetSymbolHistoricPriceHelper {
         return getPricesAtDate(symbol, symbols);
     }
 
+    public BigDecimal getCurrentMarketPriceInUSDT(String symbol) {
+        Map<String, Double> price = getPrice(symbol);
+        Double val = price.get(USDT);
+        return val == null ? BigDecimal.ZERO : BigDecimal.valueOf(val);
+    }
+
     @NotNull
     public BigDecimal getPricesAtDate(String fromSymbol, String toSymbol, LocalDateTime dateTime) {
         log.info(String.format("Fetching price for: %s, with: %s. Date: %s", toSymbol, fromSymbol, dateTime));
@@ -85,7 +91,7 @@ public class GetSymbolHistoricPriceHelper {
 
     private CryptoCompareResponse.ChartData getExactTimeExecuted(LocalDateTime dateTime, CryptoCompareResponse cryptoCompareResponse) {
         return cryptoCompareResponse.getResponse().equals("Error") ? null : cryptoCompareResponse.getData().getChartDataList().stream()
-                .filter(e -> e.getTime().getHour() == dateTime.getHour())
+                .filter(e -> e.getTime() != null && e.getTime().getHour() == dateTime.getHour())
                 .findFirst()
                 .orElseGet(() -> cryptoCompareResponse.getData()
                         .getChartDataList().stream()

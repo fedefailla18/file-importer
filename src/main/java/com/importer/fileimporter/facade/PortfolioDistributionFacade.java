@@ -82,9 +82,14 @@ public class PortfolioDistributionFacade {
         }
         Portfolio portfolio = portfolioService.getByName(name)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Porfolio not found."));
+        List<Holding> holdings = portfolio.getHoldings().stream()
+                .filter(e -> e.getAmount().compareTo(BigDecimal.ZERO) != 0 &&
+                        !e.getSymbol().equals("BTC"))
+                .sorted(Comparator.comparing(Holding::getPercent).reversed())
+                .collect(Collectors.toList());
         return PortfolioDistribution.builder()
                 .portfolioName(portfolio.getName())
-                .holdings(HoldingConverter.Mapper.createFromEntities(portfolio.getHoldings()))
+                .holdings(HoldingConverter.Mapper.createFromEntities(holdings))
                 .build();
     }
 
@@ -114,23 +119,7 @@ public class PortfolioDistributionFacade {
                 .holdings(new ArrayList<>())
                 .build();
 
-        portfolio.getHoldings()
-                .forEach(e -> {
-                    Map<String, Double> price = getSymbolHistoricPriceHelper.getPrice(e.getSymbol());
-                    BigDecimal btcprice = BigDecimal.valueOf(price.get(BTC) != null ? price.get(BTC) : 0d);
-                    BigDecimal usdtprice = BigDecimal.valueOf(price.get(USDT) != null ? price.get(USDT) : 0d);
-                    portfolioDistribution.getHoldings().add(HoldingDto.builder()
-                            .symbol(e.getSymbol())
-                            .amount(e.getAmount())
-                            .priceInBtc(btcprice)
-                            .priceInUsdt(usdtprice)
-                            .amountInBtc(BTC.equals(e.getSymbol()) ? e.getAmount() :
-                                    btcprice.multiply(e.getAmount()))
-                            .amountInUsdt(USDT.equals(e.getSymbol()) ? e.getAmount() :
-                                    usdtprice.multiply(e.getAmount()))
-                            .build());
-                }
-        );
+        addHoldingsToPortfolioDistribution(portfolio, portfolioDistribution);
 
         BigDecimal totalUsdt = portfolioDistribution.getTotalInUsdt();
         portfolioDistribution.setTotalUsdt(totalUsdt);
@@ -143,6 +132,31 @@ public class PortfolioDistributionFacade {
                 }
         );
         return portfolioDistribution;
+    }
+
+    private void addHoldingsToPortfolioDistribution(Portfolio portfolio, PortfolioDistribution portfolioDistribution) {
+        portfolio.getHoldings()
+                .forEach(e -> {
+                    Map<String, Double> price = getSymbolHistoricPriceHelper.getPrice(e.getSymbol());
+                    BigDecimal btcprice = BigDecimal.valueOf(price.get(BTC) != null ? price.get(BTC) : 0d);
+                    BigDecimal usdtprice = BigDecimal.valueOf(price.get(USDT) != null ? price.get(USDT) : 0d);
+                    // TODO: use converter to create this HoldingDto.
+                    portfolioDistribution.getHoldings().add(HoldingDto.builder()
+                            .symbol(e.getSymbol())
+                            .amount(e.getAmount())
+                            .priceInBtc(btcprice)
+                            .priceInUsdt(usdtprice)
+                            .amountInBtc(BTC.equals(e.getSymbol()) ? e.getAmount() :
+                                    btcprice.multiply(e.getAmount()))
+                            .amountInUsdt(USDT.equals(e.getSymbol()) ? e.getAmount() :
+                                    usdtprice.multiply(e.getAmount()))
+                            .totalAmountBought(e.getTotalAmountBought())
+                            .totalAmountSold(e.getTotalAmountSold())
+                            .stableTotalCost(e.getStableTotalCost())
+                            .currentPositionInUsdt(e.getCurrentPositionInUsdt())
+                            .build());
+                }
+        );
     }
 
     private HoldingDto updateHolding(HoldingDto e, Portfolio portfolio) {

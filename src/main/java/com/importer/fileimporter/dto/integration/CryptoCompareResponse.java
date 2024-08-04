@@ -14,6 +14,7 @@ import java.util.List;
 
 @Data
 @NoArgsConstructor
+@Setter
 public class CryptoCompareResponse {
 
     @JsonProperty("Response")

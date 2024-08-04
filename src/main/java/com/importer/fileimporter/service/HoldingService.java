@@ -34,7 +34,7 @@ public class HoldingService {
     }
 
     public Holding getHoldingByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return holdingRepository.findBySymbolAndPortfolioName(portfolio.getName(), symbol)
+        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName())
                 .orElse(Holding.builder()
                                 .portfolio(portfolio)
                                 .symbol(symbol)

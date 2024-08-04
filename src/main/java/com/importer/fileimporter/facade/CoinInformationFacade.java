@@ -6,18 +6,21 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
+import com.importer.fileimporter.service.SymbolService;
 import com.importer.fileimporter.service.TransactionService;
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -29,6 +32,18 @@ public class CoinInformationFacade {
     private final PricingFacade pricingFacade;
     private final HoldingService holdingService;
     private final PortfolioService portfolioService;
+    private final SymbolService symbolService;
+
+    public List<CoinInformationResponse> getTransactionsInformation() {
+        return getTransactionsInformation();
+    }
+
+    public List<CoinInformationResponse> getPortfolioTransactionsInformation(String portfolio) {
+        return symbolService.getAllSymbols().stream()
+                .distinct()
+                .map(this::getTransactionsInformation)
+                .collect(Collectors.toList());
+    }
 
     public CoinInformationResponse getTransactionsInformation(String symbol) {
         List<Transaction> transactions = transactionService.getAllBySymbol(symbol);
@@ -43,9 +58,10 @@ public class CoinInformationFacade {
         return response;
     }
 
-    BigDecimal calculateAndSetAmountsOnlyInStable(String symbol, List<Transaction> transactions, CoinInformationResponse response) {
+    BigDecimal calculateAndSetAmountsOnlyInStable(String symbol, List<Transaction> transactions,
+                                                  CoinInformationResponse response) {
         BigDecimal totalHeldAmount = BigDecimal.ZERO;
-        BigDecimal totalCost = BigDecimal.ZERO;
+        BigDecimal totalCostInStable = BigDecimal.ZERO;
         List<Transaction> transactionsSelling = new ArrayList<>();
 
         for (Transaction transaction : transactions) {
@@ -55,7 +71,7 @@ public class CoinInformationFacade {
             if (isBuy) {
                 totalHeldAmount = totalHeldAmount.add(executed);
                 BigDecimal paidAmountInStable = calculateAmountSpent.getAmountSpentInUsdt(transaction, response);// here we are setting spent
-                totalCost = totalCost.add(paidAmountInStable);
+                totalCostInStable = totalCostInStable.add(paidAmountInStable);
                 response.addTotalAmountBought(executed, transaction.getTransactionId().getSide());
             } else {
                 transactionsSelling.add(transaction);
@@ -76,14 +92,14 @@ public class CoinInformationFacade {
 
             BigDecimal amountSpentInUsdt = calculateAmountSpent.getAmountSpentInUsdt(transaction, response);
             realizedProfit = realizedProfit.subtract(amountSpentInUsdt);
-            totalCost = totalCost.subtract(amountSpentInUsdt);
+            totalCostInStable = totalCostInStable.subtract(amountSpentInUsdt);
             response.addTotalAmountSold(executed, transaction.getTransactionId().getSide());
         }
 
         response.setRealizedProfit(realizedProfit);
         response.setAmount(totalHeldAmount);
 
-        BigDecimal currentMarketPrice = pricingFacade.getCurrentMarketPrice(transactions.get(0).getSymbol());
+        BigDecimal currentMarketPrice = pricingFacade.getCurrentMarketPrice(symbol);
         response.setCurrentPrice(currentMarketPrice);
 
         BigDecimal currentMarketValue = currentMarketPrice.multiply(totalHeldAmount);
@@ -91,15 +107,24 @@ public class CoinInformationFacade {
 
         // TODO: is this the same? what
         response.setUnrealizedProfit(currentMarketValue);
-        response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(totalCost));
+        response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(totalCostInStable));
 
-        // Update portfolio holding
-        Optional<Portfolio> portfolio = portfolioService.getByName("Binance");
-        Holding holding = holdingService.getHoldingByPortfolioAndSymbol(portfolio.get(), symbol);
-        holding.setAmount(totalHeldAmount);
-        holding.setAmountInUsdt(currentMarketValue);
-        holdingService.save(holding);
+        setAndSaveHolding(symbol, response);
 
         return totalHeldAmount;
+    }
+
+    private void setAndSaveHolding(String symbol, CoinInformationResponse response) {
+        Portfolio portfolio = portfolioService.getByName("Binance")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
+        Holding holding = holdingService.getHoldingByPortfolioAndSymbol(portfolio, symbol);
+        holding.setAmount(response.getAmount());
+        holding.setTotalAmountBought(response.getTotalAmountBought());
+        holding.setTotalAmountSold(response.getTotalAmountSold());
+        holding.setStableTotalCost(response.getStableTotalCost());
+        holding.setCurrentPositionInUsdt(response.getCurrentPositionInUsdt());
+        holding.setTotalRealizedProfitUsdt(response.getTotalRealizedProfitUsdt());
+        holding.setAmountInUsdt(response.getUnrealizedProfit());
+        holdingService.save(holding);
     }
 }

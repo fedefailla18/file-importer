@@ -9,16 +9,21 @@ import java.util.stream.Collectors;
 public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
 
     @Override
-    public HoldingDto createFrom(Holding holding) {
+    public HoldingDto createFrom(Holding source) {
         return HoldingDto.builder()
-                .symbol(holding.getSymbol())
-                .amount(holding.getAmount())
-                .portfolioName(holding.getPortfolio().getName())
-                .percentage(holding.getPercent())
-                .amountInBtc(holding.getAmountInBtc())
-                .amountInUsdt(holding.getAmountInUsdt())
-                .priceInBtc(holding.getPriceInBtc())
-                .priceInUsdt(holding.getPriceInUsdt())
+                .symbol(source.getSymbol())
+                .amount(source.getAmount())
+                .portfolioName(source.getPortfolio().getName())
+                .percentage(source.getPercent())
+                .amountInBtc(source.getAmountInBtc())
+                .amountInUsdt(source.getAmountInUsdt())
+                .priceInBtc(source.getPriceInBtc())
+                .priceInUsdt(source.getPriceInUsdt())
+                .totalAmountBought(source.getTotalAmountBought())
+                .totalAmountSold(source.getTotalAmountSold())
+                .stableTotalCost(source.getStableTotalCost())
+                .currentPositionInUsdt(source.getCurrentPositionInUsdt())
+                .totalRealizedProfitUsdt(source.getTotalRealizedProfitUsdt())
                 .build();
     }
 
