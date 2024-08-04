@@ -5,6 +5,7 @@ import com.importer.fileimporter.entity.PriceHistory;
 import com.importer.fileimporter.repository.PriceHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,7 +22,8 @@ public class PriceHistoryService {
 
     private final PriceHistoryRepository repository;
 
-    public List<PriceHistory> saveAll(String symbolPair, String usdt, CryptoCompareResponse cryptoCompareResponse) {
+    @Async("asyncExecutor")
+    public void saveAll(String symbolPair, String usdt, CryptoCompareResponse cryptoCompareResponse) {
 
         List<CryptoCompareResponse.ChartData> dataList = cryptoCompareResponse.getData().getChartDataList();
 
@@ -29,6 +31,7 @@ public class PriceHistoryService {
 
         if (chartDataNotStored.isEmpty()) {
             log.info("No new data to store");
+            return;
         }
 
         List<PriceHistory> pricesHistory = chartDataNotStored.stream().map(e -> {
@@ -50,7 +53,7 @@ public class PriceHistoryService {
                     .build();
         }).collect(Collectors.toList());
 
-        return repository.saveAll(pricesHistory);
+        repository.saveAll(pricesHistory);
     }
 
     private List<CryptoCompareResponse.ChartData> validateData(String symbolPair, String usdt, List<CryptoCompareResponse.ChartData> dataList) {

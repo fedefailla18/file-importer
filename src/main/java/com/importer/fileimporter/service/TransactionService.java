@@ -1,5 +1,6 @@
 package com.importer.fileimporter.service;
 
+import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.entity.TransactionId;
 import com.importer.fileimporter.repository.TransactionRepository;
@@ -51,6 +52,15 @@ public class TransactionService {
                                        String pair, String side,
                                        BigDecimal price, BigDecimal executed,
                                        BigDecimal amount, BigDecimal fee, String origin) {
+        return saveTransaction(coinName, symbolPair, date, pair, side, price, executed, amount, fee, origin, null);
+    }
+
+    public Transaction saveTransaction(String coinName,
+                                       String symbolPair, String date,
+                                       String pair, String side,
+                                       BigDecimal price, BigDecimal executed,
+                                       BigDecimal amount, BigDecimal fee, String origin,
+                                       Portfolio portfolio) {
         LocalDateTime dateTime = DateUtils.getLocalDateTime(date);
 
         TransactionId transactionId = TransactionId.builder()
@@ -71,6 +81,7 @@ public class TransactionService {
                 .feeAmount(fee)
                 .modified(LocalDateTime.now())
                 .modifiedBy(origin)
+                .portfolio(portfolio)
                 .build();
 
         return transactionRepository.save(transaction);

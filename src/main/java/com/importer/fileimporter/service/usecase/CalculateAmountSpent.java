@@ -52,7 +52,7 @@ public class CalculateAmountSpent {
      * @param response
      * @return
      */
-    BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response) {
+    public BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response) {
         String paidWithSymbol = transaction.getPayedWith();
         BigDecimal paidAmount = transaction.getPayedAmount();
         BigDecimal executed = transaction.getTransactionId().getExecuted();

@@ -59,7 +59,7 @@ public class PricingFacade {
     }
 
     public BigDecimal getCurrentMarketPrice(String symbol) {
-        return BigDecimal.valueOf(getSymbolHistoricPriceHelper.getPrice(symbol).get(USDT));
+        return getSymbolHistoricPriceHelper.getCurrentMarketPriceInUSDT(symbol);
     }
 
     public Map<String, Double> getPrices(List<String> symbol) {

@@ -110,7 +110,7 @@ class TransactionServiceSpec extends Specification {
                 .build()
 
         when:
-        def result = transactionService.saveTransaction(coinName, symbolPair, date, pair, side, price, executed, amount, fee, origin)
+        def result = transactionService.saveTransaction(coinName, symbolPair, date, pair, side, price, executed, amount, fee, origin, portfolio)
 
         then:
         1 * transactionRepository.save(_) >> transaction

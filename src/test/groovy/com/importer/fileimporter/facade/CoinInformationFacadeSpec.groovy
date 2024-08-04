@@ -1,8 +1,13 @@
 package com.importer.fileimporter.facade
 
 import com.importer.fileimporter.dto.CoinInformationResponse
+import com.importer.fileimporter.entity.Holding
+import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.entity.TransactionId
+import com.importer.fileimporter.service.HoldingService
+import com.importer.fileimporter.service.PortfolioService
+import com.importer.fileimporter.service.SymbolService
 import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import spock.lang.Specification
@@ -14,8 +19,12 @@ class CoinInformationFacadeSpec extends Specification {
     def calculateAmountSpent = Mock(CalculateAmountSpent)
     def transactionService = Mock(TransactionService)
     def pricingFacade = Mock(PricingFacade)
+    def holdingService = Mock(HoldingService)
+    def portfolioService = Mock(PortfolioService)
+    def symbolService = Mock(SymbolService)
 
-    def sut = new CoinInformationFacade(calculateAmountSpent, transactionService, pricingFacade)
+    def sut = new CoinInformationFacade(calculateAmountSpent, transactionService, pricingFacade,
+        holdingService, portfolioService, symbolService)
 
     def "should handle no transactions"() {
         given:
@@ -42,6 +51,17 @@ class CoinInformationFacadeSpec extends Specification {
         given: "A list of transactions and a symbol"
         def symbol = "RLC"
         def transactions = getTestTransactions()
+        def portfolio = new Portfolio()
+        def holding = new Holding().tap {
+            it.symbol = symbol
+            it.amount = 0
+            it.totalRealizedProfitUsdt = 0
+        }
+
+        transactionService.getAllBySymbol(symbol) >> transactions
+        portfolioService.getByName("Binance") >> Optional.of(portfolio)
+        holdingService.getHoldingByPortfolioAndSymbol(portfolio, symbol) >> holding
+        holdingService.save(_ as Holding) >> holding
 
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> { Transaction transaction, CoinInformationResponse response ->
@@ -58,22 +78,31 @@ class CoinInformationFacadeSpec extends Specification {
 
         then: "The response should contain correct transaction information"
         response.coinName == "RLC"
-        response.amount == new BigDecimal("80") // 200 bought - 120 sold
+        response.amount == 80
         response.totalAmountBought == new BigDecimal("200")
         response.totalAmountSold == new BigDecimal("120")
-//        response.realizedProfit == new BigDecimal("110.5") // (2.15 * 70 + 1.60 * 50) - 200 - 150.5 - 80
-//        response.unrealizedProfit == new BigDecimal("80") // (80 * 2) - (200 + 150.5 + 80 - 150.78 - 91)
         response.currentPositionInUsdt == new BigDecimal("160") // 80 * 2
-//        response.avgEntryPrice.get("USDT") == new BigDecimal("599.995").divide(new BigDecimal("80"), 9, RoundingMode.HALF_UP)
-    }
 
+        and: "holding has copied response fields"
+        checkCopiedFields(holding, response)
+    }
 
     def "should calculate transaction information for a given symbol"() {
         given: "A list of transactions and a symbol"
         def symbol = "RLC"
         def transactions = getTestTransactions()
-
+        def portfolio = new Portfolio()
+        def holding = new Holding().tap {
+            it.symbol = symbol
+            it.amount = 0
+            it.totalRealizedProfitUsdt = 0
+        }
+        and: "holding calls"
         transactionService.getAllBySymbol(symbol) >> transactions
+        portfolioService.getByName("Binance") >> Optional.of(portfolio)
+        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.save(_ as Holding) >> holding
+        and:
         calculateAmountSpent.execute(symbol, transactions, _ as CoinInformationResponse) >> new BigDecimal("599.9950000000")
         pricingFacade.getCurrentMarketPrice(symbol) >> 2
 
@@ -97,7 +126,19 @@ class CoinInformationFacadeSpec extends Specification {
         String symbol = "RLC"
         List<Transaction> transactions = getTestTransactions()
         def currentMarketPrice = 2
+        def portfolio = new Portfolio()
+        def holding = new Holding().tap {
+            it.symbol = symbol
+            it.amount = 0
+            it.totalRealizedProfitUsdt = 0
+        }
+        and: "holding calls"
+        transactionService.getAllBySymbol(symbol) >> transactions
+        portfolioService.getByName("Binance") >> Optional.of(portfolio)
+        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.save(_ as Holding) >> holding
 
+        and:
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> { Transaction transaction, CoinInformationResponse response ->
             return transaction.payedAmount
@@ -130,7 +171,19 @@ class CoinInformationFacadeSpec extends Specification {
                         payedAmount: new BigDecimal("500"),
                 )
         ]
+        def portfolio = new Portfolio()
+        def holding = new Holding().tap {
+            it.symbol = symbol
+            it.amount = 0
+            it.totalRealizedProfitUsdt = 0
+        }
+        and: "holding calls"
+        transactionService.getAllBySymbol(symbol) >> transactions
+        portfolioService.getByName("Binance") >> Optional.of(portfolio)
+        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.save(_ as Holding) >> holding
 
+        and:
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> 500
         pricingFacade.getCurrentMarketPrice(symbol) >> 500
@@ -164,7 +217,19 @@ class CoinInformationFacadeSpec extends Specification {
                         payedAmount: 250,
                 )
         ]
+        def portfolio = new Portfolio()
+        def holding = new Holding().tap {
+            it.symbol = symbol
+            it.amount = 0
+            it.totalRealizedProfitUsdt = 0
+        }
+        and: "holding calls"
+        transactionService.getAllBySymbol(symbol) >> transactions
+        portfolioService.getByName("Binance") >> Optional.of(portfolio)
+        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.save(_ as Holding) >> holding
 
+        and:
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> 500
         pricingFacade.getCurrentMarketPrice(symbol) >> 2000
@@ -194,7 +259,19 @@ class CoinInformationFacadeSpec extends Specification {
                         payedAmount: 200
                 )
         ]
+        def portfolio = new Portfolio()
+        def holding = new Holding().tap {
+            it.symbol = symbol
+            it.amount = 0
+            it.totalRealizedProfitUsdt = 0
+        }
+        and: "holding calls"
+        transactionService.getAllBySymbol(symbol) >> transactions
+        portfolioService.getByName("Binance") >> Optional.of(portfolio)
+        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.save(_ as Holding) >> holding
 
+        and:
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> 500
         pricingFacade.getCurrentMarketPrice(symbol) >> 1000
@@ -273,5 +350,15 @@ class CoinInformationFacadeSpec extends Specification {
                 transactionId: transactionId,
                 payedAmount: payedAmount
         )
+    }
+
+    def checkCopiedFields(holding, response) {
+        holding.amount == response.amount
+        holding.totalAmountBought == response.totalAmountBought
+        holding.totalAmountSold == response.totalAmountSold
+        holding.stableTotalCost == response.stableTotalCost
+        holding.currentPositionInUsdt == response.currentPositionInUsdt
+        holding.totalRealizedProfitUsdt == response.realizedProfit
+        holding.amountInUsdt == response.currentPositionInUsdt
     }
 }

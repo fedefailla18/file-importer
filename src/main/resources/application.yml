@@ -1,6 +1,6 @@
 
 server:
-  port: 8088
+  port: 8080
   max-http-header-size: 16000
 logging:
   level:
@@ -10,7 +10,7 @@ spring:
   application:
     name: file-importer
   datasource:
-    url: jdbc:postgresql://localhost:5432/importer_database?currentSchema=file_importer_schema,public;
+    url: jdbc:postgresql://localhost:5432/file_importer_db?currentSchema=file_importer_schema,public;
     username: root
     password: password
     driver-class-name: org.postgresql.Driver
@@ -34,7 +34,7 @@ spring:
       max-file-size: 10MB
       max-request-size: 50MB
   liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.yaml
+    change-log: classpath:db/changelog/db.changelog-master.xml
     contexts: development, production
     default-schema: file_importer_schema
 

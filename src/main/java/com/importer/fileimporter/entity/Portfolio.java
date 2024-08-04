@@ -49,4 +49,8 @@ public class Portfolio {
     @JsonIgnore
     private List<Holding> holdings;
 
+    @OneToMany(mappedBy = "portfolio", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Transaction> transactions;
+
 }

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <include file="classpath:/db/changelog/changes/2023-09-03-001-initial-schema.sql"/>
+  <include file="classpath:/db/changelog/changes/2023-09-23-002-inserting-coins.sql"/>
+  <include file="classpath:/db/changelog/changes/2023-09-30-003-recording-transactions.sql"/>
+  <include file="classpath:/db/changelog/changes/2023-09-30-004-adding-user-and-roles.sql"/>
+  <include file="classpath:/db/changelog/changes/2023-11-26-005-transactions-symbol-pair.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-01-04-006-adding-composite-key-into-transactions.sql"/>
+  <!--
+  <include file="classpath:/db/changelog/changes/2024-01-04-007-making-transactions_id-nullable.sql"/>
+  -->
+  <include file="classpath:/db/changelog/changes/2024-02-25-008-creating-portfolio-distribution.sql"/>
+  <!--
+  <include file="classpath:/db/changelog/changes/2024-02-26-009-importing-binance-holdings.sql"/>
+  -->
+  <!--
+  <changeSet id="raw" context="integration-test" logicalFilePath="classpath:/db/changelog/changes/2024-02-26-009-importing-binance-holdings.sql">
+  <sqlFile path="classpath:/db/changelog/changes/2024-02-26-009-importing-binance-holdings.sql"/>
+  </changeSet>
+  -->
+  <include file="classpath:/db/changelog/changes/2024-02-26-010-adding-amountinothersymbol-in-holding.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-03-06-011-modifying-portfolio-holding-amount.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-03-06-012-adding-holding-prices.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-04-02-013-increase-decimals-in-holdings-price-amount.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-04-03-014-increase-decimals-in-transactions-price-amount.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-07-20-015-adding-transaction-portfolio.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-07-20-016-adding-relevant-fields-to-holdings.sql"/>
+  <include file="classpath:/db/changelog/changes/2024-07-20-18-integration-test-transactions.sql" context="integration-test"/>
+
+</databaseChangeLog>

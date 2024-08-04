@@ -1,11 +1,15 @@
 package com.importer.fileimporter
 
+import com.importer.fileimporter.repository.PriceHistoryRepository
 import com.importer.fileimporter.service.CryptoCompareProxy
 import com.importer.fileimporter.service.FileImporterService
+import com.importer.fileimporter.service.SymbolService
+import com.importer.fileimporter.service.TransactionService
 import org.junit.ClassRule
 import org.postgresql.Driver
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.mock.mockito.MockBean
@@ -27,8 +31,20 @@ abstract class BaseIntegrationSpec extends Specification {
     @Autowired
     FileImporterService fileImporterService
 
+    @Autowired
+    TransactionService transactionService
+
+    @Autowired
+    SymbolService symbolService
+
     @MockBean
     CryptoCompareProxy cryptoCompareProxy
+
+    @Autowired
+    PriceHistoryRepository priceHistoryRepository
+
+    @Autowired
+    TestEntityManager entityManager
 
     // Define a PostgreSQL container
     @ClassRule
