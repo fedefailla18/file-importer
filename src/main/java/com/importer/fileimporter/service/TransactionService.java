@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
@@ -89,5 +90,9 @@ public class TransactionService {
 
     public void deleteTransactions() {
         transactionRepository.deleteAll();
+    }
+
+    public List<Transaction> findByPortfolio(Portfolio portfolio) {
+        return transactionRepository.findAllByPortfolio(portfolio);
     }
 }
