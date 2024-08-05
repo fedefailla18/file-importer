@@ -3,6 +3,7 @@ package com.importer.fileimporter
 import com.importer.fileimporter.repository.PriceHistoryRepository
 import com.importer.fileimporter.service.CryptoCompareProxy
 import com.importer.fileimporter.service.FileImporterService
+import com.importer.fileimporter.service.PortfolioService
 import com.importer.fileimporter.service.SymbolService
 import com.importer.fileimporter.service.TransactionService
 import org.junit.ClassRule
@@ -37,14 +38,17 @@ abstract class BaseIntegrationSpec extends Specification {
     @Autowired
     SymbolService symbolService
 
-    @MockBean
-    CryptoCompareProxy cryptoCompareProxy
+    @Autowired
+    PortfolioService portfolioService
 
     @Autowired
     PriceHistoryRepository priceHistoryRepository
 
     @Autowired
     TestEntityManager entityManager
+
+    @MockBean
+    CryptoCompareProxy cryptoCompareProxy
 
     // Define a PostgreSQL container
     @ClassRule

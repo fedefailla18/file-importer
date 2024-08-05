@@ -1,7 +1,7 @@
 package com.importer.fileimporter.controller;
 
 import com.importer.fileimporter.dto.FileInformationResponse;
-import com.importer.fileimporter.service.ProcessFile;
+import com.importer.fileimporter.service.ProcessFileFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +18,7 @@ import java.io.IOException;
 @Slf4j
 public class WebController {
 
-    private final ProcessFile processFile;
+    private final ProcessFileFactory processFile;
 
     @GetMapping
     public FileInformationResponse salutation2(@RequestBody MultipartFile file) throws IOException {

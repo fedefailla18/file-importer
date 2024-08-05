@@ -14,7 +14,7 @@ class ProcessFileIntegrationSpec extends BaseIntegrationSpec {
 
     @Autowired
     @Subject
-    ProcessFile processFile
+    ProcessFileV1 processFile
 
     def "should process file and return file information response"() {
         given: "a multipart file with transaction data and predefined symbols"
