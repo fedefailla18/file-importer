@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
@@ -27,7 +28,9 @@ public class TransactionService {
         if (symbol != null && (startDate == null && endDate == null)) {
             return getAllBySymbol(symbol, pageable);
         }
-        return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),
+        LocalDateTime startDate1 = Optional.ofNullable(startDate)
+                .map(LocalDate::atStartOfDay).orElse(null);
+        return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate1,
                 endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable);
     }
 
@@ -89,5 +92,9 @@ public class TransactionService {
 
     public void deleteTransactions() {
         transactionRepository.deleteAll();
+    }
+
+    public List<Transaction> findByPortfolio(Portfolio portfolio) {
+        return transactionRepository.findAllByPortfolio(portfolio);
     }
 }

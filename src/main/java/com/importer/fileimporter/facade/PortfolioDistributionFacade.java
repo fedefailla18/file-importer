@@ -7,7 +7,6 @@ import com.importer.fileimporter.entity.Holding;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
-import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
 import com.importer.fileimporter.service.SymbolService;
@@ -51,7 +50,7 @@ public class PortfolioDistributionFacade {
     private final SymbolService symbolService;
     private final PortfolioService portfolioService;
     private final HoldingService holdingService;
-    private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
+    private final PricingFacade pricingFacade;
 
     public HoldingDto addPortfolioHolding(AddHoldingRequest request) {
         Symbol savedSymbol = symbolService.findOrSaveSymbol(request.getSymbol(), request.getName());
@@ -64,12 +63,18 @@ public class PortfolioDistributionFacade {
                 .orElse(null);
     }
 
-    public HoldingDto getHolding(String symbol) {
+    public HoldingDto getHolding(String portfolioName, String symbol) {
         Symbol foundSymbol = symbolService.findSymbol(symbol);
-        return Optional.ofNullable(
-                holdingService.getHolding(foundSymbol.getSymbol()))
-                .map(HoldingConverter.Mapper::createFrom)
-                .orElse(null);
+        Optional<Portfolio> portfolio = getByName(portfolioName);
+        return portfolio.flatMap(p ->
+                        Optional.ofNullable(
+                                holdingService.getHolding(p, foundSymbol.getSymbol()))
+                        .map(HoldingConverter.Mapper::createFrom))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
+    }
+
+    private Optional<Portfolio> getByName(String portfolioName) {
+        return portfolioService.getByName(portfolioName);
     }
 
     public PortfolioDistribution getPortfolioByName(String name) {
@@ -77,15 +82,14 @@ public class PortfolioDistributionFacade {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing param.");
         }
         if (Objects.equals(name.toLowerCase(Locale.ROOT), "all")) {
-            List<Portfolio> portfolios = portfolioService.getAll();
-            return getPortfolios(portfolios);
+            return calculateAllPortfolioInBtcAndUsdt();
         }
-        Portfolio portfolio = portfolioService.getByName(name)
+        Portfolio portfolio = getByName(name)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Porfolio not found."));
         List<Holding> holdings = portfolio.getHoldings().stream()
-                .filter(e -> e.getAmount().compareTo(BigDecimal.ZERO) != 0 &&
-                        !e.getSymbol().equals("BTC"))
-                .sorted(Comparator.comparing(Holding::getPercent).reversed())
+////                .filter(e -> e.getAmount().compareTo(BigDecimal.ZERO) != 0 &&
+////                        !e.getSymbol().equals("BTC"))
+//                .sorted(Comparator.comparing(Holding::getPercent).reversed())
                 .collect(Collectors.toList());
         return PortfolioDistribution.builder()
                 .portfolioName(portfolio.getName())
@@ -98,11 +102,16 @@ public class PortfolioDistributionFacade {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing param.");
         }
         if (Objects.equals(name.toLowerCase(Locale.ROOT), "all")) {
-            List<Portfolio> portfolios = portfolioService.getAll();
-            return getPortfolios(portfolios);
+            return calculateAllPortfolioInBtcAndUsdt();
         }
-        Portfolio portfolio = portfolioService.findOrSave(name);
+        Portfolio portfolio = getByName(name)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
         return calculatePortfolioInBtcAndUsdt(portfolio);
+    }
+
+    private PortfolioDistribution calculateAllPortfolioInBtcAndUsdt() {
+        List<Portfolio> portfolios = portfolioService.getAll();
+        return getPortfolios(portfolios);
     }
 
     @Transactional
@@ -137,9 +146,16 @@ public class PortfolioDistributionFacade {
     private void addHoldingsToPortfolioDistribution(Portfolio portfolio, PortfolioDistribution portfolioDistribution) {
         portfolio.getHoldings()
                 .forEach(e -> {
-                    Map<String, Double> price = getSymbolHistoricPriceHelper.getPrice(e.getSymbol());
-                    BigDecimal btcprice = BigDecimal.valueOf(price.get(BTC) != null ? price.get(BTC) : 0d);
-                    BigDecimal usdtprice = BigDecimal.valueOf(price.get(USDT) != null ? price.get(USDT) : 0d);
+                    Map<String, Double> price = pricingFacade.getPrices(e.getSymbol());
+                    BigDecimal btcprice;
+                    BigDecimal usdtprice;
+                    if (price.get(BTC) != null) {
+                        btcprice = BigDecimal.valueOf(price.get(BTC));
+                        usdtprice = BigDecimal.valueOf(price.get(USDT));
+                    } else {
+                        btcprice = BigDecimal.ZERO;
+                        usdtprice = BigDecimal.ZERO;
+                    }
                     // TODO: use converter to create this HoldingDto.
                     portfolioDistribution.getHoldings().add(HoldingDto.builder()
                             .symbol(e.getSymbol())

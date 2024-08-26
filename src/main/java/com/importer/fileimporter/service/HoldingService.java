@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -30,11 +31,11 @@ public class HoldingService {
     }
 
     public Optional<Holding> getByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
+        return getBySymbolAndPortfolioName(portfolio, symbol);
     }
 
-    public Holding getHoldingByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName())
+    public Holding getOrCreateByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
+        return getBySymbolAndPortfolioName(portfolio, symbol)
                 .orElse(Holding.builder()
                                 .portfolio(portfolio)
                                 .symbol(symbol)
@@ -43,6 +44,9 @@ public class HoldingService {
                                 .build());
     }
 
+    private Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
+        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
+    }
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
         return holdingRepository.findAllByPortfolio(portfolio);
@@ -90,12 +94,18 @@ public class HoldingService {
                 .build());
     }
 
-    public Holding getHolding(String symbol) {
-        return holdingRepository.getBySymbol(symbol)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbol not found"));
+    public Holding getHolding(Portfolio portfolio, String symbol) {
+        return holdingRepository.findByPortfolioAndSymbol(portfolio, symbol)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Holding not found"));
     }
 
     public Holding save(Holding holding) {
         return holdingRepository.save(holding);
+    }
+
+    public List<HoldingDto> getBySymbol(String symbol) {
+        return holdingRepository.findAllBySymbol(symbol).stream()
+                .map(HoldingConverter.Mapper::createFrom)
+                .collect(Collectors.toList());
     }
 }

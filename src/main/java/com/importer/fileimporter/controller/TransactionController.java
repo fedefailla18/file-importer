@@ -5,7 +5,7 @@ import com.importer.fileimporter.dto.FileInformationResponse;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.facade.CoinInformationFacade;
-import com.importer.fileimporter.service.ProcessFile;
+import com.importer.fileimporter.service.ProcessFileFactory;
 import com.importer.fileimporter.service.TransactionFacade;
 import com.importer.fileimporter.service.TransactionService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +17,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,7 +35,7 @@ import java.util.List;
 @Slf4j
 public class TransactionController {
 
-    private final ProcessFile processFile;
+    private final ProcessFileFactory processFileFactory;
     private final TransactionService transactionService;
     private final TransactionFacade transactionFacade;
     private final CoinInformationFacade coinInformationFacade;
@@ -47,14 +48,19 @@ public class TransactionController {
         return transactionService.getTransactionsByRangeDate(symbol, startDate, endDate, pageable);
     }
 
-    @GetMapping("/information")
+    @PostMapping("/information")
     public CoinInformationResponse getSymbolInformation(@RequestParam String symbol) {
-        return coinInformationFacade.getTransactionsInformation(symbol);
+        return coinInformationFacade.getTransactionsInformationBySymbol(symbol);
     }
 
-    @GetMapping("/information/all")
+    @PostMapping("/information/all")
     public List<CoinInformationResponse> getInformation() {
         return coinInformationFacade.getTransactionsInformation();
+    }
+
+    @PostMapping("/information/all/{portfolio}")
+    public List<CoinInformationResponse> getInformation(@PathVariable String portfolio) {
+        return coinInformationFacade.getPortfolioTransactionsInformation(portfolio);
     }
 
     @PostMapping(value = "/upload")
@@ -63,16 +69,26 @@ public class TransactionController {
         if (file.isEmpty()) {
             return null;
         }
-        return processFile.processFile(file, symbols);
+        return processFileFactory.processFile(file, symbols);
+    }
+
+    @PostMapping(value = "/upload/{portfolio}")
+    public FileInformationResponse uploadTransactionsWithPortfolio(@RequestBody MultipartFile file,
+                                                                   @RequestParam(required = false) List<String> symbols,
+                                                                   @PathVariable String portfolio) throws IOException {
+        if (file.isEmpty()) {
+            return null;
+        }
+        return processFileFactory.processFile(file, symbols, portfolio);
     }
 
     @GetMapping(value = "/portfolio")
-    public List<TransactionHoldingDto> createPortfolio(@RequestParam(required = false) List<String> symbols) throws IOException {
+    public List<TransactionHoldingDto> createPortfolio(@RequestParam(required = false) List<String> symbols) {
         return transactionFacade.buildPortfolio(symbols);
     }
 
     @GetMapping(value = "/portfolio/amount")
-    public List<TransactionHoldingDto> getAmount(@RequestParam(required = false) List<String> symbols) throws IOException {
+    public List<TransactionHoldingDto> getAmount(@RequestParam(required = false) List<String> symbols) {
         return transactionFacade.getAmount(symbols);
     }
 

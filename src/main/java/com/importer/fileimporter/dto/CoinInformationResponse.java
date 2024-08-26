@@ -23,7 +23,7 @@ import static java.math.BigDecimal.ZERO;
  * amount: is the executed amount held of the coin
  * totalAmountBought: is the executed amount bought
  * totalAmountSold: is the executed amount historically sold
- * stableTotalCost: is the total amount payed
+ * stableTotalCost: is the total amount paid
  * currentPositionInUsdt: is the amount times the current price
  * spent: is use to keep track of the spent amount by symbolPair
  *

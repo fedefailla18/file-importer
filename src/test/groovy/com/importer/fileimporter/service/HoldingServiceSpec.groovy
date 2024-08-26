@@ -138,10 +138,10 @@ class HoldingServiceSpec extends Specification {
         def holding = new Holding(symbol: "BTC")
 
         when:
-        def result = holdingService.getHolding(symbol)
+        def result = holdingService.getHolding(new Portfolio(), symbol)
 
         then:
-        1 * holdingRepository.getBySymbol(symbol) >> Optional.of(holding)
+        1 * holdingRepository.findByPortfolioAndSymbol(_, symbol) >> Optional.of(holding)
         result == holding
     }
 
@@ -150,10 +150,10 @@ class HoldingServiceSpec extends Specification {
         def symbol = "BTC"
 
         when:
-        holdingService.getHolding(symbol)
+        holdingService.getHolding(new Portfolio(), symbol)
 
         then:
-        1 * holdingRepository.getBySymbol(symbol) >> Optional.empty()
+        1 * holdingRepository.findByPortfolioAndSymbol(_ as Portfolio, symbol) >> Optional.empty()
         thrown(ResponseStatusException)
     }
 }

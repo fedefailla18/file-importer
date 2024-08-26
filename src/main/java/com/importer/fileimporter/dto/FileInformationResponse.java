@@ -14,10 +14,9 @@ import java.util.Collection;
 @AllArgsConstructor
 public class FileInformationResponse {
 
+    private String portfolio;
     private int amount;
-
     private BigDecimal totalSpent;
-
     private Collection<CoinInformationResponse> coinInformationResponse;
 
 }

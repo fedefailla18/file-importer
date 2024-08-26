@@ -9,6 +9,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,7 +56,14 @@ public class PricingFacade {
     }
 
     public Map<String, Double> getPrices(String symbol) {
-        return getSymbolHistoricPriceHelper.getPrice(symbol);
+        Map<String, Number> price = getSymbolHistoricPriceHelper.getPrice(symbol);
+        Map<String, Double> priceAsDouble = new HashMap<>();
+
+        for (Map.Entry<String, Number> entry : price.entrySet()) {
+            priceAsDouble.put(entry.getKey(), entry.getValue().doubleValue());
+        }
+
+        return priceAsDouble;
     }
 
     public BigDecimal getCurrentMarketPrice(String symbol) {

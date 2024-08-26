@@ -1,5 +1,6 @@
 package com.importer.fileimporter.repository;
 
+import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.entity.TransactionId;
 import org.springframework.data.domain.Page;
@@ -32,4 +33,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Transa
                                                   @Param("startDate") LocalDateTime startDate,
                                                   @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
+    List<Transaction> findAllByPortfolio(Portfolio portfolio);
 }

@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 
 class PriceHistoryFactory {
 
-    def PriceHistory createEntity() {
+    static PriceHistory createEntity() {
         return PriceHistory.builder()
                 .name("Sample Price History")
                 .time(LocalDateTime.now())

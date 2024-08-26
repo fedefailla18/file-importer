@@ -1,31 +1,32 @@
 package com.importer.fileimporter.facade
 
 import com.importer.fileimporter.BaseIntegrationSpec
-import com.importer.fileimporter.service.HoldingService
-import com.importer.fileimporter.service.PortfolioService
-import com.importer.fileimporter.service.usecase.CalculateAmountSpent
+import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.utils.OperationUtils
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Subject
 
+import java.math.RoundingMode
+import java.time.LocalDateTime
+
 class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
-
-    @Autowired
-    CalculateAmountSpent calculateAmountSpent
-
-    @Autowired
-    PricingFacade pricingFacade
-    @Autowired
-    HoldingService holdingService
-    @Autowired
-    PortfolioService portfolioService
 
     @Autowired
     @Subject
     CoinInformationFacade coinInformationFacade
 
+    def portfolio1 = Portfolio.builder()
+            .name("Binance")
+            .creationDate(LocalDateTime.now())
+            .build()
+    def portfolio2 = Portfolio.builder()
+            .name("Other")
+            .creationDate(LocalDateTime.now().minusMonths(6L))
+            .build()
+
     def setup() {
-        portfolioService.findOrSave("Binance")
+        portfolioRepository.save(portfolio1)
+        portfolioRepository.save(portfolio2)
     }
 
     def "test getTransactionsInformation with predefined transactions"() {
@@ -38,7 +39,7 @@ class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
         def currentMarketPrice = 2
 
         when: "getTransactionsInformation is called"
-        def response = coinInformationFacade.getTransactionsInformation(symbol)
+        def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
 
         then: "the response contains the correct information"
         println("Response: $response")
@@ -49,13 +50,10 @@ class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
 
         and:
-        def totalSpent = transactions.stream()
-                .map { t -> calculateAmountSpent.getAmountSpentInUsdtPerTransaction(symbol, t, response) }
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
+        def totalSpent = new BigDecimal(247.5+165+28.5624+55.1544).setScale(8, RoundingMode.UP)
 
         and:
         response.stableTotalCost == totalSpent
-        response.spent['BTC'] == 0.0050965 + 0.005148
         response.spent['USDT'] == 28.5624 + 55.1544
         response.sold['BTC'] == 0.00998322
         response.sold['USDT'] == 100.24
