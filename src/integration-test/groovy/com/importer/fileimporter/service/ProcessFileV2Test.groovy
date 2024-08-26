@@ -20,6 +20,8 @@ class ProcessFileV2Test extends BaseIntegrationSpec {
     List<Map<String, String>> mockRows
     def symbolsInRows
 
+    def executedSymbols = ["SOL"," WAVES"," AEVO"," FET"," IMX"," XRP"," ETH"," BAND"," NEAR"," TIA"," ADA"," FTM"]
+
     def setup() {
         mockRows = IntegrationTestHelper.readCsvFile()
         symbolsInRows = mockRows.stream()
@@ -36,6 +38,7 @@ class ProcessFileV2Test extends BaseIntegrationSpec {
         def response = processFile.processFile(multipartFile, null, portfolioName)
 
         then: "file information response should contain the correct number of rows and transactions"
+        response.portfolio == portfolioName
         response.amount == mockRows.size()
 //        response.coinInformationResponse.size() == 12
         response.coinInformationResponse.each { coinInfo ->
@@ -45,7 +48,7 @@ class ProcessFileV2Test extends BaseIntegrationSpec {
         }
 
         and: "the portfolio should be created"
-        def portfolioCreated = portfolioService.getByName(portfolioName)
+        def portfolioCreated = portfolioRepository.findByName(portfolioName)
         portfolioCreated.isPresent()
 
         and: "transactions should be stored for the specific portfolio"
@@ -63,6 +66,7 @@ class ProcessFileV2Test extends BaseIntegrationSpec {
         def response = processFile.processFile(file, null, portfolioName)
 
         then: "file information response should contain the correct number of rows and transactions"
+        response.portfolio == portfolioName
         response.amount == mockRows.size()
 //        response.coinInformationResponse.size() == 2  // TODO: this is wrong as not only custom symbols are processed
         response.coinInformationResponse.each { coinInfo ->
@@ -72,7 +76,7 @@ class ProcessFileV2Test extends BaseIntegrationSpec {
         }
 
         and: "the portfolio should be created"
-        def portfolioCreated = portfolioService.getByName(portfolioName)
+        def portfolioCreated = portfolioRepository.findByName(portfolioName)
         portfolioCreated.isPresent()
 
         and: "transactions should be stored for the specific portfolio"

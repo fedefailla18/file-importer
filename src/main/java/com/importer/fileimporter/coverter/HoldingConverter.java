@@ -6,6 +6,7 @@ import com.importer.fileimporter.entity.Holding;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
 
     @Override

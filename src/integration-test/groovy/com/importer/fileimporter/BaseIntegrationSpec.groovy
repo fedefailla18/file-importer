@@ -1,11 +1,10 @@
 package com.importer.fileimporter
 
+import com.importer.fileimporter.facade.PricingFacade
+import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
-import com.importer.fileimporter.service.CryptoCompareProxy
-import com.importer.fileimporter.service.FileImporterService
-import com.importer.fileimporter.service.PortfolioService
-import com.importer.fileimporter.service.SymbolService
-import com.importer.fileimporter.service.TransactionService
+import com.importer.fileimporter.service.*
+import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import org.junit.ClassRule
 import org.postgresql.Driver
 import org.springframework.beans.factory.annotation.Autowired
@@ -36,16 +35,22 @@ abstract class BaseIntegrationSpec extends Specification {
     TransactionService transactionService
 
     @Autowired
-    SymbolService symbolService
-
-    @Autowired
-    PortfolioService portfolioService
+    PortfolioRepository portfolioRepository
 
     @Autowired
     PriceHistoryRepository priceHistoryRepository
 
     @Autowired
     TestEntityManager entityManager
+
+    @Autowired
+    CalculateAmountSpent calculateAmountSpent
+
+    @Autowired
+    PricingFacade pricingFacade
+
+    @Autowired
+    HoldingService holdingService
 
     @MockBean
     CryptoCompareProxy cryptoCompareProxy

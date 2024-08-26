@@ -48,17 +48,17 @@ public class TransactionController {
         return transactionService.getTransactionsByRangeDate(symbol, startDate, endDate, pageable);
     }
 
-    @GetMapping("/information")
+    @PostMapping("/information")
     public CoinInformationResponse getSymbolInformation(@RequestParam String symbol) {
-        return coinInformationFacade.getTransactionsInformation(symbol);
+        return coinInformationFacade.getTransactionsInformationBySymbol(symbol);
     }
 
-    @GetMapping("/information/all")
+    @PostMapping("/information/all")
     public List<CoinInformationResponse> getInformation() {
         return coinInformationFacade.getTransactionsInformation();
     }
 
-    @GetMapping("/information/all/{portfolio}")
+    @PostMapping("/information/all/{portfolio}")
     public List<CoinInformationResponse> getInformation(@PathVariable String portfolio) {
         return coinInformationFacade.getPortfolioTransactionsInformation(portfolio);
     }

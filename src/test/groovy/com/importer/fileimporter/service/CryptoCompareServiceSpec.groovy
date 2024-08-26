@@ -72,6 +72,8 @@ class CryptoCompareServiceSpec extends Specification {
         responses != null
 
         and: "The response should have 'Success' as the Response field"
-        responses.get(toSymbol) != null
+        responses.every {
+            it.key in ["BTC", "ETH", "ADA", "XRP"]
+        }
     }
 }

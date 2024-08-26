@@ -31,7 +31,7 @@ public class GetSymbolHistoricPriceHelper {
         return getPriceBySymbol(symbol, price, dateTime, USDT);
     }
 
-    public Map<String, Double> getPrice(String symbol) {
+    public Map<String, Number> getPrice(String symbol) {
         String symbols;
         if (BTC.equals(symbol)) {
             symbols = USDT;
@@ -44,9 +44,9 @@ public class GetSymbolHistoricPriceHelper {
     }
 
     public BigDecimal getCurrentMarketPriceInUSDT(String symbol) {
-        Map<String, Double> price = getPrice(symbol);
-        Double val = price.get(USDT);
-        return val == null ? BigDecimal.ZERO : BigDecimal.valueOf(val);
+        Map<String, Number> price = getPrice(symbol);
+        Number val = price.get(USDT);
+        return val == null ? BigDecimal.ZERO : BigDecimal.valueOf(val.doubleValue());
     }
 
     @NotNull
@@ -64,7 +64,7 @@ public class GetSymbolHistoricPriceHelper {
     }
 
     @NotNull
-    private Map<String, Double> getPricesAtDate(String symbol, String ...symbols) {
+    private Map<String, Number> getPricesAtDate(String symbol, String ...symbols) {
         String toSymbols = String.join(",", symbols);
         log.info("getting price for: " + symbol + " to: " + toSymbols);
         return cryptoCompareProxy.getData(symbol, toSymbols);

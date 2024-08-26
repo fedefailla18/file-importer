@@ -42,7 +42,7 @@ public class CalculateAmountSpent {
     }
 
     /**
-     * This method not only gets the payed amount in USDT per transaction but also keep track of other fields such as:
+     * This method not only gets the paid amount in USDT per transaction but also keep track of other fields such as:
      * spent: this field keeps the amount spent and since it's a key value pair, helps to keep track of the spent in each currency.
      * stableTotalCost: the total amount paid historically for this coin
      * totalRealizedProfit: the total amount sold historically. This is the gross usdt

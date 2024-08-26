@@ -32,6 +32,7 @@ public class ProcessFileV2 extends IProcessFile {
         Map<String, CoinInformationResponse> transactionDetailInformation = getTransactionDetailInformation(rows, symbols, portfolio);
 
         return FileInformationResponse.builder()
+                .portfolio(portfolio)
                 .amount(rows.size())
                 .coinInformationResponse(transactionDetailInformation.values())
                 .build();
@@ -52,7 +53,9 @@ public class ProcessFileV2 extends IProcessFile {
         return row -> {
             String pair = getPair(row);
             String symbol = getSymbolFromExecuted(row, symbols);
-            if (symbol.isEmpty()) return;
+            if (symbol.isEmpty()) {
+                return;
+            }
 
             try {
                 processTransactionRow(row, pair, symbol, transactionDetails, portfolio);

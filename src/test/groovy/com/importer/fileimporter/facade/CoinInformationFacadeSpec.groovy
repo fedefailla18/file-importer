@@ -7,7 +7,6 @@ import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.entity.TransactionId
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.PortfolioService
-import com.importer.fileimporter.service.SymbolService
 import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import spock.lang.Specification
@@ -21,10 +20,9 @@ class CoinInformationFacadeSpec extends Specification {
     def pricingFacade = Mock(PricingFacade)
     def holdingService = Mock(HoldingService)
     def portfolioService = Mock(PortfolioService)
-    def symbolService = Mock(SymbolService)
 
     def sut = new CoinInformationFacade(calculateAmountSpent, transactionService, pricingFacade,
-        holdingService, portfolioService, symbolService)
+        holdingService, portfolioService)
 
     def "should handle no transactions"() {
         given:
@@ -34,7 +32,7 @@ class CoinInformationFacadeSpec extends Specification {
         transactionService.getAllBySymbol(symbol) >> transactions
 
         when:
-        def response = sut.getTransactionsInformation(symbol)
+        def response = sut.getTransactionsInformationBySymbol(symbol)
 
         then:
         response.coinName == symbol
@@ -60,7 +58,7 @@ class CoinInformationFacadeSpec extends Specification {
 
         transactionService.getAllBySymbol(symbol) >> transactions
         portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getHoldingByPortfolioAndSymbol(portfolio, symbol) >> holding
+        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
         holdingService.save(_ as Holding) >> holding
 
         transactionService.getAllBySymbol(symbol) >> transactions
@@ -74,7 +72,7 @@ class CoinInformationFacadeSpec extends Specification {
         pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
 
         when: "The getTransactionsInformation method is called"
-        def response = sut.getTransactionsInformation(symbol)
+        def response = sut.getTransactionsInformationBySymbol(symbol)
 
         then: "The response should contain correct transaction information"
         response.coinName == "RLC"
@@ -100,14 +98,14 @@ class CoinInformationFacadeSpec extends Specification {
         and: "holding calls"
         transactionService.getAllBySymbol(symbol) >> transactions
         portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
         holdingService.save(_ as Holding) >> holding
         and:
         calculateAmountSpent.execute(symbol, transactions, _ as CoinInformationResponse) >> new BigDecimal("599.9950000000")
         pricingFacade.getCurrentMarketPrice(symbol) >> 2
 
         when: "The getTransactionsInformation method is called"
-        def response = sut.getTransactionsInformation(symbol)
+        def response = sut.getTransactionsInformationBySymbol(symbol)
 
         then: "The response should contain correct transaction information"
         response.coinName == "RLC"
@@ -135,7 +133,7 @@ class CoinInformationFacadeSpec extends Specification {
         and: "holding calls"
         transactionService.getAllBySymbol(symbol) >> transactions
         portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
         holdingService.save(_ as Holding) >> holding
 
         and:
@@ -146,7 +144,7 @@ class CoinInformationFacadeSpec extends Specification {
         pricingFacade.getCurrentMarketPrice(symbol) >> currentMarketPrice
 
         when:
-        def response = sut.getTransactionsInformation(symbol)
+        def response = sut.getTransactionsInformationBySymbol(symbol)
 
         then:
         response.coinName == symbol
@@ -180,7 +178,7 @@ class CoinInformationFacadeSpec extends Specification {
         and: "holding calls"
         transactionService.getAllBySymbol(symbol) >> transactions
         portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
         holdingService.save(_ as Holding) >> holding
 
         and:
@@ -189,7 +187,7 @@ class CoinInformationFacadeSpec extends Specification {
         pricingFacade.getCurrentMarketPrice(symbol) >> 500
 
         when:
-        def response = sut.getTransactionsInformation(symbol)
+        def response = sut.getTransactionsInformationBySymbol(symbol)
 
         then:
         response.coinName == "RLC"
@@ -226,7 +224,7 @@ class CoinInformationFacadeSpec extends Specification {
         and: "holding calls"
         transactionService.getAllBySymbol(symbol) >> transactions
         portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
         holdingService.save(_ as Holding) >> holding
 
         and:
@@ -235,7 +233,7 @@ class CoinInformationFacadeSpec extends Specification {
         pricingFacade.getCurrentMarketPrice(symbol) >> 2000
 
         when:
-        def response = sut.getTransactionsInformation(symbol)
+        def response = sut.getTransactionsInformationBySymbol(symbol)
 
         then:
         response.coinName == "RLC"
@@ -268,7 +266,7 @@ class CoinInformationFacadeSpec extends Specification {
         and: "holding calls"
         transactionService.getAllBySymbol(symbol) >> transactions
         portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getHoldingByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
+        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
         holdingService.save(_ as Holding) >> holding
 
         and:
@@ -277,7 +275,7 @@ class CoinInformationFacadeSpec extends Specification {
         pricingFacade.getCurrentMarketPrice(symbol) >> 1000
 
         when:
-        def response = sut.getTransactionsInformation(symbol)
+        def response = sut.getTransactionsInformationBySymbol(symbol)
 
         then:
         response.coinName == "RLC"

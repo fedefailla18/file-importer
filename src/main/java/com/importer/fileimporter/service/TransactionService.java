@@ -28,7 +28,9 @@ public class TransactionService {
         if (symbol != null && (startDate == null && endDate == null)) {
             return getAllBySymbol(symbol, pageable);
         }
-        return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate.atStartOfDay(),
+        LocalDateTime startDate1 = Optional.ofNullable(startDate)
+                .map(LocalDate::atStartOfDay).orElse(null);
+        return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate1,
                 endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable);
     }
 

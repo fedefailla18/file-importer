@@ -80,7 +80,7 @@ public class CryptoCompareProxy {
         return response1.block();
     }
 
-    public Map<String, Double> getData(String fromSymbol, String toSymbols) {
+    public Map<String, Number> getData(String fromSymbol, String toSymbols) {
         return webClientPricing.get()
                 .uri(uriBuilder -> uriBuilder
                         .queryParam(FROM_SYMBOL, fromSymbol)

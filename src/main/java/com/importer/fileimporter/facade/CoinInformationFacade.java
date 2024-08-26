@@ -6,7 +6,6 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
-import com.importer.fileimporter.service.SymbolService;
 import com.importer.fileimporter.service.TransactionService;
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent;
 import com.importer.fileimporter.utils.OperationUtils;
@@ -20,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -32,21 +32,28 @@ public class CoinInformationFacade {
     private final PricingFacade pricingFacade;
     private final HoldingService holdingService;
     private final PortfolioService portfolioService;
-    private final SymbolService symbolService;
 
     public List<CoinInformationResponse> getTransactionsInformation() {
         return getTransactionsInformation();
     }
 
     public List<CoinInformationResponse> getPortfolioTransactionsInformation(String portfolio) {
-        return symbolService.getAllSymbols().stream()
-                .distinct()
-                .map(this::getTransactionsInformation)
+        Portfolio byName = portfolioService.getByName(portfolio)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
+        List<Transaction> transactions = transactionService.findByPortfolio(byName);
+        Map<String, List<Transaction>> collect = transactions.stream()
+                .collect(Collectors.groupingBy(Transaction::getSymbol));
+        return collect.entrySet().stream()
+                .map(e -> getCoinInformationResponse(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
     }
 
-    public CoinInformationResponse getTransactionsInformation(String symbol) {
+    public CoinInformationResponse getTransactionsInformationBySymbol(String symbol) {
         List<Transaction> transactions = transactionService.getAllBySymbol(symbol);
+        return getCoinInformationResponse(symbol, transactions);
+    }
+
+    private CoinInformationResponse getCoinInformationResponse(String symbol, List<Transaction> transactions) {
         if (CollectionUtils.isEmpty(transactions)) {
             log.warn("No transactions found for symbol: {}", symbol);
             return CoinInformationResponse.createEmpty(symbol);
@@ -58,7 +65,7 @@ public class CoinInformationFacade {
         return response;
     }
 
-    BigDecimal calculateAndSetAmountsOnlyInStable(String symbol, List<Transaction> transactions,
+    void calculateAndSetAmountsOnlyInStable(String symbol, List<Transaction> transactions,
                                                   CoinInformationResponse response) {
         BigDecimal totalHeldAmount = BigDecimal.ZERO;
         BigDecimal totalCostInStable = BigDecimal.ZERO;
@@ -110,14 +117,12 @@ public class CoinInformationFacade {
         response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(totalCostInStable));
 
         setAndSaveHolding(symbol, response);
-
-        return totalHeldAmount;
     }
 
     private void setAndSaveHolding(String symbol, CoinInformationResponse response) {
         Portfolio portfolio = portfolioService.getByName("Binance")
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
-        Holding holding = holdingService.getHoldingByPortfolioAndSymbol(portfolio, symbol);
+        Holding holding = holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol);
         holding.setAmount(response.getAmount());
         holding.setTotalAmountBought(response.getTotalAmountBought());
         holding.setTotalAmountSold(response.getTotalAmountSold());

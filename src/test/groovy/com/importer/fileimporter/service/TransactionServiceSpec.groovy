@@ -1,5 +1,6 @@
 package com.importer.fileimporter.service
 
+import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.entity.TransactionId
 import com.importer.fileimporter.repository.TransactionRepository
@@ -110,7 +111,7 @@ class TransactionServiceSpec extends Specification {
                 .build()
 
         when:
-        def result = transactionService.saveTransaction(coinName, symbolPair, date, pair, side, price, executed, amount, fee, origin, portfolio)
+        def result = transactionService.saveTransaction(coinName, symbolPair, date, pair, side, price, executed, amount, fee, origin, new Portfolio())
 
         then:
         1 * transactionRepository.save(_) >> transaction
