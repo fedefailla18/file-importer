@@ -3,7 +3,9 @@ package com.importer.fileimporter
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
-import com.importer.fileimporter.service.*
+import com.importer.fileimporter.service.FileImporterService
+import com.importer.fileimporter.service.HoldingService
+import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import org.junit.ClassRule
 import org.postgresql.Driver
@@ -12,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEnti
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.SimpleDriverDataSource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
@@ -51,9 +52,6 @@ abstract class BaseIntegrationSpec extends Specification {
 
     @Autowired
     HoldingService holdingService
-
-    @MockBean
-    CryptoCompareProxy cryptoCompareProxy
 
     // Define a PostgreSQL container
     @ClassRule

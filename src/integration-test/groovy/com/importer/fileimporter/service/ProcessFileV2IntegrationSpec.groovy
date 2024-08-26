@@ -11,7 +11,7 @@ import spock.lang.Subject
 
 import java.util.stream.Collectors
 
-class ProcessFileV2Test extends BaseIntegrationSpec {
+class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
 
     @Autowired
     @Subject

@@ -8,7 +8,7 @@ import org.springframework.mock.web.MockMultipartFile
 import org.springframework.web.multipart.MultipartFile
 import spock.lang.Subject
 
-class ProcessFileIntegrationSpec extends BaseIntegrationSpec {
+class ProcessFileV1IntegrationSpec extends BaseIntegrationSpec {
 
     List<String> allSymbols = 'SOL,WAVES,AEVO,FET,IMX,XRP,ETH,BAND,NEAR,TIA,FTM,ADA'.split(',')
 

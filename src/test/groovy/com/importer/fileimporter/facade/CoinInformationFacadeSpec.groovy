@@ -5,6 +5,7 @@ import com.importer.fileimporter.entity.Holding
 import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.entity.TransactionId
+import com.importer.fileimporter.service.CoinInformationService
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.PortfolioService
 import com.importer.fileimporter.service.TransactionService
@@ -15,14 +16,17 @@ import java.time.LocalDateTime
 
 class CoinInformationFacadeSpec extends Specification {
 
-    def calculateAmountSpent = Mock(CalculateAmountSpent)
-    def transactionService = Mock(TransactionService)
     def pricingFacade = Mock(PricingFacade)
     def holdingService = Mock(HoldingService)
+    def calculateAmountSpent = Mock(CalculateAmountSpent)
     def portfolioService = Mock(PortfolioService)
 
-    def sut = new CoinInformationFacade(calculateAmountSpent, transactionService, pricingFacade,
-        holdingService, portfolioService)
+    def coinInformationService = new CoinInformationService(pricingFacade, holdingService, calculateAmountSpent,
+            portfolioService)
+
+    def transactionService = Mock(TransactionService)
+
+    def sut = new CoinInformationFacade(transactionService, portfolioService, coinInformationService)
 
     def "should handle no transactions"() {
         given:
