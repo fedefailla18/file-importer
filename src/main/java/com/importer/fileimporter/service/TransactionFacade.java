@@ -52,12 +52,12 @@ public class TransactionFacade {
 
             for (Transaction tr : transactions) {
                 BigDecimal executed = tr.getTransactionId().getExecuted();
-                BigDecimal payedAmount = tr.getPayedAmount();
+                BigDecimal payedAmount = tr.getPaidAmount();
                 BigDecimal payedAmountInUsdt = BigDecimal.ZERO;
                 BigDecimal priceInUsdt = BigDecimal.ZERO;
                 BigDecimal payedAmountInBtc = BigDecimal.ZERO;
                 BigDecimal priceInBtc = BigDecimal.ZERO;
-                String payedWith = tr.getPayedWith();
+                String payedWith = tr.getPaidWith();
                 BigDecimal price = tr.getTransactionId().getPrice();
                 LocalDateTime dateUtc = tr.getTransactionId().getDateUtc();
 

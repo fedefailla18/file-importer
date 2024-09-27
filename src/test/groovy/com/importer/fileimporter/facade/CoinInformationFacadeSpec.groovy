@@ -68,7 +68,7 @@ class CoinInformationFacadeSpec extends Specification {
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> { Transaction transaction, CoinInformationResponse response ->
             if (transaction.transactionId.side == "BUY") {
-                return transaction.payedAmount
+                return transaction.paidAmount
             } else {
                 return BigDecimal.ZERO
             }
@@ -143,7 +143,7 @@ class CoinInformationFacadeSpec extends Specification {
         and:
         transactionService.getAllBySymbol(symbol) >> transactions
         calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse) >> { Transaction transaction, CoinInformationResponse response ->
-            return transaction.payedAmount
+            return transaction.paidAmount
         }
         pricingFacade.getCurrentMarketPrice(symbol) >> currentMarketPrice
 
@@ -169,8 +169,8 @@ class CoinInformationFacadeSpec extends Specification {
                 new Transaction(
                         transactionId: new TransactionId(side: "BUY", pair: "RLCUSDT", price: 500, executed: 1),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: new BigDecimal("500"),
+                        setPaidWith: "USDT",
+                        setPaidAmount: new BigDecimal("500"),
                 )
         ]
         def portfolio = new Portfolio()
@@ -209,14 +209,14 @@ class CoinInformationFacadeSpec extends Specification {
                 new Transaction(
                         transactionId: new TransactionId(side: "BUY", pair: "RLCUSDT", price: 500, executed: 2),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 1000,
+                        setPaidWith: "USDT",
+                        setPaidAmount: 1000,
                 ),
                 new Transaction(
                         transactionId: new TransactionId(side: "SELL", pair: "RLCUSDT", price: 250, executed: 1),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 250,
+                        setPaidWith: "USDT",
+                        setPaidAmount: 250,
                 )
         ]
         def portfolio = new Portfolio()
@@ -251,14 +251,14 @@ class CoinInformationFacadeSpec extends Specification {
                 new Transaction(
                         transactionId: new TransactionId(side: "BUY", pair: "RLCUSDT", price: 500, executed: 1),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 500
+                        setPaidWith: "USDT",
+                        setPaidAmount: 500
                 ),
                 new Transaction(
                         transactionId: new TransactionId(side: "SELL", pair: "RLCUSDT", price: 200, executed: 1),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 200
+                        setPaidWith: "USDT",
+                        setPaidAmount: 200
                 )
         ]
         def portfolio = new Portfolio()
@@ -296,8 +296,8 @@ class CoinInformationFacadeSpec extends Specification {
                                 executed: 200
                         ),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 200,
+                        setPaidWith: "USDT",
+                        setPaidAmount: 200,
                         feeAmount: 0.2,
                 ),
                 new Transaction(
@@ -308,8 +308,8 @@ class CoinInformationFacadeSpec extends Specification {
                                 executed: 70
                         ),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 150.5,
+                        setPaidWith: "USDT",
+                        setPaidAmount: 150.5,
                         feeAmount: 0.15,
                 ),
                 new Transaction(
@@ -320,8 +320,8 @@ class CoinInformationFacadeSpec extends Specification {
                                 executed: 50
                         ),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 80,
+                        setPaidWith: "USDT",
+                        setPaidAmount: 80,
                         feeAmount: 0.091371
                 )
         ]
@@ -348,9 +348,9 @@ class CoinInformationFacadeSpec extends Specification {
         )
         return new Transaction(
                 symbol: symbol,
-                payedWith: payedWith,
+                setPaidWith: payedWith,
                 transactionId: transactionId,
-                payedAmount: payedAmount
+                setPaidAmount: payedAmount
         )
     }
 

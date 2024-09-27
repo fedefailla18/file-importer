@@ -101,8 +101,8 @@ class TransactionServiceSpec extends Specification {
         Transaction transaction = Transaction.builder()
                 .transactionId(transactionId)
                 .symbol(coinName)
-                .payedWith(symbolPair)
-                .payedAmount(amount)
+                .paidWith(symbolPair)
+                .paidAmount(amount)
                 .created(LocalDateTime.now())
                 .createdBy(origin)
                 .feeAmount(fee)
@@ -118,8 +118,8 @@ class TransactionServiceSpec extends Specification {
         result == transaction
         result.transactionId == transactionId
         result.symbol == coinName
-        result.payedWith == symbolPair
-        result.payedAmount == amount
+        result.paidWith == symbolPair
+        result.paidAmount == amount
         result.feeAmount == fee
     }
 }

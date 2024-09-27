@@ -21,8 +21,8 @@ class CalculateAmountSpentSpec extends Specification {
                         executed: 200
                 ),
                 symbol: "RLC",
-                payedWith: "USDT",
-                payedAmount: 200,
+                setPaidWith: "USDT",
+                setPaidAmount: 200,
                 feeAmount: 0.2
         )
 
@@ -47,8 +47,8 @@ class CalculateAmountSpentSpec extends Specification {
                         executed: 70
                 ),
                 symbol: "RLC",
-                payedWith: "USDT",
-                payedAmount: 150.78
+                setPaidWith: "USDT",
+                setPaidAmount: 150.78
         )
         def response = CoinInformationResponse.createEmpty('RLC')
 
@@ -71,8 +71,8 @@ class CalculateAmountSpentSpec extends Specification {
                                 executed: 200
                         ),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 200
+                        setPaidWith: "USDT",
+                        setPaidAmount: 200
                 ),
                 new Transaction(
                         transactionId: new TransactionId(
@@ -82,8 +82,8 @@ class CalculateAmountSpentSpec extends Specification {
                                 executed: 70
                         ),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 150.78
+                        setPaidWith: "USDT",
+                        setPaidAmount: 150.78
                 ),
                 new Transaction(
                         transactionId: new TransactionId(
@@ -93,8 +93,8 @@ class CalculateAmountSpentSpec extends Specification {
                                 executed: 50
                         ),
                         symbol: "RLC",
-                        payedWith: "USDT",
-                        payedAmount: 91
+                        setPaidWith: "USDT",
+                        setPaidAmount: 91
                 )
         ]
         def response = CoinInformationResponse.createEmpty('RLC')
@@ -185,9 +185,9 @@ class CalculateAmountSpentSpec extends Specification {
         )
         return new Transaction(
                 symbol: symbol,
-                payedWith: payedWith,
+                setPaidWith: payedWith,
                 transactionId: transactionId,
-                payedAmount: payedAmount
+                setPaidAmount: payedAmount
         )
     }
 }

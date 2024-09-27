@@ -53,8 +53,8 @@ public class CalculateAmountSpent {
      * @return
      */
     public BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response) {
-        String paidWithSymbol = transaction.getPayedWith();
-        BigDecimal paidAmount = transaction.getPayedAmount();
+        String paidWithSymbol = transaction.getPaidWith();
+        BigDecimal paidAmount = transaction.getPaidAmount();
         BigDecimal executed = transaction.getTransactionId().getExecuted();
         BigDecimal totalHeldAmount = response.getAmount();
         boolean isBuy = OperationUtils.isBuy(transaction.getTransactionId().getSide());

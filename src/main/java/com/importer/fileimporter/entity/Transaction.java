@@ -29,10 +29,10 @@ public class Transaction {
     private String symbol;
 
     @Column(name = "payed_with", length = 12)
-    private String payedWith;
+    private String paidWith;
 
-//    @Column(name = "payed_amount", precision = 13, scale = 13)
-    private BigDecimal payedAmount;
+    @Column(name = "payed_amount", precision = 13, scale = 13)
+    private BigDecimal paidAmount;
 
     @Column(name = "fee", length = 12)
     private String fee;
