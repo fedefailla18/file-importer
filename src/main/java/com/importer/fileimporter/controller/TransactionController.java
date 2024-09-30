@@ -41,11 +41,12 @@ public class TransactionController {
     private final CoinInformationFacade coinInformationFacade;
 
     @GetMapping(value = "/filter")
-    public Page<Transaction> getTransactionsRangeDate(@RequestParam String symbol,
+    public Page<Transaction> getTransactionsRangeDate(@RequestParam(required = false) String symbol,
+                                                      @RequestParam(required = false) String portfolioName,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                                       @PageableDefault Pageable pageable) {
-        return transactionService.getTransactionsByRangeDate(symbol, startDate, endDate, pageable);
+        return transactionService.getTransactionsByFilters(symbol, portfolioName, startDate, endDate, pageable);
     }
 
     @PostMapping("/information")

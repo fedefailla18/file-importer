@@ -217,12 +217,18 @@ public class PortfolioDistributionFacade {
                                     .priceInUsdt(priceInUsdt)
                                     .priceInBtc(priceInBtc)
                                     .amount(e1.getAmount().add(e2.getAmount()))
-                                    .amountInUsdt(e1.getAmountInUsdt().add(e2.getAmountInUsdt()).setScale(0, RoundingMode.DOWN))
-                                    .amountInBtc(e1.getAmountInBtc().add(e2.getAmountInBtc()))
+                                    .amountInUsdt(addPreventingNull(e1.getAmountInUsdt(), e2.getAmountInUsdt()))
+                                    .amountInBtc(addPreventingNull(e1.getAmountInBtc(), e2.getAmountInBtc()))
                                     .percentage(e1.getPercentage().add(e2.getPercentage()))
                                     .build();
                         }
                 ));
+    }
+
+    public BigDecimal addPreventingNull(BigDecimal amount1, BigDecimal amount2) {
+        BigDecimal bigDecimal1 = Optional.ofNullable(amount1).orElse(BigDecimal.ZERO);
+        BigDecimal bigDecimal2 = Optional.ofNullable(amount2).orElse(BigDecimal.ZERO);
+        return bigDecimal1.add(bigDecimal2).setScale(0, RoundingMode.DOWN);
     }
 
     public ResponseEntity<byte[]> downloadExcel() {
@@ -286,5 +292,10 @@ public class PortfolioDistributionFacade {
         return Optional.ofNullable(holding)
                 .filter(Objects::nonNull)
                 .orElse(BigDecimal.ZERO);
+    }
+
+    public List<HoldingDto> addPortfolioHolding(List<AddHoldingRequest> requests) {
+        Optional<Portfolio> portfolio = portfolioService.getByName(requests.get(0).getPortfolio());
+        return HoldingConverter.Mapper.createFromEntities(holdingService.saveAll(portfolio.get(), requests));
     }
 }

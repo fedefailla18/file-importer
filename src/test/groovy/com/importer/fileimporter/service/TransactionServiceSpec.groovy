@@ -25,7 +25,7 @@ class TransactionServiceSpec extends Specification {
         Page<Transaction> page = new PageImpl<>([])
 
         when:
-        def result = transactionService.getTransactionsByRangeDate(symbol, null, null, pageable)
+        def result = transactionService.getTransactionsByFilters(symbol, portfolioName, null, null, pageable)
 
         then:
         1 * transactionRepository.findAllBySymbol(symbol, pageable) >> page
@@ -43,7 +43,7 @@ class TransactionServiceSpec extends Specification {
         def endDateTime = endDate.plusDays(1L).atStartOfDay().minusSeconds(1L)
 
         when:
-        def result = transactionService.getTransactionsByRangeDate(symbol, startDate, endDate, pageable)
+        def result = transactionService.getTransactionsByFilters(symbol, portfolioName, startDate, endDate, pageable)
 
         then:
         1 * transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDateTime, endDateTime, pageable) >> page

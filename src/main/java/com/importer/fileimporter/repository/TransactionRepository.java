@@ -10,8 +10,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, TransactionId> {
@@ -34,4 +36,27 @@ public interface TransactionRepository extends JpaRepository<Transaction, Transa
                                                   @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
     List<Transaction> findAllByPortfolio(Portfolio portfolio);
+
+    @Query("SELECT t FROM Transaction t " +
+            "WHERE (:symbol IS NULL OR t.symbol = :symbol) " +
+            "AND (:portfolioId IS NULL OR t.portfolio.id = COALESCE(:portfolioId, t.portfolio.id)) " +
+            "AND (:startDate IS NULL OR DATE(t.transactionId.dateUtc) >= :startDate) " +
+            "AND (:endDate IS NULL OR DATE(t.transactionId.dateUtc) <= :endDate) " +
+            "ORDER BY t.transactionId.dateUtc DESC")
+    Page<Transaction> findBySymbolAndPortfolioAndDateRange(@Param("symbol") String symbol,
+                                                           @Param("portfolioId") UUID portfolioId,
+                                                           @Param("startDate") LocalDate startDate,
+                                                           @Param("endDate") LocalDate endDate,
+                                                           Pageable pageable);
+
+    @Query("SELECT t FROM Transaction t " +
+            "WHERE (:symbol IS NULL OR t.symbol = :symbol) " +
+            "AND (:startDate IS NULL OR DATE(t.transactionId.dateUtc) >= :startDate) " +
+            "AND (:endDate IS NULL OR DATE(t.transactionId.dateUtc) <= :endDate) " +
+            "ORDER BY t.transactionId.dateUtc DESC")
+    Page<Transaction> findBySymbolAndDateRange(@Param("symbol") String symbol,
+                                                           @Param("startDate") LocalDate startDate,
+                                                           @Param("endDate") LocalDate endDate,
+                                                           Pageable pageable);
+
 }

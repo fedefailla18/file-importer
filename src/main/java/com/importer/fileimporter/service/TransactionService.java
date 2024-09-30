@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
@@ -23,15 +24,16 @@ import java.util.Optional;
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
+    private final PortfolioService portfolioService;
 
-    public Page<Transaction> getTransactionsByRangeDate(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        if (symbol != null && (startDate == null && endDate == null)) {
-            return getAllBySymbol(symbol, pageable);
+    public Page<Transaction> getTransactionsByFilters(String symbol, String portfolioName, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        Optional<Portfolio> portfolio = portfolioService.getByName(portfolioName);
+        UUID portfolioId = portfolio.map(Portfolio::getId).orElse(null);
+        if (portfolio.isEmpty()) {
+            return transactionRepository.findBySymbolAndDateRange(symbol, startDate, endDate, pageable);
         }
-        LocalDateTime startDate1 = Optional.ofNullable(startDate)
-                .map(LocalDate::atStartOfDay).orElse(null);
-        return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate1,
-                endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable);
+
+        return transactionRepository.findBySymbolAndPortfolioAndDateRange(symbol, portfolioId, startDate, endDate, pageable);
     }
 
     public Page<Transaction> getAllBySymbol(String symbol, Pageable pageable) {

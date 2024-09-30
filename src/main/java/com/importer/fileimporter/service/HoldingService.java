@@ -5,6 +5,7 @@ import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.entity.Holding;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
+import com.importer.fileimporter.payload.request.AddHoldingRequest;
 import com.importer.fileimporter.repository.HoldingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -107,5 +108,11 @@ public class HoldingService {
         return holdingRepository.findAllBySymbol(symbol).stream()
                 .map(HoldingConverter.Mapper::createFrom)
                 .collect(Collectors.toList());
+    }
+
+    public List<Holding> saveAll(Portfolio portfolio, List<AddHoldingRequest> requests) {
+        List<Holding> fromRequest = HoldingConverter.Mapper.createFromRequest(requests);
+        fromRequest.forEach(h -> h.setPortfolio(portfolio));
+        return holdingRepository.saveAll(fromRequest);
     }
 }
