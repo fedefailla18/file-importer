@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.web.filter.CommonsRequestLoggingFilter;
 
 import java.util.concurrent.Executor;
 
@@ -25,5 +26,15 @@ public class FileImporterApplication {
 		executor.setThreadNamePrefix("AsyncThread-");
 		executor.initialize();
 		return executor;
+	}
+
+	@Bean
+	public CommonsRequestLoggingFilter requestLoggingFilter() {
+		CommonsRequestLoggingFilter loggingFilter = new CommonsRequestLoggingFilter();
+		loggingFilter.setIncludeClientInfo(true);
+		loggingFilter.setIncludeQueryString(true);
+		loggingFilter.setIncludePayload(true);
+		loggingFilter.setMaxPayloadLength(64000);
+		return loggingFilter;
 	}
 }

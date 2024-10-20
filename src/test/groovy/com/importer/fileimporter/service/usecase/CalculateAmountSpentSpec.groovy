@@ -2,34 +2,33 @@ package com.importer.fileimporter.service.usecase
 
 import com.importer.fileimporter.dto.CoinInformationResponse
 import com.importer.fileimporter.entity.Transaction
-import com.importer.fileimporter.entity.TransactionId
 import com.importer.fileimporter.facade.PricingFacade
+import com.importer.fileimporter.service.HoldingService
 import spock.lang.Specification
 
 class CalculateAmountSpentSpec extends Specification {
 
     def pricingFacade = Mock(PricingFacade)
-    def sut = new CalculateAmountSpent(pricingFacade)
+    def holdingService = Mock(HoldingService)
+    def sut = new CalculateAmountSpent(pricingFacade, holdingService)
 
     def "GetAmountSpentInUsdtPerTransaction. Single BUY transaction"() {
         given:
         def transaction = new Transaction(
-                transactionId: new TransactionId(
                         side: "BUY",
                         pair: "RLCUSDT",
                         price: 1,
-                        executed: 200
-                ),
+                        executed: 200,
                 symbol: "RLC",
-                setPaidWith: "USDT",
-                setPaidAmount: 200,
+                paidWith: "USDT",
+                paidAmount: 200,
                 feeAmount: 0.2
         )
 
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
-        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response)
+        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response, null)
 
         then:
         result == 200
@@ -40,20 +39,18 @@ class CalculateAmountSpentSpec extends Specification {
     def "GetAmountSpentInUsdtPerTransaction. Single SELL transaction"() {
         given:
         def transaction = new Transaction(
-                transactionId: new TransactionId(
                         side: "SELL",
                         pair: "RLCUSDT",
                         price: 2.15,
-                        executed: 70
-                ),
+                        executed: 70,
                 symbol: "RLC",
-                setPaidWith: "USDT",
-                setPaidAmount: 150.78
+                paidWith: "USDT",
+                paidAmount: 150.78
         )
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
-        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response)
+        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response, null)
 
         then:
         result == BigDecimal.valueOf(-150.78)
@@ -63,45 +60,36 @@ class CalculateAmountSpentSpec extends Specification {
     def "GetAmountSpentInUsdtPerTransaction. Multiple transactions"() {
         given:
         def transactions = [
-                new Transaction(
-                        transactionId: new TransactionId(
-                                side: "BUY",
+                new Transaction(side: "BUY",
                                 pair: "RLCUSDT",
                                 price: 1,
-                                executed: 200
-                        ),
+                                executed: 200,
                         symbol: "RLC",
-                        setPaidWith: "USDT",
-                        setPaidAmount: 200
+                        paidWith: "USDT",
+                        paidAmount: 200
                 ),
-                new Transaction(
-                        transactionId: new TransactionId(
-                                side: "SELL",
+                new Transaction(side: "SELL",
                                 pair: "RLCUSDT",
                                 price: 2.15,
-                                executed: 70
-                        ),
+                                executed: 70,
                         symbol: "RLC",
-                        setPaidWith: "USDT",
-                        setPaidAmount: 150.78
+                        paidWith: "USDT",
+                        paidAmount: 150.78
                 ),
-                new Transaction(
-                        transactionId: new TransactionId(
-                                side: "SELL",
+                new Transaction(side: "SELL",
                                 pair: "RLCUSDT",
                                 price: 1.60,
-                                executed: 50
-                        ),
+                                executed: 50,
                         symbol: "RLC",
-                        setPaidWith: "USDT",
-                        setPaidAmount: 91
+                        paidWith: "USDT",
+                        paidAmount: 91
                 )
         ]
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
         transactions.each { tx ->
-            sut.getAmountSpentInUsdtPerTransaction(tx.symbol, tx, response)
+            sut.getAmountSpentInUsdtPerTransaction(tx.symbol, tx, response, null)
         }
 
         then:
@@ -117,7 +105,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty(symbol)
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
 
         then:
         amountSpent == new BigDecimal("500")
@@ -135,7 +123,7 @@ class CalculateAmountSpentSpec extends Specification {
         pricingFacade.getPriceInUsdt(symbol, _) >> 1000
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
 
         then:
         amountSpent == 1000
@@ -150,7 +138,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty(symbol)
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
 
         then:
         amountSpent == new BigDecimal("-500")
@@ -168,7 +156,7 @@ class CalculateAmountSpentSpec extends Specification {
         pricingFacade.getPriceInUsdt(symbol, _) >> 1000
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response)
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
 
         then:
         amountSpent == -1000
@@ -176,18 +164,15 @@ class CalculateAmountSpentSpec extends Specification {
         response.totalRealizedProfitUsdt == 1000
     }
 
-    private static Transaction createTransaction(String symbol, String payedWith, String side, BigDecimal executed, BigDecimal price) {
-        BigDecimal payedAmount = executed.multiply(price)
-        TransactionId transactionId = new TransactionId(
-                executed: executed,
-                side: side,
-                price: price
-        )
+    private static Transaction createTransaction(String symbol, String paidWith, String side, BigDecimal executed, BigDecimal price) {
+        BigDecimal paidAmount = executed.multiply(price)
         return new Transaction(
                 symbol: symbol,
-                setPaidWith: payedWith,
-                transactionId: transactionId,
-                setPaidAmount: payedAmount
+                paidWith: paidWith,
+                executed: executed,
+                side: side,
+                price: price,
+                paidAmount: paidAmount
         )
     }
 }

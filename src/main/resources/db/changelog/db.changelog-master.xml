@@ -31,5 +31,6 @@
   <include file="classpath:/db/changelog/changes/2024-07-20-015-adding-transaction-portfolio.sql"/>
   <include file="classpath:/db/changelog/changes/2024-07-20-016-adding-relevant-fields-to-holdings.sql"/>
   <include file="classpath:/db/changelog/changes/2024-07-20-18-integration-test-transactions.sql" context="integration-test"/>
+  <include file="classpath:/db/changelog/changes/2024-10-201-19-introducing-new-transaction.sql"/>
 
 </databaseChangeLog>

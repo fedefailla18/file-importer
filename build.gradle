@@ -3,6 +3,7 @@ plugins {
 	id 'org.springframework.boot' version '2.7.15'
 	id 'io.spring.dependency-management' version '1.0.15.RELEASE'
 	id "groovy"
+	id 'org.hidetake.swagger.generator' version '2.19.2'
 }
 
 //ext['groovy.version'] = "2.5.7"
@@ -68,6 +69,11 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	implementation('commons-io:commons-io:2.13.0')
 	implementation 'javax.validation:validation-api:2.0.1.Final'
+	implementation 'org.springframework.boot:spring-boot-starter-hateoas'
+
+	//open api code generation
+	swaggerCodegen 'org.openapitools:openapi-generator-cli:7.3.0'
+	implementation 'io.swagger.core.v3:swagger-annotations:2.2.20'
 
 	implementation('org.apache.tomcat:tomcat-annotations-api:9.0.10')
 	implementation 'org.apache.poi:poi:5.2.4'

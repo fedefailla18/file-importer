@@ -17,8 +17,8 @@ public class AddHoldingRequest {
     private BigDecimal amount;
 
     @NotBlank(message = "Portfolio is mandatory")
-    private String portfolio;
+    private String portfolioName;
 
-    private BigDecimal costInUsdt;
+    private BigDecimal stableTotalCost;
     private BigDecimal costInBtc;
 }

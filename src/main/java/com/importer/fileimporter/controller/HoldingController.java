@@ -3,6 +3,7 @@ package com.importer.fileimporter.controller;
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.facade.PortfolioDistributionFacade;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
+import com.importer.fileimporter.payload.request.AddHoldingsRequest;
 import com.importer.fileimporter.service.HoldingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +34,7 @@ public class HoldingController {
     }
 
     @PostMapping("/addMultiple")
-    public List<HoldingDto> addMultipleHoldings(@RequestBody @Valid List<AddHoldingRequest> requests) {
-        return portfolioDistributionFacade.addPortfolioHolding(requests);
+    public List<HoldingDto> addMultipleHoldings(@RequestBody @Valid AddHoldingsRequest request) {
+        return portfolioDistributionFacade.addPortfolioHolding(request.getHoldings());
     }
 }

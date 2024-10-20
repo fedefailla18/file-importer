@@ -2,7 +2,6 @@ package com.importer.fileimporter.service
 
 import com.importer.fileimporter.dto.TransactionHoldingDto
 import com.importer.fileimporter.entity.Transaction
-import com.importer.fileimporter.entity.TransactionId
 import com.importer.fileimporter.facade.PricingFacade
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -72,19 +71,15 @@ class TransactionFacadeSpec extends Specification {
     static List<Transaction> createMockTransactions() {
         List<Transaction> transactions = new ArrayList<>();
 
-        def transactionId1 = TransactionId.builder()
+        Transaction transaction1 = Transaction.builder()
+                .id(1L)
                 .dateUtc(LocalDateTime.now())
                 .side('BUY').pair("BTCUSD")
                 .executed(BigDecimal.valueOf(100))
                 .price(BigDecimal.valueOf(50))
-                .build()
-        // Create mock transactions
-        Transaction transaction1 = Transaction.builder()
-                .id(1L)
-                .transactionId(transactionId1)
                 .symbol("BTC")
-                .payedWith("USD")
-                .payedAmount(BigDecimal.valueOf(5000))
+                .paidWith("USD")
+                .paidAmount(BigDecimal.valueOf(5000))
                 .fee("5USD")
                 .feeAmount(BigDecimal.valueOf(5))
                 .feeSymbol("USD")
@@ -94,19 +89,16 @@ class TransactionFacadeSpec extends Specification {
                 .modifiedBy("user1")
                 .build();
 
-        def transactionId2 = TransactionId.builder()
+        Transaction transaction2 = Transaction.builder()
+                .id(2L)
                 .dateUtc(LocalDateTime.now())
                 .side('SELL')
                 .pair("BTCUSD")
                 .executed(BigDecimal.valueOf(50))
                 .price(BigDecimal.valueOf(100))
-                .build()
-        Transaction transaction2 = Transaction.builder()
-                .id(2L)
-                .transactionId(transactionId2)
                 .symbol("BTC")
-                .payedWith("USD")
-                .payedAmount(BigDecimal.valueOf(5000))
+                .paidWith("USD")
+                .paidAmount(BigDecimal.valueOf(5000))
                 .fee("5USD")
                 .feeAmount(BigDecimal.valueOf(5))
                 .feeSymbol("USD")

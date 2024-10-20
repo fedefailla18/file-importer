@@ -1,4 +1,4 @@
-package com.importer.fileimporter.coverter;
+package com.importer.fileimporter.converter;
 
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.entity.Holding;
@@ -46,7 +46,7 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
                 .symbol(holdingRequest.getSymbol())
                 .amount(holdingRequest.getAmount())
                 .priceInBtc(holdingRequest.getCostInBtc())
-                .priceInUsdt(holdingRequest.getCostInUsdt())
+                .priceInUsdt(holdingRequest.getStableTotalCost())
                 .build();
     }
 

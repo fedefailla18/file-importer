@@ -1,13 +1,15 @@
 package com.importer.fileimporter.service;
 
-import com.importer.fileimporter.coverter.HoldingConverter;
+import com.importer.fileimporter.converter.HoldingConverter;
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.entity.Holding;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
 import com.importer.fileimporter.repository.HoldingRepository;
+import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class HoldingService {
 
     private final HoldingRepository holdingRepository;
@@ -36,17 +39,38 @@ public class HoldingService {
     }
 
     public Holding getOrCreateByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return getBySymbolAndPortfolioName(portfolio, symbol)
+        Optional<Holding> bySymbolAndPortfolioName = getBySymbolAndPortfolioName(portfolio, symbol);
+        log.info("getting holding for: {}", bySymbolAndPortfolioName
+                .map(e -> e.getSymbol() + " - amount: " + e.getAmount())
+                .orElse(symbol + ". New Holding!"));
+        return bySymbolAndPortfolioName
                 .orElse(Holding.builder()
                                 .portfolio(portfolio)
                                 .symbol(symbol)
                                 .amount(BigDecimal.ZERO)
                                 .amountInUsdt(BigDecimal.ZERO)
+                                .totalAmountSold(BigDecimal.ZERO)
+                                .totalAmountBought(BigDecimal.ZERO)
                                 .build());
     }
 
-    private Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
-        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
+    public void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
+        Holding holding = getOrCreateByPortfolioAndSymbol(portfolio, paidWithSymbol);
+        BigDecimal oldAmount = holding.getAmount();
+        BigDecimal totalAmountSold = holding.getTotalAmountSold();
+//        BigDecimal stableTotalCost = holding.getStableTotalCost();
+
+        BigDecimal updatedAmount = OperationUtils.accumulateExecutedAmount(oldAmount, paidAmount, isBuy);
+        BigDecimal updatedTotalAmountSold = OperationUtils.accumulateExecutedAmount(totalAmountSold, paidAmount, isBuy);
+//        BigDecimal updatedStableTotalCost = OperationUtils.accumulateExecutedAmount(stableTotalCost, paidInStable, isBuy);
+
+
+        holding.setAmount(updatedAmount);
+        holding.setTotalAmountSold(updatedTotalAmountSold);
+//        holding.setStableTotalCost(updatedStableTotalCost);
+
+        log.info("Updating {}. oldAmount = {}, updated amount = {}", paidWithSymbol, oldAmount, updatedAmount);
+        save(holding);
     }
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
@@ -114,5 +138,9 @@ public class HoldingService {
         List<Holding> fromRequest = HoldingConverter.Mapper.createFromRequest(requests);
         fromRequest.forEach(h -> h.setPortfolio(portfolio));
         return holdingRepository.saveAll(fromRequest);
+    }
+
+    private Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
+        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
     }
 }

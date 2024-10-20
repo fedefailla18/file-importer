@@ -39,12 +39,30 @@ public class OperationUtils {
         return sumAmount(amountSpent.get(), payedAmount, side);
     }
 
-    public BigDecimal sumAmount(BigDecimal currentAmount, BigDecimal payedAmount, String side) {
-        return isBuy(side) ? currentAmount.add(payedAmount) : currentAmount.subtract(payedAmount);
+    public BigDecimal sumAmount(BigDecimal currentAmount, BigDecimal paidAmount, String side) {
+        currentAmount = getSafeValue(currentAmount);
+        paidAmount = getSafeValue(paidAmount);
+        return isBuy(side) ? currentAmount.add(paidAmount) : currentAmount.subtract(paidAmount);
     }
 
     public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, String side) {
-        return isBuy(side) ? currentAmount.add(executed) : currentAmount.subtract(executed);
+        return accumulateExecutedAmount(currentAmount, executed, isBuy(side));
+    }
+
+    public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, Boolean isBuy) {
+        return isBuy ?
+                getSafeValue(currentAmount).add(getSafeValue(executed)) :
+                getSafeValue(currentAmount).subtract(getSafeValue(executed));
+    }
+
+    public BigDecimal sumBigDecimal(BigDecimal bigDecimal1, BigDecimal bigDecimal2) {
+        BigDecimal safeValue1 = getSafeValue(bigDecimal1);
+        BigDecimal safeValue2 = getSafeValue(bigDecimal2);
+        return safeValue1.add(safeValue2);
+    }
+
+    private BigDecimal getSafeValue(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     public static Optional<String> hasStable(String pair) {

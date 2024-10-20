@@ -3,6 +3,7 @@ package com.importer.fileimporter
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
+import com.importer.fileimporter.repository.TransactionRepository
 import com.importer.fileimporter.service.FileImporterService
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.TransactionService
@@ -34,6 +35,9 @@ abstract class BaseIntegrationSpec extends Specification {
 
     @Autowired
     TransactionService transactionService
+
+    @Autowired
+    TransactionRepository transactionRepository
 
     @Autowired
     PortfolioRepository portfolioRepository

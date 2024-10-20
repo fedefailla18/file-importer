@@ -10,13 +10,13 @@ import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -26,7 +26,7 @@ public class CoinInformationService {
     private final PricingFacade pricingFacade;
     private final HoldingService holdingService;
     private final CalculateAmountSpent calculateAmountSpent;
-    private final PortfolioService portfolioService;
+    private final TransactionService transactionService;
 
     public CoinInformationResponse getCoinInformationResponse(String symbol, List<Transaction> transactions) {
         if (CollectionUtils.isEmpty(transactions)) {
@@ -34,8 +34,16 @@ public class CoinInformationService {
             return CoinInformationResponse.createEmpty(symbol);
         }
 
+        List<Transaction> unprocessedTransactions = transactions.stream()
+                .filter(transaction -> !transaction.isProcessed())
+                .collect(Collectors.toList());
+        if (unprocessedTransactions.isEmpty()) {
+            log.warn("No unprocessed transactions found for symbol: {}", symbol);
+            return null;
+        }
+
         CoinInformationResponse response = CoinInformationResponse.createEmpty(symbol);
-        calculateAndSetAmountsOnlyInStable(symbol, transactions, response);
+        calculateAndSetAmountsOnlyInStable(symbol, unprocessedTransactions, response);
 
         return response;
     }
@@ -45,24 +53,29 @@ public class CoinInformationService {
         BigDecimal totalHeldAmount = BigDecimal.ZERO;
         BigDecimal totalCostInStable = BigDecimal.ZERO;
         List<Transaction> transactionsSelling = new ArrayList<>();
+        Portfolio portfolio = transactions.stream().findFirst()
+                .map(Transaction::getPortfolio).orElse(null);
 
         for (Transaction transaction : transactions) {
-            BigDecimal executed = transaction.getTransactionId().getExecuted();
-            boolean isBuy = OperationUtils.isBuy(transaction.getTransactionId().getSide());
+            log.info("··· PROCESSING {}", transaction.getSymbol());
+
+            BigDecimal executed = transaction.getExecuted();
+            boolean isBuy = OperationUtils.isBuy(transaction.getSide());
 
             if (isBuy) {
                 totalHeldAmount = totalHeldAmount.add(executed);
-                BigDecimal paidAmountInStable = calculateAmountSpent.getAmountSpentInUsdt(transaction, response);// here we are setting spent
+                BigDecimal paidAmountInStable = calculateAmountSpent.getAmountSpentInUsdt(transaction, response, portfolio);// here we are setting spent
                 totalCostInStable = totalCostInStable.add(paidAmountInStable);
-                response.addTotalAmountBought(executed, transaction.getTransactionId().getSide());
+                response.addTotalAmountBought(executed, transaction.getSide());
             } else {
                 transactionsSelling.add(transaction);
             }
+            markTransactionProcessed(transaction);
         }
 
         BigDecimal realizedProfit = BigDecimal.ZERO;
         for (Transaction transaction : transactionsSelling) {
-            BigDecimal executed = transaction.getTransactionId().getExecuted();
+            BigDecimal executed = transaction.getExecuted();
 
             BigDecimal amountSold = executed.min(totalHeldAmount); // Ensure not selling more than held
             if (executed.compareTo(totalHeldAmount) > 0 || amountSold.compareTo(BigDecimal.ZERO) > 0) {
@@ -72,10 +85,10 @@ public class CoinInformationService {
             totalHeldAmount = totalHeldAmount.subtract(amountSold);
             response.setAmount(totalHeldAmount);
 
-            BigDecimal amountSpentInUsdt = calculateAmountSpent.getAmountSpentInUsdt(transaction, response);
+            BigDecimal amountSpentInUsdt = calculateAmountSpent.getAmountSpentInUsdt(transaction, response, portfolio);
             realizedProfit = realizedProfit.subtract(amountSpentInUsdt);
             totalCostInStable = totalCostInStable.subtract(amountSpentInUsdt);
-            response.addTotalAmountSold(executed, transaction.getTransactionId().getSide());
+            response.addTotalAmountSold(executed, transaction.getSide());
         }
 
         response.setRealizedProfit(realizedProfit);
@@ -91,20 +104,33 @@ public class CoinInformationService {
         response.setUnrealizedProfit(currentMarketValue);
         response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(totalCostInStable));
 
-        setAndSaveHolding(symbol, response);
+        setAndSaveHolding(symbol, response, portfolio);
     }
 
-    private void setAndSaveHolding(String symbol, CoinInformationResponse response) {
-        Portfolio portfolio = portfolioService.getByName("Binance")
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
+    private void markTransactionProcessed(Transaction transaction) {
+        transaction.setProcessed(true);
+        LocalDateTime now = LocalDateTime.now();
+        transaction.setLastProcessedAt(now);
+        transaction.setModified(now);
+        transaction.setModifiedBy(this.getClass().getName());
+        transactionService.save(transaction);
+    }
+
+    private void setAndSaveHolding(String symbol, CoinInformationResponse response, Portfolio portfolio) {
         Holding holding = holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol);
-        holding.setAmount(response.getAmount());
-        holding.setTotalAmountBought(response.getTotalAmountBought());
-        holding.setTotalAmountSold(response.getTotalAmountSold());
-        holding.setStableTotalCost(response.getStableTotalCost());
-        holding.setCurrentPositionInUsdt(response.getCurrentPositionInUsdt());
-        holding.setTotalRealizedProfitUsdt(response.getTotalRealizedProfitUsdt());
-        holding.setAmountInUsdt(response.getUnrealizedProfit());
+        updateHoldingFields(holding, response);
         holdingService.save(holding);
     }
+
+    private void updateHoldingFields(Holding holding, CoinInformationResponse response) {
+        // Null-safe updates for all fields
+        holding.setAmount(OperationUtils.sumBigDecimal(holding.getAmount(), response.getAmount()));
+        holding.setTotalAmountBought(OperationUtils.sumBigDecimal(holding.getTotalAmountBought(), response.getTotalAmountBought()));
+        holding.setTotalAmountSold(OperationUtils.sumBigDecimal(holding.getTotalAmountSold(), response.getTotalAmountSold()));
+        holding.setStableTotalCost(OperationUtils.sumBigDecimal(holding.getStableTotalCost(), response.getStableTotalCost()));
+        holding.setCurrentPositionInUsdt(OperationUtils.sumBigDecimal(holding.getCurrentPositionInUsdt(), response.getCurrentPositionInUsdt()));
+        holding.setTotalRealizedProfitUsdt(OperationUtils.sumBigDecimal(holding.getTotalRealizedProfitUsdt(), response.getTotalRealizedProfitUsdt()));
+        holding.setAmountInUsdt(OperationUtils.sumBigDecimal(holding.getAmountInUsdt(), response.getUnrealizedProfit()));
+    }
+
 }

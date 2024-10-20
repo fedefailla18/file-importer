@@ -8,6 +8,7 @@ import com.importer.fileimporter.facade.CoinInformationFacade;
 import com.importer.fileimporter.service.ProcessFileFactory;
 import com.importer.fileimporter.service.TransactionFacade;
 import com.importer.fileimporter.service.TransactionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -43,10 +45,19 @@ public class TransactionController {
     @GetMapping(value = "/filter")
     public Page<Transaction> getTransactionsRangeDate(@RequestParam(required = false) String symbol,
                                                       @RequestParam(required = false) String portfolioName,
+                                                      @RequestParam(required = false) String side,
+                                                      @RequestParam(required = false) String paidWith,
+                                                      @RequestParam(required = false) String paidAmountOperator,
+                                                      @RequestParam(required = false) BigDecimal paidAmount,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                                       @PageableDefault Pageable pageable) {
-        return transactionService.getTransactionsByFilters(symbol, portfolioName, startDate, endDate, pageable);
+        Page<Transaction> transactions = transactionService.filterTransactions(symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount, startDate, endDate, pageable);
+        if (!transactions.isEmpty()) {
+            return transactions;
+        }
+        return transactionService.getTransactionsByFilters(symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount,
+                startDate, endDate, pageable);
     }
 
     @PostMapping("/information")
@@ -59,6 +70,7 @@ public class TransactionController {
         return coinInformationFacade.getTransactionsInformation();
     }
 
+    @Tag(name = "/information/all/{portfolio}", description = "Calculates portfolio stats from transactions")
     @PostMapping("/information/all/{portfolio}")
     public List<CoinInformationResponse> getInformation(@PathVariable String portfolio) {
         return coinInformationFacade.getPortfolioTransactionsInformation(portfolio);

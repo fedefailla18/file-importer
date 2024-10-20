@@ -39,7 +39,7 @@ public class TransactionFacade {
         for (String symbol : symbols) {
             List<Transaction> transactions = transactionService.getAllBySymbol(symbol.toUpperCase(), Pageable.unpaged())
                     .getContent().stream()
-                    .sorted(Comparator.comparing(t -> t.getTransactionId().getDateUtc()))
+                    .sorted(Comparator.comparing(Transaction::getDateUtc))
                     .collect(Collectors.toList());
             AtomicReference<BigDecimal> totalAmount = getTotalAmount(transactions);
 
@@ -51,15 +51,15 @@ public class TransactionFacade {
             BigDecimal totalSellAmountInBtc = BigDecimal.ZERO;
 
             for (Transaction tr : transactions) {
-                BigDecimal executed = tr.getTransactionId().getExecuted();
+                BigDecimal executed = tr.getExecuted();
                 BigDecimal payedAmount = tr.getPaidAmount();
                 BigDecimal payedAmountInUsdt = BigDecimal.ZERO;
                 BigDecimal priceInUsdt = BigDecimal.ZERO;
                 BigDecimal payedAmountInBtc = BigDecimal.ZERO;
                 BigDecimal priceInBtc = BigDecimal.ZERO;
                 String payedWith = tr.getPaidWith();
-                BigDecimal price = tr.getTransactionId().getPrice();
-                LocalDateTime dateUtc = tr.getTransactionId().getDateUtc();
+                BigDecimal price = tr.getPrice();
+                LocalDateTime dateUtc = tr.getDateUtc();
 
                 if (BTC.equals(payedWith)) {
                     priceInUsdt = pricingFacade.getPriceInUsdt(symbol, dateUtc);
@@ -73,7 +73,7 @@ public class TransactionFacade {
                     priceInUsdt = price;
                 }
 
-                boolean isBuy = OperationUtils.isBuy(tr.getTransactionId().getSide());
+                boolean isBuy = OperationUtils.isBuy(tr.getSide());
                 BigDecimal proportion = executed.divide(totalAmount.get(), 13, RoundingMode.HALF_UP);
 
                 if (isBuy) {
@@ -148,8 +148,8 @@ public class TransactionFacade {
         transactions
                 .forEach(tr -> {
                     // 1 calculate total amount
-                    String side = tr.getTransactionId().getSide();
-                    BigDecimal executed = tr.getTransactionId().getExecuted();
+                    String side = tr.getSide();
+                    BigDecimal executed = tr.getExecuted();
                     totalAmount.set(OperationUtils.accumulateExecutedAmount(totalAmount.get(), executed, side));
                 });
         return totalAmount;
