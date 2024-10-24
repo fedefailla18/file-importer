@@ -1,5 +1,8 @@
 package com.importer.fileimporter.service;
 
+import com.google.common.base.Strings;
+import com.importer.fileimporter.converter.TransactionConverter;
+import com.importer.fileimporter.dto.TransactionDto;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.facade.PricingFacade;
@@ -153,5 +156,19 @@ public class TransactionFacade {
                     totalAmount.set(OperationUtils.accumulateExecutedAmount(totalAmount.get(), executed, side));
                 });
         return totalAmount;
+    }
+
+    public Transaction save(TransactionDto transactionDto) {
+        Transaction transaction = TransactionConverter.Mapper.createTo(transactionDto);
+        if (transaction.getPrice() == null ||
+                Strings.isNullOrEmpty(transaction.getPaidWith()) ||
+                Strings.isNullOrEmpty(transaction.getPair())) {
+            BigDecimal priceInUsdt = pricingFacade.getPriceInUsdt(transaction.getSymbol(), transaction.getDateUtc());
+            transaction.setPrice(priceInUsdt);
+            transaction.setPair(transaction.getSymbol() + USDT);
+            transaction.setPaidWith(USDT);
+            transaction.setPaidAmount(transaction.getExecuted().multiply(priceInUsdt));
+        }
+        return transactionService.save(transaction);
     }
 }

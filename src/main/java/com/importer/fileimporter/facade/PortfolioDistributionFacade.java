@@ -161,6 +161,7 @@ public class PortfolioDistributionFacade {
                                     usdtprice.multiply(e.getAmount()))
                             .totalAmountBought(e.getTotalAmountBought())
                             .totalAmountSold(e.getTotalAmountSold())
+                            .totalRealizedProfitUsdt(e.getTotalRealizedProfitUsdt())
                             .stableTotalCost(e.getStableTotalCost())
                             .currentPositionInUsdt(e.getCurrentPositionInUsdt())
                             .build());

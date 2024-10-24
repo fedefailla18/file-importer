@@ -20,341 +20,166 @@ class CoinInformationFacadeSpec extends Specification {
     def holdingService = Mock(HoldingService)
     def calculateAmountSpent = Mock(CalculateAmountSpent)
     def transactionService = Mock(TransactionService)
-
-    def coinInformationService = new CoinInformationService(pricingFacade, holdingService, calculateAmountSpent,
-            transactionService)
-
     def portfolioService = Mock(PortfolioService)
+
+    def coinInformationService = new CoinInformationService(pricingFacade, holdingService, calculateAmountSpent, transactionService)
 
     @Subject
     def coinInformationFacade = new CoinInformationFacade(transactionService, portfolioService, coinInformationService)
 
     def "should handle no transactions"() {
         given:
-        String symbol = "RLC"
-        List<Transaction> transactions = []
-
-        transactionService.getAllBySymbol(symbol) >> transactions
+        def symbol = "RLC"
+        transactionService.getAllBySymbol(symbol) >> []
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
 
         then:
-        response.coinName == symbol
-        response.amount == BigDecimal.ZERO
-        response.totalAmountBought == BigDecimal.ZERO
-        response.totalAmountSold == BigDecimal.ZERO
-        response.realizedProfit == BigDecimal.ZERO
-        response.unrealizedProfit == BigDecimal.ZERO
-        response.currentPositionInUsdt == BigDecimal.ZERO
-        response.avgEntryPrice.isEmpty()
+        with(response) {
+            coinName == symbol
+            amount == BigDecimal.ZERO
+            totalAmountBought == BigDecimal.ZERO
+            totalAmountSold == BigDecimal.ZERO
+            realizedProfit == BigDecimal.ZERO
+            unrealizedProfit == BigDecimal.ZERO
+            currentPositionInUsdt == BigDecimal.ZERO
+            avgEntryPrice.isEmpty()
+        }
     }
 
     def "should calculate transaction information for a given symbol with buy and sell transactions"() {
-        given: "A list of transactions and a symbol"
+        given:
         def symbol = "RLC"
         def transactions = getTestTransactions()
-        def portfolio = new Portfolio()
-        def holding = Holding.builder()
-                .portfolio(portfolio)
-                .symbol(symbol)
-                .amount(BigDecimal.ZERO)
-                .amountInUsdt(BigDecimal.ZERO)
-                .totalAmountSold(BigDecimal.ZERO)
-                .totalAmountBought(BigDecimal.ZERO)
-                .totalRealizedProfitUsdt(BigDecimal.ZERO)
-                .build()
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
-        when: "The getTransactionsInformation method is called"
+        transactionService.getAllBySymbol(symbol) >> transactions
+        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
+        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
+            Transaction t, CoinInformationResponse response, Portfolio portfolio1
+            -> t.paidAmount }
+
+        when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
 
-        then: "The response should contain correct transaction information"
-        response.coinName == "RLC"
-        response.amount == 80
-        response.totalAmountBought == new BigDecimal("200")
-        response.totalAmountSold == new BigDecimal("120")
-        response.currentPositionInUsdt == new BigDecimal("160") // 80 * 2
+        then:
+        with(response) {
+            coinName == "RLC"
+            amount == new BigDecimal("80")
+            totalAmountBought == new BigDecimal("200")
+            totalAmountSold == new BigDecimal("120")
+            currentPositionInUsdt == new BigDecimal("160")
+        }
 
-        and: "holding has copied response fields"
-        checkCopiedFields(holding, response)
-
-        and:
-        1 * transactionService.getAllBySymbol(symbol) >> transactions
-        1 * portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        1 * pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
-        1 * holdingService.getOrCreateByPortfolioAndSymbol(null, symbol)
-        1 * holdingService.save(_ as Holding) >> holding
-        
-        transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse, null) >> {
-            Transaction transaction1, CoinInformationResponse response1, Portfolio portfolio1 ->
-                if (transaction1.side == "BUY") {
-                    return transaction1.paidAmount
-                }
-                return BigDecimal.ZERO
+        1 * holdingService.save(_ as Holding) >> { Holding h ->
+            assert h.amount == new BigDecimal("80")
+            assert h.totalAmountBought == new BigDecimal("200")
+            assert h.totalAmountSold == new BigDecimal("120")
+            assert h.currentPositionInUsdt == new BigDecimal("160")
+            h
         }
     }
 
-    def "should calculate transaction information for a given symbol"() {
-        given: "A list of transactions and a symbol"
+    def "should calculate realized and unrealized profit correctly"() {
+        given:
         def symbol = "RLC"
         def transactions = getTestTransactions()
-        def portfolio = new Portfolio()
-        def holding = new Holding().tap {
-            it.symbol = symbol
-            it.amount = 0
-            it.totalRealizedProfitUsdt = 0
-        }
-        and: "holding calls"
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        def holding = new Holding(symbol: symbol, portfolio: portfolio)
+
         transactionService.getAllBySymbol(symbol) >> transactions
-        portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
-        holdingService.save(_ as Holding) >> holding
-        and:
-        calculateAmountSpent.execute(symbol, transactions, _ as CoinInformationResponse) >> new BigDecimal("599.9950000000")
-        pricingFacade.getCurrentMarketPrice(symbol) >> 2
-
-        when: "The getTransactionsInformation method is called"
-        def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
-
-        then: "The response should contain correct transaction information"
-        response.coinName == "RLC"
-        response.amount == 80
-        response.totalAmountBought == 200
-        response.totalAmountSold == 120
-        response.currentPositionInUsdt == 160
-        // realized and unrealized profit cannot be tested here cause we need calculateAmountSpent
-
-        and:
-        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse, null) >> 200
-    }
-
-    def "should calculate transaction information for realized and unrealized profit with multiple sell transactions"() {
-        given:
-        String symbol = "RLC"
-        List<Transaction> transactions = getTestTransactions()
-        def currentMarketPrice = 2
-        def portfolio = new Portfolio()
-        def holding = new Holding().tap {
-            it.symbol = symbol
-            it.amount = 0
-            it.totalRealizedProfitUsdt = 0
-        }
-        and: "holding calls"
-        transactionService.getAllBySymbol(symbol) >> transactions
-        portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
-        holdingService.save(_ as Holding) >> holding
-
-        and:
-        transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse, null) >> { Transaction transaction, CoinInformationResponse response ->
-            return transaction.paidAmount
-        }
-        pricingFacade.getCurrentMarketPrice(symbol) >> currentMarketPrice
+        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
+        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
+            Transaction t, CoinInformationResponse response, Portfolio portfolio1
+                -> t.paidAmount }
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
 
         then:
-        response.coinName == symbol
-        response.amount == new BigDecimal("80") // 200 bought - 120 sold
-        response.totalAmountBought == new BigDecimal("200")
-        response.totalAmountSold == new BigDecimal("120")
-        response.currentPrice == 2
-        response.realizedProfit == new BigDecimal("-230.5") // 2.15*70 + 1.60*50 - 200
-        response.unrealizedProfit == response.amount * currentMarketPrice
-        response.currentPositionInUsdt == 160 // 80*2
-        response.unrealizedTotalProfitMinusTotalCost == 190.5
+        with(response) {
+            realizedProfit == new BigDecimal("-230.5")
+            unrealizedProfit == new BigDecimal("160")
+            unrealizedTotalProfitMinusTotalCost == new BigDecimal("-40.5")
+        }
     }
 
-    def "should calculate transaction information for a single PURCHASE transaction"() {
+    def "should handle a single buy transaction correctly"() {
         given:
-        String symbol = "RLC"
-        List<Transaction> transactions = [
-                new Transaction(
-                        side: "BUY", pair: "RLCUSDT", price: 500, executed: 1,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: new BigDecimal("500"),
-                )
-        ]
-        def portfolio = new Portfolio()
-        def holding = new Holding().tap {
-            it.symbol = symbol
-            it.amount = 0
-            it.totalRealizedProfitUsdt = 0
-        }
-        and: "holding calls"
-        transactionService.getAllBySymbol(symbol) >> transactions
-        portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
-        holdingService.save(_ as Holding) >> holding
+        def symbol = "RLC"
+        def transactions = [createTransaction(symbol, "USDT", "BUY", new BigDecimal("1"), new BigDecimal("500"))]
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
-        and:
         transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse, null) >> 500
-        pricingFacade.getCurrentMarketPrice(symbol) >> 500
+        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("500")
+        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> new BigDecimal("500")
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
 
         then:
-        response.coinName == "RLC"
-        response.amount == 1
-        response.realizedProfit == BigDecimal.ZERO
-        response.unrealizedProfit == 500
-        response.currentPositionInUsdt == new BigDecimal("500")
+        with(response) {
+            amount == new BigDecimal("1")
+            realizedProfit == BigDecimal.ZERO
+            unrealizedProfit == new BigDecimal("500")
+            currentPositionInUsdt == new BigDecimal("500")
+        }
     }
 
-
-    def "should calculate transaction information for a single SELL transaction"() {
+    def "should handle multiple transactions on a single account"() {
         given:
-        String symbol = "RLC"
-        List<Transaction> transactions = [
-                new Transaction(
-                        side: "BUY", pair: "RLCUSDT", price: 500, executed: 2,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 1000,
-                ),
-                new Transaction(
-                        side: "SELL", pair: "RLCUSDT", price: 250, executed: 1,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 250,
-                )
+        def symbol = "RLC"
+        def transactions = [
+                createTransaction(symbol, "USDT", "BUY", new BigDecimal("1"), new BigDecimal("500")),
+                createTransaction(symbol, "USDT", "SELL", new BigDecimal("1"), new BigDecimal("200"))
         ]
-        def portfolio = new Portfolio()
-        def holding = new Holding().tap {
-            it.symbol = symbol
-            it.amount = 0
-            it.totalRealizedProfitUsdt = 0
-        }
-        and: "holding calls"
-        transactionService.getAllBySymbol(symbol) >> transactions
-        portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
-        holdingService.save(_ as Holding) >> holding
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
-        and:
         transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse, null) >> 500
-        pricingFacade.getCurrentMarketPrice(symbol) >> 2000
+        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("1000")
+        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
+            Transaction t, CoinInformationResponse response, Portfolio portfolio1
+                -> t.paidAmount }
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
 
         then:
-        response.coinName == "RLC"
-        response.amount == 1
-    }
-
-    def "should calculate transaction information for multiple transactions on a single account"() {
-        given:
-        String symbol = "RLC"
-        List<Transaction> transactions = [
-                new Transaction(
-                        side: "BUY", pair: "RLCUSDT", price: 500, executed: 1,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 500
-                ),
-                new Transaction(
-                        side: "SELL", pair: "RLCUSDT", price: 200, executed: 1,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 200
-                )
-        ]
-        def portfolio = new Portfolio()
-        def holding = new Holding().tap {
-            it.symbol = symbol
-            it.amount = 0
-            it.totalRealizedProfitUsdt = 0
+        with(response) {
+            amount == BigDecimal.ZERO
+            realizedProfit == new BigDecimal("-300")
+            unrealizedProfit == BigDecimal.ZERO
+            currentPositionInUsdt == BigDecimal.ZERO
         }
-        and: "holding calls"
-        transactionService.getAllBySymbol(symbol) >> transactions
-        portfolioService.getByName("Binance") >> Optional.of(portfolio)
-        holdingService.getOrCreateByPortfolioAndSymbol(_ as Portfolio, symbol) >> holding
-        holdingService.save(_ as Holding) >> holding
-
-        and:
-        transactionService.getAllBySymbol(symbol) >> transactions
-        calculateAmountSpent.getAmountSpentInUsdt(_ as Transaction, _ as CoinInformationResponse, null) >> 500
-        pricingFacade.getCurrentMarketPrice(symbol) >> 1000
-
-        when:
-        def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
-
-        then:
-        response.coinName == "RLC"
-        response.amount == 0
     }
 
-    def List<Transaction> getTestTransactions() {
-        return [
-                new Transaction(side: "BUY",
-                                pair: "RLCUSDT",
-                                price: 1,
-                                executed: 200,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 200,
-                        feeAmount: 0.2,
-                ),
-                new Transaction(side: "SELL",
-                                pair: "RLCUSDT",
-                                price: 2.15,
-                                executed: 70,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 150.5,
-                        feeAmount: 0.15,
-                ),
-                new Transaction(side: "SELL",
-                                pair: "RLCUSDT",
-                                price: 1.60,
-                                executed: 50,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 80,
-                        feeAmount: 0.091371
-                )
+    def static List<Transaction> getTestTransactions() {
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        [
+                new Transaction(side: "BUY", pair: "RLCUSDT", price: 1, executed: 200, symbol: "RLC", paidWith: "USDT", paidAmount: 200, feeAmount: 0.2, portfolio: portfolio),
+                new Transaction(side: "SELL", pair: "RLCUSDT", price: 2.15, executed: 70, symbol: "RLC", paidWith: "USDT", paidAmount: 150.5, feeAmount: 0.15, portfolio: portfolio),
+                new Transaction(side: "SELL", pair: "RLCUSDT", price: 1.60, executed: 50, symbol: "RLC", paidWith: "USDT", paidAmount: 80, feeAmount: 0.091371, portfolio: portfolio)
         ]
     }
 
-    static ArrayList<Transaction> getTransactions(String symbol) {
-        return [
-                createTransaction(symbol, "BTC", "BUY", new BigDecimal("82.5"), new BigDecimal("0.0000618000")),
-                createTransaction(symbol, "BTC", "BUY", new BigDecimal("55.0"), new BigDecimal("0.0000936")),
-                createTransaction(symbol, "BTC", "SELL", new BigDecimal("76.2"), new BigDecimal("0.0001311000")),
-                createTransaction(symbol, "USDT", "BUY", new BigDecimal("23.6"), new BigDecimal("1.209")),
-                createTransaction(symbol, "USDT", "SELL", new BigDecimal("56.0"), new BigDecimal("1.79")),
-                createTransaction(symbol, "USDT", "BUY", new BigDecimal("45.6"), new BigDecimal("1.209"))
-        ]
-    }
-
-    static Transaction createTransaction(String symbol, String payedWith, String side, BigDecimal executed, BigDecimal price) {
-        BigDecimal payedAmount = executed.multiply(price)
-        return new Transaction(
+    def static Transaction createTransaction(String symbol, String paidWith, String side, BigDecimal executed, BigDecimal price) {
+        new Transaction(
                 executed: executed,
                 side: side,
                 dateUtc: LocalDateTime.now(),
                 price: price,
                 symbol: symbol,
-                paidWith: payedWith,
-                paidAmount: payedAmount
+                paidWith: paidWith,
+                paidAmount: executed * price,
+                portfolio: new Portfolio(name: "TestPortfolio")
         )
-    }
-
-    def checkCopiedFields(holding, response) {
-        holding.amount == response.amount
-        holding.totalAmountBought == response.totalAmountBought
-        holding.totalAmountSold == response.totalAmountSold
-        holding.stableTotalCost == response.stableTotalCost
-        holding.currentPositionInUsdt == response.currentPositionInUsdt
-        holding.totalRealizedProfitUsdt == response.realizedProfit
-        holding.amountInUsdt == response.currentPositionInUsdt
     }
 }

@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Path;
-import javax.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -18,12 +18,12 @@ public class TransactionSpecifications {
     private static final String PAID_AMOUNT = "paidAmount";
 
     public static Specification<Transaction> getSpecWithFilters(String symbol, String portfolioName, String side, String paidWith, String paidAmountOperator, BigDecimal paidAmount, LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        return Specification.where(TransactionSpecifications.hasSymbol(symbol))
-                .and(TransactionSpecifications.hasPortfolioName(portfolioName))
-                .and(TransactionSpecifications.hasSide(side))
-                .and(TransactionSpecifications.hasPaidWith(paidWith))
-                .and(TransactionSpecifications.inDateRange(null, null))
-                .and(TransactionSpecifications.paidAmountCondition(paidAmountOperator, paidAmount));
+        return Specification.where(hasSymbol(symbol))
+                .and(hasPortfolioName(portfolioName))
+                .and(hasSide(side))
+                .and(hasPaidWith(paidWith))
+                .and(inDateRange(startDate, endDate))
+                .and(paidAmountCondition(paidAmountOperator, paidAmount));
     }
 
     public static Specification<Transaction> hasSymbol(String symbol) {
@@ -63,15 +63,25 @@ public class TransactionSpecifications {
                         .orElse(criteriaBuilder.conjunction());
     }
 
-    public static Specification<Transaction> inDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+    public static Specification<Transaction> inDateRange(LocalDate startDate, LocalDate endDate) {
         return (root, query, criteriaBuilder) -> {
-            Predicate startPredicate = Optional.ofNullable(startDate)
-                    .map(start -> criteriaBuilder.greaterThanOrEqualTo(root.get("dateUtc"), start))
-                    .orElse(criteriaBuilder.conjunction());
-            Predicate endPredicate = Optional.ofNullable(endDate)
-                    .map(end -> criteriaBuilder.lessThanOrEqualTo(root.get("dateUtc"), end))
-                    .orElse(criteriaBuilder.conjunction());
-            return criteriaBuilder.and(startPredicate, endPredicate);
+            if (startDate == null && endDate == null) {
+                return criteriaBuilder.conjunction();
+            }
+
+            Expression<LocalDateTime> dateUtcExpression = root.get("dateUtc");
+
+            if (startDate != null && endDate != null) {
+                LocalDateTime startDateTime = startDate.atStartOfDay();
+                LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+                return criteriaBuilder.between(dateUtcExpression, startDateTime, endDateTime);
+            } else if (startDate != null) {
+                LocalDateTime startDateTime = startDate.atStartOfDay();
+                return criteriaBuilder.greaterThanOrEqualTo(dateUtcExpression, startDateTime);
+            } else {
+                LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+                return criteriaBuilder.lessThan(dateUtcExpression, endDateTime);
+            }
         };
     }
 
