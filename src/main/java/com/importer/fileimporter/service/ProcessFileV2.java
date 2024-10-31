@@ -2,6 +2,7 @@ package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
+import com.importer.fileimporter.dto.TransactionData;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +22,11 @@ public class ProcessFileV2 extends IProcessFile {
     private final PortfolioService portfolioService;
     private final TransactionService transactionService;
 
-    public ProcessFileV2(PortfolioService portfolioService, TransactionService transactionService, FileImporterService fileImporterService) {
-        super(fileImporterService);
+    public ProcessFileV2(PortfolioService portfolioService,
+                         TransactionService transactionService,
+                         FileImporterService fileImporterService,
+                         TransactionAdapterFactory transactionAdapterFactory) {
+        super(fileImporterService, transactionAdapterFactory);
         this.portfolioService = portfolioService;
         this.transactionService = transactionService;
     }
@@ -52,39 +56,39 @@ public class ProcessFileV2 extends IProcessFile {
                                            Map<String, CoinInformationResponse> transactionDetails,
                                            Portfolio portfolio) {
         return row -> {
-            String pair = getPair(row);
-            String symbol = getSymbolFromExecuted(row, symbols);
-            log.info("Processing row for: " + symbol);
+            TransactionData transactionData = getAdapter(row, portfolio.getName());
+            String pair = transactionData.getPair();
+            String symbol = transactionData.getSymbol();
+            log.info(this.getClass().getName() + " - Processing row for: " + symbol);
             if (symbol.isEmpty()) {
                 return;
             }
-
             try {
-                processTransactionRow(row, pair, symbol, transactionDetails, portfolio);
+                processTransactionRow(transactionData, pair, symbol, transactionDetails, portfolio);
             } catch (Exception e) {
                 log.error("Error processing row: {}", e.getMessage(), e);
             }
         };
     }
 
-    private void processTransactionRow(Map<?, ?> row, String pair, String symbol,
+    private void processTransactionRow(TransactionData transactionData, String pair, String symbol,
                                        Map<String, CoinInformationResponse> transactionDetails,
                                        Portfolio portfolio) {
-        String symbolPair = pair.replace(symbol, "");
-        boolean isBuy = OperationUtils.isBuy(row);
+        boolean isBuy = OperationUtils.isBuy(transactionData.getSide());
 
         transactionDetails.computeIfAbsent(symbol, k -> createNewCoinInfo(symbol));
         CoinInformationResponse coinInfo = transactionDetails.get(symbol);
 
-        updateCoinInfo(coinInfo, row, symbol, symbolPair, isBuy);
-        saveTransaction(row, pair, symbol, portfolio, symbolPair, coinInfo);
+        updateCoinInfo(coinInfo, transactionData, isBuy);
+        saveTransaction(transactionData, portfolio);
     }
 
-    private void saveTransaction(Map<?, ?> row, String pair, String symbol, Portfolio portfolio, String symbolPair, CoinInformationResponse coinInfo) {
+    private void saveTransaction(TransactionData transactionData, Portfolio portfolio) {
         transactionService.saveTransaction(
-                coinInfo.getCoinName(), symbolPair, getDate(row), pair,
-                getSide(row), getPrice(row), getExecuted(row, symbol),
-                getAmount(row, symbol), getFee(row), "Process File",
+                transactionData.getCoinName(), transactionData.getPaidWith(), transactionData.getDate(), transactionData.getPair(),
+                transactionData.getSide(), transactionData.getPrice(), transactionData.getExecuted(),
+                transactionData.getAmount(), transactionData.getFee(),
+                ProcessFileV2.log.getName() + " - Process File",
                 portfolio
         );
     }

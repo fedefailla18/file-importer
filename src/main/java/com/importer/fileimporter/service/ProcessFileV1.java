@@ -2,6 +2,7 @@ package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
+import com.importer.fileimporter.dto.TransactionData;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,8 +24,12 @@ public class ProcessFileV1 extends IProcessFile {
     private final TransactionService transactionService;
     private final SymbolService symbolService;
 
-    public ProcessFileV1(FileImporterService fileImporterService, FileImporterService fileImporterService1, TransactionService transactionService, SymbolService symbolService) {
-        super(fileImporterService);
+    public ProcessFileV1(FileImporterService fileImporterService,
+                         FileImporterService fileImporterService1,
+                         TransactionService transactionService,
+                         SymbolService symbolService,
+                         TransactionAdapterFactory transactionAdapterFactory) {
+        super(fileImporterService, transactionAdapterFactory);
         this.fileImporterService = fileImporterService1;
         this.transactionService = transactionService;
         this.symbolService = symbolService;
@@ -56,35 +61,34 @@ public class ProcessFileV1 extends IProcessFile {
 
     private Consumer<Map<?, ?>> processRow(List<String> symbols, Map<String, CoinInformationResponse> transactionDetails) {
         return row -> {
-            String pair = getPair(row);
-            String symbol = getSymbolFromExecuted(row, symbols);
+            TransactionData transactionData = getAdapter(row, "Binance");
+            String symbol = transactionData.getSymbol();
             if (symbol.isEmpty()) return;
 
             try {
-                processTransactionRow(row, pair, symbol, transactionDetails);
+                processTransactionRow(transactionDetails, transactionData);
             } catch (Exception e) {
                 log.error("Error processing row: {}", e.getMessage(), e);
             }
         };
     }
 
-    private void processTransactionRow(Map<?, ?> row, String pair,
-                                       String symbol,
-                                       Map<String, CoinInformationResponse> transactionDetails) {
-        String symbolPair = pair.replace(symbol, "");
-        boolean isBuy = OperationUtils.isBuy(row);
+    private void processTransactionRow(Map<String, CoinInformationResponse> transactionDetails,
+                                       TransactionData transactionData) {
+        String symbol = transactionData.getSymbol();
+        boolean isBuy = OperationUtils.isBuy(transactionData.getSide());
 
         transactionDetails.computeIfAbsent(symbol, k -> createNewCoinInfo(symbol));
         CoinInformationResponse coinInfo = transactionDetails.get(symbol);
 
-        updateCoinInfo(coinInfo, row, symbol, symbolPair, isBuy);
-        saveTransaction(row, pair, symbol, symbolPair, coinInfo);
+        updateCoinInfo(coinInfo, transactionData, isBuy);
+        saveTransaction(transactionData);
     }
 
-    private void saveTransaction(Map<?, ?> row, String pair, String symbol, String symbolPair, CoinInformationResponse coinInfo) {
+    private void saveTransaction(TransactionData transactionData) {
         transactionService.saveTransaction(
-                coinInfo.getCoinName(), symbolPair, getDate(row), pair,
-                getSide(row), getPrice(row), getExecuted(row, symbol),
-                getAmount(row, symbol), getFee(row), "Process File");
+                transactionData.getCoinName(), transactionData.getPaidWith(), transactionData.getDate(), transactionData.getPair(),
+                transactionData.getSide(), transactionData.getPrice(), transactionData.getExecuted(),
+                transactionData.getAmount(), transactionData.getFee(), "Process File V1");
     }
 }

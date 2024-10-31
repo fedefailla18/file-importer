@@ -1,7 +1,7 @@
 package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
-import com.importer.fileimporter.utils.ProcessFileServiceUtils;
+import com.importer.fileimporter.dto.TransactionData;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +18,7 @@ import static com.importer.fileimporter.utils.OperationUtils.STABLE;
 public abstract class IProcessFile {
 
     private final FileImporterService fileImporterService;
+    protected final TransactionAdapterFactory transactionAdapterFactory;
 
     protected List<Map<?, ?>> getRows(MultipartFile file) throws IOException {
         return fileImporterService.getRows(file);
@@ -27,23 +28,24 @@ public abstract class IProcessFile {
         return CoinInformationResponse.createEmpty(symbol);
     }
 
-    void updateCoinInfo(CoinInformationResponse coinInfo, Map<?, ?> row, String symbol, String symbolPair, boolean isBuy) {
-        coinInfo.setTotalExecuted(calculateAmount(coinInfo.getAmount(), isBuy, getExecuted(row, symbol)));
-        updateSpentAndAvgPrice(coinInfo, row, symbolPair, isBuy);
-        coinInfo.addRows(row);
+    void updateCoinInfo(CoinInformationResponse coinInfo, TransactionData transactionData, boolean isBuy) {
+        coinInfo.setTotalExecuted(calculateAmount(coinInfo.getAmount(), isBuy, transactionData.getExecuted()));
+        updateSpentAndAvgPrice(coinInfo, transactionData, isBuy);
+        coinInfo.addRows(transactionData);
     }
 
-    void updateSpentAndAvgPrice(CoinInformationResponse coinInfo, Map<?, ?> row, String symbolPair, boolean isBuy) {
+    void updateSpentAndAvgPrice(CoinInformationResponse coinInfo, TransactionData transactionData, boolean isBuy) {
+        String paidWith = transactionData.getPaidWith();
         STABLE.stream()
-                .filter(symbolPair::contains)
+                .filter(paidWith::contains)
                 .findFirst()
                 .ifPresent(stableCoin -> {
-                    BigDecimal amount = getAmount(row, stableCoin);
+                    BigDecimal amount = transactionData.getAmount();
                     BigDecimal updatedSpent = updateAmountSpent(coinInfo.getStableTotalCost(), amount, isBuy);
                     coinInfo.setStableTotalCost(updatedSpent);
                 });
 
-        calculateSpent(getAmount(row, symbolPair), coinInfo, symbolPair, isBuy);
+        calculateSpent(transactionData.getAmount(), coinInfo, paidWith, isBuy);
     }
 
     BigDecimal updateAmountSpent(BigDecimal currentSpent, BigDecimal amount, boolean isBuy) {
@@ -61,36 +63,9 @@ public abstract class IProcessFile {
                 currentAmount.subtract(amountToAdjust);
     }
 
-    String getSymbolFromExecuted(Map<?, ?> row, List<String> symbols) {
-        return ProcessFileServiceUtils.getSymbolFromExecuted(row, symbols);
-    }
-
-    String getDate(Map<?, ?> row) {
-        return ProcessFileServiceUtils.getDate(row);
-    }
-
-    String getPair(Map<?, ?> row) {
-        return ProcessFileServiceUtils.getPair(row);
-    }
-
-    BigDecimal getExecuted(Map<?, ?> row, String coinName) {
-        return ProcessFileServiceUtils.getExecuted(row, coinName);
-    }
-
-    BigDecimal getAmount(Map<?, ?> row, String symbolPair) {
-        return ProcessFileServiceUtils.getAmount(row, symbolPair);
-    }
-
-    BigDecimal getFee(Map<?, ?> row) {
-        return ProcessFileServiceUtils.getFee(row);
-    }
-
-    BigDecimal getPrice(Map<?, ?> row) {
-        return ProcessFileServiceUtils.getPrice(row);
-    }
-
-    String getSide(Map<?, ?> row) {
-        return ProcessFileServiceUtils.getSide(row);
+    protected TransactionData getAdapter(Map<?, ?> row, String portfolioName) {
+        final String name = portfolioName == null ? "Binance" : portfolioName;
+        return transactionAdapterFactory.createAdapter(row, name);
     }
 
 }

@@ -4,9 +4,9 @@ import spock.lang.Specification
 
 import java.math.RoundingMode
 
-import static com.importer.fileimporter.utils.ProcessFileServiceUtils.*
+import static ProcessFileUtils.*
 
-class ProcessFileServiceUtilsSpec extends Specification {
+class ProcessFileUtilsSpec extends Specification {
 
     def "test getPair"() {
         given:

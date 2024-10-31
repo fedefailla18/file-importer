@@ -1,10 +1,10 @@
 package com.importer.fileimporter.utils;
 
+import com.importer.fileimporter.dto.TransactionData;
 import lombok.experimental.UtilityClass;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -17,7 +17,13 @@ public class OperationUtils {
     public static final List<String> GRAND_SYMBOLS = List.of("BTC", "ETH");
     public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USD", "USDC");
 
-    public static final Predicate<String> IS_BUY = "BUY"::equals;
+    public static final String BUY_STRING = "BUY";
+    public static final Predicate<String> IS_BUY;
+    public static final String SELL_STRING = "SELL";
+
+    static {
+        IS_BUY = BUY_STRING::equals;
+    }
 
     public static final String USDT = "USDT";
     public static final String BTC = "BTC";
@@ -26,8 +32,8 @@ public class OperationUtils {
         return STABLE.contains(payedWithSymbol);
     }
 
-    public boolean isBuy(Map<?, ?> row) {
-        String side = row.get("Side").toString();
+    public boolean isBuy(TransactionData transactionData) {
+        String side = transactionData.getSide();
         return IS_BUY.test(side);
     }
 
