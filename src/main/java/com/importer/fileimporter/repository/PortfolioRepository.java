@@ -2,6 +2,8 @@ package com.importer.fileimporter.repository;
 
 import com.importer.fileimporter.entity.Portfolio;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,6 +16,8 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, UUID> {
     @Override
     List<Portfolio> findAll();
 
-    Optional<Portfolio> findByName(String name);
+    @Query(value = "select p from Portfolio p " +
+            "where lower(p.name) like lower(concat('%', :name,'%'))")
+    Optional<Portfolio> findByName(@Param("name") String name);
 
 }
