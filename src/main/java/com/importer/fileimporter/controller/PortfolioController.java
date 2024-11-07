@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(value = "/portfolio")
@@ -29,11 +27,6 @@ public class PortfolioController {
     @PostMapping("/distribution")
     public PortfolioDistribution calculatePortfolioInSymbol(@RequestParam String portfolioName) {
         return portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt(portfolioName);
-    }
-
-    @PostMapping("/distributions")
-    public List<PortfolioDistribution> calculatePortfolioInSymbol() {
-        return portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt();
     }
 
     @GetMapping("/{portfolioName}/{symbol}")

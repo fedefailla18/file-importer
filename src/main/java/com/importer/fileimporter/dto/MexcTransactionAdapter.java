@@ -93,7 +93,7 @@ public class MexcTransactionAdapter extends TransactionCoinName {
     }
 
     @Override
-    public String getCoinName() {
-        return this.coinName;
+    public String getPaidWith() {
+        return getPair().replace(getCoinName() + "_", "");
     }
 }

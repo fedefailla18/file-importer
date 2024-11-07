@@ -4,7 +4,7 @@ import com.importer.fileimporter.utils.ProcessFileUtils;
 import java.math.BigDecimal;
 import java.util.Map;
 
-public class BinanceTransactionAdapter implements TransactionData {
+public class BinanceTransactionAdapter extends TransactionCoinName {
 
     public static final String PAIR_KEY = "Pair";
     public static final String EXECUTED_KEY = "Executed";
@@ -15,15 +15,10 @@ public class BinanceTransactionAdapter implements TransactionData {
     public static final String SIDE_KEY = "Side";
 
     private final Map<?, ?> row;
-    private final String coinName;
 
     public BinanceTransactionAdapter(Map<?, ?> row) {
         this.row = row;
         this.coinName = getSymbol();
-    }
-
-    public String getCoinName() {
-        return coinName;
     }
 
     @Override
@@ -89,6 +84,11 @@ public class BinanceTransactionAdapter implements TransactionData {
         }
 
         return feeSymbol.trim();
+    }
+
+    @Override
+    public String getPaidWith() {
+        return getPair().replace(getCoinName(), "");
     }
 
 }

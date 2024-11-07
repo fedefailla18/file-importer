@@ -14,8 +14,5 @@ public interface TransactionData {
     String getSymbol();
     String getFeeSymbol();
     String getCoinName();
-
-    default String getPaidWith() {
-        return getPair().replace(getCoinName(), "");
-    }
+    String getPaidWith();
 }

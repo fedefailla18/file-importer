@@ -47,7 +47,6 @@ public class ProcessFileV2 extends IProcessFile {
                                                                                  String portfolioName) {
         Map<String, CoinInformationResponse> transactionsDetailsMap = new HashMap<>();
         Portfolio portfolio = portfolioService.findOrSave(portfolioName);
-        log.info("Portfolio created: " + portfolio.getName());
         rows.forEach(processRow(symbols, transactionsDetailsMap, portfolio));
         return transactionsDetailsMap;
     }
@@ -57,21 +56,20 @@ public class ProcessFileV2 extends IProcessFile {
                                            Portfolio portfolio) {
         return row -> {
             TransactionData transactionData = getAdapter(row, portfolio.getName());
-            String pair = transactionData.getPair();
             String symbol = transactionData.getSymbol();
             log.info(this.getClass().getName() + " - Processing row for: " + symbol);
             if (symbol.isEmpty()) {
                 return;
             }
             try {
-                processTransactionRow(transactionData, pair, symbol, transactionDetails, portfolio);
+                processTransactionRow(transactionData, symbol, transactionDetails, portfolio);
             } catch (Exception e) {
                 log.error("Error processing row: {}", e.getMessage(), e);
             }
         };
     }
 
-    private void processTransactionRow(TransactionData transactionData, String pair, String symbol,
+    private void processTransactionRow(TransactionData transactionData, String symbol,
                                        Map<String, CoinInformationResponse> transactionDetails,
                                        Portfolio portfolio) {
         boolean isBuy = OperationUtils.isBuy(transactionData.getSide());
