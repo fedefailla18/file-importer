@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -33,14 +34,15 @@ public class CoinInformationFacade {
                 .collect(Collectors.toList());
     }
 
-    public List<CoinInformationResponse> getPortfolioTransactionsInformation(String portfolio) {
-        Portfolio byName = portfolioService.getByName(portfolio)
+    public List<CoinInformationResponse> getPortfolioTransactionsInformation(String portfolioName) {
+        Portfolio portfolio = portfolioService.getByName(portfolioName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
-        List<Transaction> transactions = transactionService.findByPortfolio(byName);
+        List<Transaction> transactions = transactionService.findByPortfolio(portfolio);
         Map<String, List<Transaction>> collect = transactions.stream()
                 .collect(Collectors.groupingBy(Transaction::getSymbol));
         return collect.entrySet().stream()
                 .map(this::getCoinInformationResponse)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 

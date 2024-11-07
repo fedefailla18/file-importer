@@ -1,6 +1,6 @@
 package com.importer.fileimporter.facade;
 
-import com.importer.fileimporter.coverter.HoldingConverter;
+import com.importer.fileimporter.converter.HoldingConverter;
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.dto.PortfolioDistribution;
 import com.importer.fileimporter.entity.Holding;
@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.importer.fileimporter.utils.OperationUtils.BTC;
@@ -55,7 +56,7 @@ public class PortfolioDistributionFacade {
     public HoldingDto addPortfolioHolding(AddHoldingRequest request) {
         Symbol savedSymbol = symbolService.findOrSaveSymbol(request.getSymbol(), request.getName());
 
-        Portfolio portfolio = portfolioService.findOrSave(request.getPortfolio());
+        Portfolio portfolio = portfolioService.findOrSave(request.getPortfolioName());
 
         return Optional.ofNullable(
                 holdingService.saveSymbolHolding(savedSymbol, portfolio, request.getAmount()))
@@ -85,15 +86,10 @@ public class PortfolioDistributionFacade {
             return calculateAllPortfolioInBtcAndUsdt();
         }
         Portfolio portfolio = getByName(name)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Porfolio not found."));
-        List<Holding> holdings = portfolio.getHoldings().stream()
-////                .filter(e -> e.getAmount().compareTo(BigDecimal.ZERO) != 0 &&
-////                        !e.getSymbol().equals("BTC"))
-//                .sorted(Comparator.comparing(Holding::getPercent).reversed())
-                .collect(Collectors.toList());
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
         return PortfolioDistribution.builder()
                 .portfolioName(portfolio.getName())
-                .holdings(HoldingConverter.Mapper.createFromEntities(holdings))
+                .holdings(HoldingConverter.Mapper.createFromEntities(portfolio.getHoldings()))
                 .build();
     }
 
@@ -144,18 +140,15 @@ public class PortfolioDistributionFacade {
     }
 
     private void addHoldingsToPortfolioDistribution(Portfolio portfolio, PortfolioDistribution portfolioDistribution) {
-        portfolio.getHoldings()
+        portfolio.getHoldings().stream()
+                //.filter(excludeWhenAmountIsAlmostZero())
                 .forEach(e -> {
                     Map<String, Double> price = pricingFacade.getPrices(e.getSymbol());
-                    BigDecimal btcprice;
-                    BigDecimal usdtprice;
-                    if (price.get(BTC) != null) {
-                        btcprice = BigDecimal.valueOf(price.get(BTC));
-                        usdtprice = BigDecimal.valueOf(price.get(USDT));
-                    } else {
-                        btcprice = BigDecimal.ZERO;
-                        usdtprice = BigDecimal.ZERO;
-                    }
+                    BigDecimal btcprice =
+                            Optional.ofNullable(price.get(BTC)).map(BigDecimal::valueOf).orElse(BigDecimal.ZERO);
+                    BigDecimal usdtprice =
+                            Optional.ofNullable(price.get(USDT)).map(BigDecimal::valueOf).orElse(BigDecimal.ZERO);
+
                     // TODO: use converter to create this HoldingDto.
                     portfolioDistribution.getHoldings().add(HoldingDto.builder()
                             .symbol(e.getSymbol())
@@ -168,11 +161,16 @@ public class PortfolioDistributionFacade {
                                     usdtprice.multiply(e.getAmount()))
                             .totalAmountBought(e.getTotalAmountBought())
                             .totalAmountSold(e.getTotalAmountSold())
+                            .totalRealizedProfitUsdt(e.getTotalRealizedProfitUsdt())
                             .stableTotalCost(e.getStableTotalCost())
                             .currentPositionInUsdt(e.getCurrentPositionInUsdt())
                             .build());
                 }
         );
+    }
+
+    private Predicate<Holding> excludeWhenAmountIsAlmostZero() {
+        return holding -> new BigDecimal("0.3").compareTo(holding.getTotalAmountBought().subtract(holding.getTotalAmountSold())) > 0;
     }
 
     private HoldingDto updateHolding(HoldingDto e, Portfolio portfolio) {
@@ -217,12 +215,18 @@ public class PortfolioDistributionFacade {
                                     .priceInUsdt(priceInUsdt)
                                     .priceInBtc(priceInBtc)
                                     .amount(e1.getAmount().add(e2.getAmount()))
-                                    .amountInUsdt(e1.getAmountInUsdt().add(e2.getAmountInUsdt()).setScale(0, RoundingMode.DOWN))
-                                    .amountInBtc(e1.getAmountInBtc().add(e2.getAmountInBtc()))
+                                    .amountInUsdt(addPreventingNull(e1.getAmountInUsdt(), e2.getAmountInUsdt()))
+                                    .amountInBtc(addPreventingNull(e1.getAmountInBtc(), e2.getAmountInBtc()))
                                     .percentage(e1.getPercentage().add(e2.getPercentage()))
                                     .build();
                         }
                 ));
+    }
+
+    public BigDecimal addPreventingNull(BigDecimal amount1, BigDecimal amount2) {
+        BigDecimal bigDecimal1 = Optional.ofNullable(amount1).orElse(BigDecimal.ZERO);
+        BigDecimal bigDecimal2 = Optional.ofNullable(amount2).orElse(BigDecimal.ZERO);
+        return bigDecimal1.add(bigDecimal2).setScale(0, RoundingMode.DOWN);
     }
 
     public ResponseEntity<byte[]> downloadExcel() {
@@ -286,5 +290,10 @@ public class PortfolioDistributionFacade {
         return Optional.ofNullable(holding)
                 .filter(Objects::nonNull)
                 .orElse(BigDecimal.ZERO);
+    }
+
+    public List<HoldingDto> addPortfolioHolding(List<AddHoldingRequest> requests) {
+        Optional<Portfolio> portfolio = portfolioService.getByName(requests.get(0).getPortfolioName());
+        return HoldingConverter.Mapper.createFromEntities(holdingService.saveAll(portfolio.get(), requests));
     }
 }

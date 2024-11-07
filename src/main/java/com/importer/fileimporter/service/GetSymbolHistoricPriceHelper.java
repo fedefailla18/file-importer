@@ -66,7 +66,6 @@ public class GetSymbolHistoricPriceHelper {
     @NotNull
     private Map<String, Number> getPricesAtDate(String symbol, String ...symbols) {
         String toSymbols = String.join(",", symbols);
-        log.info("getting price for: " + symbol + " to: " + toSymbols);
         return cryptoCompareProxy.getData(symbol, toSymbols);
     }
 

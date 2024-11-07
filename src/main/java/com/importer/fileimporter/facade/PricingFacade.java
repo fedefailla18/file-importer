@@ -4,6 +4,7 @@ import com.importer.fileimporter.entity.PriceHistory;
 import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.PriceHistoryService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -19,6 +20,7 @@ import static com.importer.fileimporter.utils.OperationUtils.USDT;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PricingFacade {
 
     private final PriceHistoryService priceHistoryService;
@@ -56,14 +58,19 @@ public class PricingFacade {
     }
 
     public Map<String, Double> getPrices(String symbol) {
-        Map<String, Number> price = getSymbolHistoricPriceHelper.getPrice(symbol);
-        Map<String, Double> priceAsDouble = new HashMap<>();
+        try {
+            Map<String, Number> price = getSymbolHistoricPriceHelper.getPrice(symbol);
+            Map<String, Double> priceAsDouble = new HashMap<>();
 
-        for (Map.Entry<String, Number> entry : price.entrySet()) {
-            priceAsDouble.put(entry.getKey(), entry.getValue().doubleValue());
+            for (Map.Entry<String, Number> entry : price.entrySet()) {
+                priceAsDouble.put(entry.getKey(), entry.getValue().doubleValue());
+            }
+
+            return priceAsDouble;
+        } catch (java.lang.ClassCastException e) {
+            log.error("Error in pricingFacade when getting prices", e);
+            return new HashMap<>();
         }
-
-        return priceAsDouble;
     }
 
     public BigDecimal getCurrentMarketPrice(String symbol) {

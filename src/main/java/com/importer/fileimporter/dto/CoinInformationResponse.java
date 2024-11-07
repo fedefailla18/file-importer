@@ -71,8 +71,8 @@ public class CoinInformationResponse {
                 .totalAmountSold(ZERO)
                 .currentPositionInUsdt(ZERO)
                 .realizedProfit(ZERO)
-                .unrealizedProfit(ZERO)
                 .totalRealizedProfitUsdt(ZERO)
+                .unrealizedProfit(ZERO)
                 .build();
     }
 

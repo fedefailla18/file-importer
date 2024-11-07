@@ -1,11 +1,11 @@
-package com.importer.fileimporter.coverter;
+package com.importer.fileimporter.converter;
 
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.entity.Holding;
+import com.importer.fileimporter.payload.request.AddHoldingRequest;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 
 public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
 
@@ -41,6 +41,15 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
                 .build();
     }
 
+    public Holding createTo(AddHoldingRequest holdingRequest) {
+        return Holding.builder()
+                .symbol(holdingRequest.getSymbol())
+                .amount(holdingRequest.getAmount())
+                .priceInBtc(holdingRequest.getCostInBtc())
+                .priceInUsdt(holdingRequest.getStableTotalCost())
+                .build();
+    }
+
     @Override
     public List<HoldingDto> createFromEntities(List<Holding> holdings) {
         return holdings.stream()
@@ -51,6 +60,12 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
     @Override
     public List<Holding> createToEntities(List<HoldingDto> holdingDtos) {
         return holdingDtos.stream()
+                .map(this::createTo)
+                .collect(Collectors.toList());
+    }
+
+    private List<Holding> createFromRequest(List<AddHoldingRequest> dtos) {
+        return dtos.stream()
                 .map(this::createTo)
                 .collect(Collectors.toList());
     }
@@ -72,6 +87,10 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
 
         public static List<Holding> createToEntities(List<HoldingDto> dtos) {
             return mapper.createToEntities(dtos);
+        }
+
+        public static List<Holding> createFromRequest(List<AddHoldingRequest> dtos) {
+            return mapper.createFromRequest(dtos);
         }
     }
 }

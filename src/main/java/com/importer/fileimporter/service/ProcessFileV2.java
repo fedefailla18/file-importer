@@ -43,6 +43,7 @@ public class ProcessFileV2 extends IProcessFile {
                                                                                  String portfolioName) {
         Map<String, CoinInformationResponse> transactionsDetailsMap = new HashMap<>();
         Portfolio portfolio = portfolioService.findOrSave(portfolioName);
+        log.info("Portfolio created: " + portfolio.getName());
         rows.forEach(processRow(symbols, transactionsDetailsMap, portfolio));
         return transactionsDetailsMap;
     }
@@ -53,6 +54,7 @@ public class ProcessFileV2 extends IProcessFile {
         return row -> {
             String pair = getPair(row);
             String symbol = getSymbolFromExecuted(row, symbols);
+            log.info("Processing row for: " + symbol);
             if (symbol.isEmpty()) {
                 return;
             }

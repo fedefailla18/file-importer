@@ -1,8 +1,10 @@
 package com.importer.fileimporter.service.usecase;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
+import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.facade.PricingFacade;
+import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +21,11 @@ import java.util.List;
 public class CalculateAmountSpent {
 
     private final PricingFacade pricingFacade;
+    private final HoldingService holdingService;
 
     public BigDecimal execute(String symbol, List<Transaction> transactions, CoinInformationResponse response) {
         return transactions.parallelStream()
-                .map(transaction -> getAmountSpentInUsdtPerTransaction(symbol, transaction, response))
+                .map(transaction -> getAmountSpentInUsdtPerTransaction(symbol, transaction, response, null))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -31,10 +34,11 @@ public class CalculateAmountSpent {
      * TODO: revise this
      * @param transaction
      * @param response
+     * @param portfolio
      * @return
      */
-    public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response) {
-        return getAmountSpentInUsdtPerTransaction(transaction.getSymbol(), transaction, response);
+    public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
+        return getAmountSpentInUsdtPerTransaction(transaction.getSymbol(), transaction, response, portfolio);
     }
 
     private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
@@ -50,14 +54,15 @@ public class CalculateAmountSpent {
      * @param symbol
      * @param transaction
      * @param response
+     * @param portfolio
      * @return
      */
-    public BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response) {
-        String paidWithSymbol = transaction.getPayedWith();
-        BigDecimal paidAmount = transaction.getPayedAmount();
-        BigDecimal executed = transaction.getTransactionId().getExecuted();
+    public BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
+        String paidWithSymbol = transaction.getPaidWith();
+        BigDecimal paidAmount = transaction.getPaidAmount();
+        BigDecimal executed = transaction.getExecuted();
         BigDecimal totalHeldAmount = response.getAmount();
-        boolean isBuy = OperationUtils.isBuy(transaction.getTransactionId().getSide());
+        boolean isBuy = OperationUtils.isBuy(transaction.getSide());
 
         // Only add the spent for the original transaction if it's a buy transaction
         if (isBuy) {
@@ -68,8 +73,11 @@ public class CalculateAmountSpent {
 
         BigDecimal priceInStable;
         if (!OperationUtils.isStable(paidWithSymbol)) {
-            priceInStable = getPriceInStable(symbol, transaction.getTransactionId().getDateUtc());
+            priceInStable = getPriceInStable(symbol, transaction.getDateUtc());
             paidAmount = priceInStable.multiply(executed);
+            if (portfolio != null) {
+                updatePaidWithHolding(!isBuy, paidWithSymbol, transaction.getPaidAmount(), portfolio, executed, paidAmount);
+            }
         }
 
         if (isBuy) {
@@ -97,6 +105,10 @@ public class CalculateAmountSpent {
         return totalHeldAmount.compareTo(BigDecimal.ZERO) != 0 ?
                 totalCost.divide(totalHeldAmount, RoundingMode.HALF_UP) :
                 BigDecimal.ZERO;
+    }
+
+    private void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
+        holdingService.updatePaidWithHolding(isBuy, paidWithSymbol, paidAmount, portfolio, executed, paidInStable);
     }
 
 }

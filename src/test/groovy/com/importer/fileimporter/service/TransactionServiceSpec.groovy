@@ -2,7 +2,6 @@ package com.importer.fileimporter.service
 
 import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
-import com.importer.fileimporter.entity.TransactionId
 import com.importer.fileimporter.repository.TransactionRepository
 import com.importer.fileimporter.utils.DateUtils
 import org.springframework.data.domain.Page
@@ -15,8 +14,9 @@ import java.time.LocalDateTime
 
 class TransactionServiceSpec extends Specification {
 
-    TransactionRepository transactionRepository = Mock(TransactionRepository)
-    TransactionService transactionService = new TransactionService(transactionRepository)
+    def transactionRepository = Mock(TransactionRepository)
+    def portfolioService = Mock(PortfolioService)
+    TransactionService transactionService = new TransactionService(transactionRepository, portfolioService)
 
     def "test getTransactionsByRangeDate - symbol only"() {
         given:
@@ -25,7 +25,7 @@ class TransactionServiceSpec extends Specification {
         Page<Transaction> page = new PageImpl<>([])
 
         when:
-        def result = transactionService.getTransactionsByRangeDate(symbol, null, null, pageable)
+        def result = transactionService.getTransactionsByFilters(symbol, null, null, null, null, null, null, null, pageable)
 
         then:
         1 * transactionRepository.findAllBySymbol(symbol, pageable) >> page
@@ -43,10 +43,10 @@ class TransactionServiceSpec extends Specification {
         def endDateTime = endDate.plusDays(1L).atStartOfDay().minusSeconds(1L)
 
         when:
-        def result = transactionService.getTransactionsByRangeDate(symbol, startDate, endDate, pageable)
+        def result = transactionService.getTransactionsByFilters(symbol, null, null, null, null, null, null, null, pageable)
 
         then:
-        1 * transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDateTime, endDateTime, pageable) >> page
+        1 * transactionRepository.findBySymbolAndPortfolioAndDateRange(symbol, _, startDateTime, endDateTime, pageable) >> page
         result == page
     }
 
@@ -90,19 +90,15 @@ class TransactionServiceSpec extends Specification {
         String origin = "test-origin"
 
         LocalDateTime dateTime = DateUtils.getLocalDateTime(date)
-        TransactionId transactionId = TransactionId.builder()
+        Transaction transaction = Transaction.builder()
                 .dateUtc(dateTime)
                 .pair(pair)
                 .executed(executed)
                 .side(side)
                 .price(price)
-                .build()
-
-        Transaction transaction = Transaction.builder()
-                .transactionId(transactionId)
                 .symbol(coinName)
-                .payedWith(symbolPair)
-                .payedAmount(amount)
+                .paidWith(symbolPair)
+                .paidAmount(amount)
                 .created(LocalDateTime.now())
                 .createdBy(origin)
                 .feeAmount(fee)
@@ -116,10 +112,9 @@ class TransactionServiceSpec extends Specification {
         then:
         1 * transactionRepository.save(_) >> transaction
         result == transaction
-        result.transactionId == transactionId
         result.symbol == coinName
-        result.payedWith == symbolPair
-        result.payedAmount == amount
+        result.paidWith == symbolPair
+        result.paidAmount == amount
         result.feeAmount == fee
     }
 }

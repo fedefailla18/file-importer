@@ -2,20 +2,24 @@ package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
-import com.importer.fileimporter.entity.TransactionId;
 import com.importer.fileimporter.repository.TransactionRepository;
+import com.importer.fileimporter.specification.TransactionSpecifications;
 import com.importer.fileimporter.utils.DateUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
@@ -23,15 +27,37 @@ import java.util.Optional;
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
+    private final PortfolioService portfolioService;
 
-    public Page<Transaction> getTransactionsByRangeDate(String symbol, LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        if (symbol != null && (startDate == null && endDate == null)) {
-            return getAllBySymbol(symbol, pageable);
+    public Page<Transaction> getTransactionsByFilters(String symbol, String portfolioName,
+                                                      String side,
+                                                      String paidWith,
+                                                      String paidAmountOperator,
+                                                      BigDecimal paidAmount,
+                                                      LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        UUID portfolioId = null;
+        if (portfolioName != null) {
+            Optional<Portfolio> portfolio = portfolioService.getByName(portfolioName);
+            portfolioId = portfolio.map(Portfolio::getId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
         }
-        LocalDateTime startDate1 = Optional.ofNullable(startDate)
-                .map(LocalDate::atStartOfDay).orElse(null);
-        return transactionRepository.findAllBySymbolOrSymbolIsNullAndTransactionIdDateUtcBetween(symbol, startDate1,
-                endDate.plusDays(1L).atStartOfDay().minusSeconds(1L), pageable);
+        return transactionRepository.findBySymbolAndPortfolioAndDateRange(symbol, portfolioId, startDate, endDate, pageable);
+    }
+
+    public Page<Transaction> filterTransactions(String symbol, String portfolioName, String side,
+                                                String paidWith, String paidAmountOperator, BigDecimal paidAmount,
+                                                LocalDate startDate, LocalDate endDate, Pageable pageable) {
+
+        log.info("Filtering transactions with parameters: symbol={}, portfolioName={}, side={}, paidWith={}, " +
+                        "paidAmountOperator={}, paidAmount={}, startDate={}, endDate={}",
+                symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount, startDate, endDate);
+
+        Specification<Transaction> specification = TransactionSpecifications.getSpecWithFilters(symbol, portfolioName, side,
+                paidWith, paidAmountOperator, paidAmount, startDate, endDate, pageable);
+        Page<Transaction> result = transactionRepository.findAll(specification, pageable);
+        log.info("Found {} transactions", result.getTotalElements());
+
+        return result;
     }
 
     public Page<Transaction> getAllBySymbol(String symbol, Pageable pageable) {
@@ -66,19 +92,15 @@ public class TransactionService {
                                        Portfolio portfolio) {
         LocalDateTime dateTime = DateUtils.getLocalDateTime(date);
 
-        TransactionId transactionId = TransactionId.builder()
+        Transaction transaction = Transaction.builder()
                 .dateUtc(dateTime)
                 .pair(pair)
                 .executed(executed)
                 .side(side)
                 .price(price)
-                .build();
-
-        Transaction transaction = Transaction.builder()
-                .transactionId(transactionId)
                 .symbol(coinName)
-                .payedWith(symbolPair)
-                .payedAmount(amount)
+                .paidWith(symbolPair)
+                .paidAmount(amount)
                 .created(LocalDateTime.now())
                 .createdBy(origin)
                 .feeAmount(fee)
@@ -87,6 +109,10 @@ public class TransactionService {
                 .portfolio(portfolio)
                 .build();
 
+        return save(transaction);
+    }
+
+    public Transaction save(Transaction transaction) {
         return transactionRepository.save(transaction);
     }
 
