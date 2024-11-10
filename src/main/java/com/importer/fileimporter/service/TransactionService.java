@@ -76,12 +76,12 @@ public class TransactionService {
         return transactionRepository.findAll(pageable);
     }
 
-    public Transaction saveTransaction(String coinName,
-                                       String symbolPair, String date,
-                                       String pair, String side,
-                                       BigDecimal price, BigDecimal executed,
-                                       BigDecimal amount, BigDecimal fee, String origin) {
-        return saveTransaction(coinName, symbolPair, date, pair, side, price, executed, amount, fee, origin, null);
+    public void saveTransaction(String coinName,
+                                String symbolPair, String date,
+                                String pair, String side,
+                                BigDecimal price, BigDecimal executed,
+                                BigDecimal amount, BigDecimal fee, String origin) {
+        saveTransaction(coinName, symbolPair, date, pair, side, price, executed, amount, fee, origin, null);
     }
 
     public Transaction saveTransaction(String coinName,

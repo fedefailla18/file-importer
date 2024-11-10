@@ -68,7 +68,7 @@ public class PricingFacade {
 
             return priceAsDouble;
         } catch (java.lang.ClassCastException e) {
-            log.error("Error in pricingFacade when getting prices", e);
+            log.error("Error in pricingFacade when getting prices. Symbol: " + symbol, e);
             return new HashMap<>();
         }
     }

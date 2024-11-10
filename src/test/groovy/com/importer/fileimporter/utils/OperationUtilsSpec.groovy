@@ -1,5 +1,7 @@
 package com.importer.fileimporter.utils
 
+import com.importer.fileimporter.dto.BinanceTransactionAdapter
+import com.importer.fileimporter.dto.MexcTransactionAdapter
 import spock.lang.Specification
 
 import java.util.concurrent.atomic.AtomicReference
@@ -24,26 +26,42 @@ class OperationUtilsSpec extends Specification {
         !result
     }
 
-    def "test isBuy with BUY side"() {
+    def "test isBuy BinanceTransactionAdapter"() {
         given:
-        def row = ["Side": "BUY"]
+        def row = ["Side": side, "Executed": "0.1BTC"]
+        def adapter = new BinanceTransactionAdapter(row)
 
         when:
-        def result = isBuy(row)
+        def result = isBuy(adapter)
 
         then:
-        result
+        result == expectedResult
+
+        where:
+        side   || expectedResult
+        "BUY"  || true
+        "SELL" || false
     }
 
-    def "test isBuy with SELL side"() {
+    def "test isBuy MexcTransactionAdapter"() {
         given:
-        def row = ["Side": "SELL"]
+        def row = [
+                "Pares": "BTC_USDT",
+                "Dirección": side]
+        def adapter = new MexcTransactionAdapter(row)
 
         when:
-        def result = isBuy(row)
+        def result = isBuy(adapter)
 
         then:
-        !result
+        result == expectedResult
+
+        where:
+        side     || expectedResult
+        "COMPRA" || true
+        "Compra" || true
+        "VENTA"  || false
+        "Venta"  || false
     }
 
     def "test sumAmount when buying"() {

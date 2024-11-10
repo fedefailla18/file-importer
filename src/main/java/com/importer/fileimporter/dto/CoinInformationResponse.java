@@ -55,7 +55,7 @@ public class CoinInformationResponse {
     private BigDecimal unrealizedTotalProfitMinusTotalCost;
 
     private int totalTransactions;
-    private List<Map<?, ?>> rows;
+    private List<TransactionData> rows;
 
     public static CoinInformationResponse createEmpty(String coinName) {
         return CoinInformationResponse.builder()
@@ -76,7 +76,7 @@ public class CoinInformationResponse {
                 .build();
     }
 
-    public void addRows(Map<?, ?> row) {
+    public void addRows(TransactionData row) {
         rows.add(row);
         totalTransactions++;
     }

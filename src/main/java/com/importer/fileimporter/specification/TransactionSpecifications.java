@@ -10,6 +10,7 @@ import javax.persistence.criteria.Path;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Optional;
 
 @Slf4j
@@ -41,7 +42,8 @@ public class TransactionSpecifications {
                 Optional.ofNullable(portfolioName)
                         .map(name -> {
                             log.info("Applying symbol filter: {}", name);
-                            return criteriaBuilder.equal(root.get("portfolio").get("name"), name);
+                            return criteriaBuilder.equal(
+                                    criteriaBuilder.lower(root.get("portfolio").get("name")), name.toLowerCase(Locale.ROOT));
                         })
                         .orElse(criteriaBuilder.conjunction());
     }

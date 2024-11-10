@@ -3,7 +3,7 @@ package com.importer.fileimporter.service
 import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.utils.IntegrationTestHelper
-import com.importer.fileimporter.utils.ProcessFileServiceUtils
+import com.importer.fileimporter.utils.ProcessFileUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.web.multipart.MultipartFile
@@ -25,7 +25,7 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
     def setup() {
         mockRows = IntegrationTestHelper.readCsvFile()
         symbolsInRows = mockRows.stream()
-                .map( { ProcessFileServiceUtils.getSymbolFromExecuted(it, null)} )
+                .map( { ProcessFileUtils.getSymbolFromExecuted(it, null)} )
                 .collect(Collectors.toSet())
     }
 

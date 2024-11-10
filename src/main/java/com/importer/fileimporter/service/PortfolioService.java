@@ -3,6 +3,7 @@ package com.importer.fileimporter.service;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.repository.PortfolioRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class PortfolioService {
 
     private final PortfolioRepository portfolioRepository;
@@ -30,6 +32,7 @@ public class PortfolioService {
     }
 
     private Portfolio saveBasicEntity(String name) {
+        log.info("New portfolio detected: " + name);
         return portfolioRepository.save(Portfolio.builder()
                 .name(name)
                 .creationDate(LocalDateTime.now())

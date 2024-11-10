@@ -95,7 +95,7 @@ public class PortfolioDistributionFacade {
 
     public PortfolioDistribution calculatePortfolioInBtcAndUsdt(String name) {
         if (!StringUtils.hasText(name)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing param.");
+            return calculatePortfolioInBtcAndUsdt();
         }
         if (Objects.equals(name.toLowerCase(Locale.ROOT), "all")) {
             return calculateAllPortfolioInBtcAndUsdt();
@@ -111,11 +111,12 @@ public class PortfolioDistributionFacade {
     }
 
     @Transactional
-    public List<PortfolioDistribution> calculatePortfolioInBtcAndUsdt() {
+    public PortfolioDistribution calculatePortfolioInBtcAndUsdt() {
         List<Portfolio> portfolios = portfolioService.findAll();
-        return portfolios.stream()
+        final List<PortfolioDistribution> collect = portfolios.stream()
                 .map(this::calculatePortfolioInBtcAndUsdt)
                 .collect(Collectors.toList());
+        return collect.stream().findFirst().get();
     }
 
     public PortfolioDistribution calculatePortfolioInBtcAndUsdt(Portfolio portfolio) {
@@ -141,7 +142,7 @@ public class PortfolioDistributionFacade {
 
     private void addHoldingsToPortfolioDistribution(Portfolio portfolio, PortfolioDistribution portfolioDistribution) {
         portfolio.getHoldings().stream()
-                //.filter(excludeWhenAmountIsAlmostZero())
+                .filter(excludeWhenAmountIsAlmostZero())
                 .forEach(e -> {
                     Map<String, Double> price = pricingFacade.getPrices(e.getSymbol());
                     BigDecimal btcprice =
