@@ -1,12 +1,9 @@
 package com.importer.fileimporter.controller
 
-
-import com.importer.fileimporter.config.security.jwt.AuthTokenFilter
-import com.importer.fileimporter.config.security.jwt.JwtUtils
-import com.importer.fileimporter.config.security.services.UserDetailsImpl
-import com.importer.fileimporter.config.security.services.UserDetailsServiceImpl
+import com.importer.fileimporter.config.security.jwt.JwtAuthenticationFilter
+import com.importer.fileimporter.config.security.jwt.JwtService
+import com.importer.fileimporter.config.security.services.UserService
 import com.importer.fileimporter.dto.FileInformationResponse
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
@@ -22,12 +19,12 @@ class WebControllerSpec extends Specification {
     @Autowired
     MockMvc mockMvc
 
-    def jwtUtils = Mock(JwtUtils)
+    def jwtUtils = Mock(JwtService)
 
     @MockBean
-    UserDetailsServiceImpl userDetailsService
+    UserService userDetailsService
 
-    def authTokenFilter = new AuthTokenFilter(jwtUtils, userDetailsService)
+    def authTokenFilter = new JwtAuthenticationFilter(jwtUtils, userDetailsService)
 
     @Ignore
     def "should return processed file information"() {
@@ -57,9 +54,9 @@ class WebControllerSpec extends Specification {
         result.response.status == 200
 
         and:
-        1 * jwtUtils.validateJwtToken("valid.jwt.token.here") >> true
-        1 * jwtUtils.getUserNameFromJwtToken("valid.jwt.token.here") >> "testUser"
-        1 * userDetailsService.loadUserByUsername("testUser") >> Mock(UserDetailsImpl)
+        1 * jwtUtils.isTokenValid("valid.jwt.token.here") >> true
+        1 * jwtUtils.extractUsername("valid.jwt.token.here") >> "testUser"
+        1 * userDetailsService.loadUserByUsername("testUser") >> Mock(UserService)
     }
 
     @Ignore

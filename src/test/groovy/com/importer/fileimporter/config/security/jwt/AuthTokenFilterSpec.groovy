@@ -1,6 +1,6 @@
 package com.importer.fileimporter.config.security.jwt
 
-import com.importer.fileimporter.config.security.jwt.JwtUtils
+
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
@@ -9,7 +9,7 @@ import spock.lang.Specification
 class AuthTokenFilterSpec extends Specification {
 
     @MockBean
-    JwtUtils jwtUtils
+    JwtUtil jwtUtils
 
     @MockBean
     UserDetailsService userDetailsService
