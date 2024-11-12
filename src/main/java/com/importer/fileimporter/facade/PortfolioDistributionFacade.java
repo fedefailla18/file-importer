@@ -171,7 +171,7 @@ public class PortfolioDistributionFacade {
     }
 
     private Predicate<Holding> excludeWhenAmountIsAlmostZero() {
-        return holding -> new BigDecimal("0.3").compareTo(holding.getTotalAmountBought().subtract(holding.getTotalAmountSold())) > 0;
+        return holding -> new BigDecimal("0.3").compareTo(holding.getTotalAmountBought().subtract(holding.getTotalAmountSold())) < 0;
     }
 
     private HoldingDto updateHolding(HoldingDto e, Portfolio portfolio) {
