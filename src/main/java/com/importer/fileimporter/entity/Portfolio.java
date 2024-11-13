@@ -55,8 +55,9 @@ public class Portfolio {
     @JsonIgnore
     private List<Transaction> transactions;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 
 }

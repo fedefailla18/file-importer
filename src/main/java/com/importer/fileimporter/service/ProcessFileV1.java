@@ -18,7 +18,7 @@ import static com.importer.fileimporter.utils.OperationUtils.SYMBOL;
 
 @Service
 @Slf4j
-public class ProcessFileV1 extends IProcessFile {
+public class ProcessFileV1 extends ProcessFile {
 
     private final FileImporterService fileImporterService;
     private final TransactionService transactionService;

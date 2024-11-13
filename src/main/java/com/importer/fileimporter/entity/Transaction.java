@@ -2,8 +2,9 @@ package com.importer.fileimporter.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -17,7 +18,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -78,11 +80,8 @@ public class Transaction {
     @JoinColumn(name = "portfolio_id")
     private Portfolio portfolio;
 
-    // New fields for transaction processing
-    //@Column(name = "processed", nullable = false)
     private boolean processed = false;
 
-    //@Column(name = "last_processed_at")
     private LocalDateTime lastProcessedAt;
 
     @Override

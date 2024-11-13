@@ -15,7 +15,7 @@ import static com.importer.fileimporter.utils.OperationUtils.STABLE;
 
 @Service
 @AllArgsConstructor
-public abstract class IProcessFile {
+public abstract class ProcessFile {
 
     private final FileImporterService fileImporterService;
     protected final TransactionAdapterFactory transactionAdapterFactory;

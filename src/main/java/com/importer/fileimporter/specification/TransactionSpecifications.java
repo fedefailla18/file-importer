@@ -2,7 +2,6 @@ package com.importer.fileimporter.specification;
 
 import com.importer.fileimporter.entity.Transaction;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import javax.persistence.criteria.Expression;
@@ -12,19 +11,30 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 public class TransactionSpecifications {
 
     private static final String PAID_AMOUNT = "paidAmount";
 
-    public static Specification<Transaction> getSpecWithFilters(String symbol, String portfolioName, String side, String paidWith, String paidAmountOperator, BigDecimal paidAmount, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public static Specification<Transaction> getSpecWithFilters(String symbol, String portfolioName, String side, String paidWith, String paidAmountOperator, BigDecimal paidAmount, LocalDate startDate, LocalDate endDate, UUID userId) {
         return Specification.where(hasSymbol(symbol))
                 .and(hasPortfolioName(portfolioName))
                 .and(hasSide(side))
                 .and(hasPaidWith(paidWith))
                 .and(inDateRange(startDate, endDate))
-                .and(paidAmountCondition(paidAmountOperator, paidAmount));
+                .and(paidAmountCondition(paidAmountOperator, paidAmount))
+                .and(hasUserId(userId));
+    }
+
+    public static Specification<Transaction> hasUserId(UUID userId) {
+        return (root, query, criteriaBuilder) ->
+                Optional.ofNullable(userId)
+                        .map(id ->
+                            criteriaBuilder.equal(root.get("portfolio").get("user").get("id"), id)
+                        )
+                        .orElse(criteriaBuilder.conjunction());
     }
 
     public static Specification<Transaction> hasSymbol(String symbol) {

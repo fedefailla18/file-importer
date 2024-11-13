@@ -11,17 +11,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.NotSupportedException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -170,5 +173,13 @@ public class TransactionFacade {
             transaction.setPaidAmount(transaction.getExecuted().multiply(priceInUsdt));
         }
         return transactionService.save(transaction);
+    }
+
+    public void deleteTransactions() {
+        transactionService.deleteTransactions();
+    }
+
+    public Page<Transaction> filterTransactions(String symbol, String portfolioName, String side, String paidWith, String paidAmountOperator, BigDecimal paidAmount, LocalDate startDate, LocalDate endDate, UUID id, Pageable pageable) {
+        return transactionService.filterTransactions(symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount, startDate, endDate, id, pageable);
     }
 }

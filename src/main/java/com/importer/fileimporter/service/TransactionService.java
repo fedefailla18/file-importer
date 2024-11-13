@@ -10,15 +10,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -27,33 +24,18 @@ import java.util.UUID;
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
-    private final PortfolioService portfolioService;
-
-    public Page<Transaction> getTransactionsByFilters(String symbol, String portfolioName,
-                                                      String side,
-                                                      String paidWith,
-                                                      String paidAmountOperator,
-                                                      BigDecimal paidAmount,
-                                                      LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        UUID portfolioId = null;
-        if (portfolioName != null) {
-            Optional<Portfolio> portfolio = portfolioService.getByName(portfolioName);
-            portfolioId = portfolio.map(Portfolio::getId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
-        }
-        return transactionRepository.findBySymbolAndPortfolioAndDateRange(symbol, portfolioId, startDate, endDate, pageable);
-    }
 
     public Page<Transaction> filterTransactions(String symbol, String portfolioName, String side,
                                                 String paidWith, String paidAmountOperator, BigDecimal paidAmount,
-                                                LocalDate startDate, LocalDate endDate, Pageable pageable) {
+                                                LocalDate startDate, LocalDate endDate,
+                                                UUID userId, Pageable pageable) {
 
         log.info("Filtering transactions with parameters: symbol={}, portfolioName={}, side={}, paidWith={}, " +
                         "paidAmountOperator={}, paidAmount={}, startDate={}, endDate={}",
                 symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount, startDate, endDate);
 
         Specification<Transaction> specification = TransactionSpecifications.getSpecWithFilters(symbol, portfolioName, side,
-                paidWith, paidAmountOperator, paidAmount, startDate, endDate, pageable);
+                paidWith, paidAmountOperator, paidAmount, startDate, endDate, userId);
         Page<Transaction> result = transactionRepository.findAll(specification, pageable);
         log.info("Found {} transactions", result.getTotalElements());
 

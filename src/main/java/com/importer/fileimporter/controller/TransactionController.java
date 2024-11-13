@@ -5,6 +5,7 @@ import com.importer.fileimporter.dto.FileInformationResponse;
 import com.importer.fileimporter.dto.TransactionDto;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
+import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.facade.CoinInformationFacade;
 import com.importer.fileimporter.service.ProcessFileFactory;
 import com.importer.fileimporter.service.TransactionFacade;
@@ -19,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -55,8 +57,10 @@ public class TransactionController {
                                                       @RequestParam(required = false) BigDecimal paidAmount,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                                      @AuthenticationPrincipal User user,
                                                       @PageableDefault(sort = "dateUtc", direction = Sort.Direction.DESC) Pageable pageable) {
-        return transactionService.filterTransactions(symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount, startDate, endDate, pageable);
+        return transactionFacade.filterTransactions(symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount,
+                startDate, endDate, user.getId(), pageable);
     }
 
     @PostMapping("/information")
@@ -106,11 +110,12 @@ public class TransactionController {
 
     @DeleteMapping
     public ResponseEntity.BodyBuilder deleteTransactions() {
-        transactionService.deleteTransactions();
+        transactionFacade.deleteTransactions();
         return ResponseEntity.accepted();
     }
 
     @GetMapping
+    @Deprecated
     public Page<Transaction> getAllTransactions(Pageable pageable) {
         return transactionService.getAll(pageable);
     }
