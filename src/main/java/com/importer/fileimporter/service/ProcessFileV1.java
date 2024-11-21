@@ -9,12 +9,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-
-import static com.importer.fileimporter.utils.OperationUtils.SYMBOL;
 
 @Service
 @Slf4j
@@ -36,7 +35,7 @@ public class ProcessFileV1 extends ProcessFile {
     }
 
     public FileInformationResponse processFile(MultipartFile file) throws IOException {
-        return processFile(file, SYMBOL);
+        return processFile(file, new ArrayList<>());
     }
 
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols) throws IOException {
