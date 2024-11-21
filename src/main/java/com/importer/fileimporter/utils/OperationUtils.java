@@ -12,8 +12,6 @@ import java.util.function.Predicate;
 @UtilityClass
 public class OperationUtils {
 
-    public static final List<String> SYMBOL = List.of("XVG", "BAND", "RSR", "AKRO", "DOT", "OP",
-            "VET", "RLC", "BTC", "ETH");
     public static final List<String> GRAND_SYMBOLS = List.of("BTC", "ETH");
     public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USD", "USDC");
 

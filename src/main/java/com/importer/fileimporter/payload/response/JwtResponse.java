@@ -18,4 +18,12 @@ public class JwtResponse {
     private final String email;
 
     private final List<String> roles;
+
+    public JwtResponse(String jwt) {
+        this.jwt = jwt;
+        id = null;
+        username = null;
+        email = null;
+        roles = null;
+    }
 }

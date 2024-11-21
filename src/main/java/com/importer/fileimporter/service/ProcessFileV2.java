@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 
 @Service
 @Slf4j
-public class ProcessFileV2 extends IProcessFile {
+public class ProcessFileV2 extends ProcessFile {
 
     private final PortfolioService portfolioService;
     private final TransactionService transactionService;

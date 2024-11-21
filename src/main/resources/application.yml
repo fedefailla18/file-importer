@@ -41,7 +41,6 @@ spring:
 crypto-compare:
   api-key: 53bdd104b9bb83f976930c67a45bf29bf7f8d3f9808ab350aa742f45a505417d
 
-# App Properties
-app:
-  jwtSecret: =============javasecuritySecureRandom=============
-  jwtExpirationMs: 86400000
+jwt:
+  secret: 5ed583b57732d0308978b2c241ab25d01ec857347433396fb2da4286547fcae8
+  expiration: 86400000 # 24 hours in milliseconds

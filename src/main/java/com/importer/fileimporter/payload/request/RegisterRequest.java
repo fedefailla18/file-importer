@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import java.util.Set;
 
 @AllArgsConstructor
-public class SignupRequest {
+public class RegisterRequest {
 
     private String username;
     private String email;

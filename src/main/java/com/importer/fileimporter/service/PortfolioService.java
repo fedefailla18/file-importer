@@ -1,6 +1,7 @@
 package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.entity.Portfolio;
+import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.repository.PortfolioRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,14 @@ public class PortfolioService {
 
     public List<Portfolio> getAll() {
         return portfolioRepository.findAll();
+    }
+
+    public List<Portfolio> getAllForUser(User user) {
+        return portfolioRepository.findByUser(user);
+    }
+
+    public Optional<Portfolio> getByNameForUser(String name, User user) {
+        return portfolioRepository.findByNameAndUser(name, user);
     }
 
     private Portfolio saveBasicEntity(String name) {

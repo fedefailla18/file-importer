@@ -4,20 +4,9 @@ import lombok.experimental.UtilityClass;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @UtilityClass
 public class ProcessFileUtils {
-
-    public final String PAIR_KEY = "Pair";
-    public final String EXECUTED_KEY = "Executed";
-    public final String AMOUNT_KEY = "Amount";
-    public final String FEE_KEY = "Fee";
-    public final String PRICE_KEY = "Price";
-    public final String DATE_KEY = "Date(UTC)";
-    public final String SIDE_KEY = "Side";
 
     public BigDecimal getBigDecimalWithScale(Number number) {
         if (number == null) {
@@ -36,27 +25,6 @@ public class ProcessFileUtils {
         }
 
         return bigDecimal.setScale(10, RoundingMode.UP);
-    }
-
-    public String getDate(Map<?, ?> row) {
-        return row.get(DATE_KEY).toString();
-    }
-
-    public String getSide(Map<?, ?> row) {
-        return row.get(SIDE_KEY).toString();
-    }
-
-    public static String getSymbolFromExecuted(Map<?, ?> row, List<String> symbols) {
-        String executedString = row.get(EXECUTED_KEY).toString();
-
-        // symbols makes it easy if you wanna import just a few symbols from the file
-        if (symbols != null) {
-            Optional<String> first = symbols.stream()
-                    .filter(executedString::contains)
-                    .findFirst();
-            return first.orElseGet(() -> getSymbolFromNumber(executedString)); // TODO: here we should return null and handle
-        }
-        return getSymbolFromNumber(executedString);
     }
 
     public String getSymbolFromNumber(String feeString) {

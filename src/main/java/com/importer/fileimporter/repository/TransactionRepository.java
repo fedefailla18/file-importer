@@ -34,26 +34,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
                                                            @Param("startDate") LocalDate startDate,
                                                            @Param("endDate") LocalDate endDate,
                                                            Pageable pageable);
+    List<Transaction> findByPortfolioIn(List<Portfolio> portfolios);
+    Page<Transaction> findByPortfolioIn(List<Portfolio> portfolios, Pageable pageable);
 
-//    @Query("SELECT t FROM Transaction t " +
-//            "WHERE (:symbol IS NULL OR t.symbol = :symbol) " +
-//            "AND (:portfolioName IS NULL OR t.portfolio.name = :portfolioName) " +
-//            "AND (:side IS NULL OR t.side = :side) " +
-//            "AND (:paidWith IS NULL OR t.payedWith = :paidWith) " +
-//            "AND (:startDate IS NULL OR DATE(t.dateUtc) >= :startDate) " +
-//            "AND (:endDate IS NULL OR DATE(t.dateUtc) <= :endDate) " +
-//            "AND (:paidAmount IS NULL OR " +
-//            "(CASE :paidAmountOperator WHEN '>' THEN t.payedAmount > :paidAmount " +
-//            "WHEN '=' THEN t.payedAmount = :paidAmount " +
-//            "WHEN '<' THEN t.payedAmount < :paidAmount ELSE true END)) " +
-//            "ORDER BY t.dateUtc DESC")
-//    Page<Transaction> filterTransactions(@Param("symbol") String symbol,
-//                                         @Param("portfolioName") String portfolioName,
-//                                         @Param("side") String side,
-//                                         @Param("paidWith") String paidWith,
-//                                         @Param("startDate") LocalDate startDate,
-//                                         @Param("endDate") LocalDate endDate,
-//                                         @Param("paidAmountOperator") String paidAmountOperator,
-//                                         @Param("paidAmount") BigDecimal paidAmount,
-//                                         Pageable pageable);
 }

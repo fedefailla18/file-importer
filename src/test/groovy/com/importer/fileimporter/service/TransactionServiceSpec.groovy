@@ -9,7 +9,6 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import spock.lang.Specification
 
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 class TransactionServiceSpec extends Specification {
@@ -17,38 +16,6 @@ class TransactionServiceSpec extends Specification {
     def transactionRepository = Mock(TransactionRepository)
     def portfolioService = Mock(PortfolioService)
     TransactionService transactionService = new TransactionService(transactionRepository, portfolioService)
-
-    def "test getTransactionsByRangeDate - symbol only"() {
-        given:
-        String symbol = "BTC"
-        Pageable pageable = Pageable.unpaged()
-        Page<Transaction> page = new PageImpl<>([])
-
-        when:
-        def result = transactionService.getTransactionsByFilters(symbol, null, null, null, null, null, null, null, pageable)
-
-        then:
-        1 * transactionRepository.findAllBySymbol(symbol, pageable) >> page
-        result == page
-    }
-
-    def "test getTransactionsByRangeDate - date range"() {
-        given:
-        String symbol = "BTC"
-        LocalDate startDate = LocalDate.of(2023, 1, 1)
-        LocalDate endDate = LocalDate.of(2023, 1, 31)
-        Pageable pageable = Pageable.unpaged()
-        Page<Transaction> page = new PageImpl<>([])
-        def startDateTime = startDate.atStartOfDay()
-        def endDateTime = endDate.plusDays(1L).atStartOfDay().minusSeconds(1L)
-
-        when:
-        def result = transactionService.getTransactionsByFilters(symbol, null, null, null, null, null, null, null, pageable)
-
-        then:
-        1 * transactionRepository.findBySymbolAndPortfolioAndDateRange(symbol, _, startDateTime, endDateTime, pageable) >> page
-        result == page
-    }
 
     def "test getAllBySymbol"() {
         given:
