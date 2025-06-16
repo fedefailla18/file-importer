@@ -5,8 +5,8 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
+  <include file="classpath:/db/changelog/changes/00-2025-06-15-000-create-schema.sql"/>
   <include file="classpath:/db/changelog/changes/2023-09-03-001-initial-schema.sql"/>
-  <include file="classpath:/db/changelog/changes/2023-09-23-002-inserting-coins.sql"/>
   <include file="classpath:/db/changelog/changes/2023-09-30-003-recording-transactions.sql"/>
   <include file="classpath:/db/changelog/changes/2023-09-30-004-adding-user-and-roles.sql"/>
   <include file="classpath:/db/changelog/changes/2023-11-26-005-transactions-symbol-pair.sql"/>

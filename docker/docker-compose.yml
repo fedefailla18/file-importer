@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:13.1
@@ -16,3 +18,20 @@ services:
       - ./data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: crypto_portfolio_backend
+    ports:
+      - "8080:8080"
+    healthcheck:
+      interval: 30s
+      timeout: 30s
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/file_importer_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
