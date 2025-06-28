@@ -2,9 +2,6 @@
 --changeset ffailla:2024-10-201-19-introducing-new-transaction.sql
 --comment:
 
-ALTER TABLE transactions
-    ADD COLUMN id BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY;
-
 -- Step 1: Add new columns with the correct naming and types
 ALTER TABLE transactions
     ADD COLUMN new_paid_amount numeric(22, 13),

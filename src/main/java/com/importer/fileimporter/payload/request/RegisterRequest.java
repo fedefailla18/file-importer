@@ -1,10 +1,10 @@
 package com.importer.fileimporter.payload.request;
 
-import lombok.AllArgsConstructor;
+import lombok.Data;
 
 import java.util.Set;
 
-@AllArgsConstructor
+@Data
 public class RegisterRequest {
 
     private String username;

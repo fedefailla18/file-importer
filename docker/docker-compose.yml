@@ -32,6 +32,6 @@ services:
     depends_on:
       - postgres
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/file_importer_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/importer_database
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: password

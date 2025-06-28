@@ -60,7 +60,7 @@ abstract class BaseIntegrationSpec extends Specification {
     // Define a PostgreSQL container
     @ClassRule
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.1")
-            .withDatabaseName("file_importer_db")
+            .withDatabaseName("importer_database")
             .withUsername("root")
             .withPassword("password")
             .withExposedPorts(60366)

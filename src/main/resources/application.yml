@@ -10,7 +10,7 @@ spring:
   application:
     name: file-importer
   datasource:
-    url: jdbc:postgresql://localhost:5432/file_importer_db?currentSchema=file_importer_schema,public;
+    url: jdbc:postgresql://localhost:5432/importer_database?currentSchema=file_importer_schema,public;
     username: root
     password: password
     driver-class-name: org.postgresql.Driver
