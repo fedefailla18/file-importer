@@ -28,7 +28,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
-        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response, null)
+        def result = sut.getAmountSpentInUsdt(transaction, response, null)
 
         then:
         result == 200
@@ -50,7 +50,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
-        def result = sut.getAmountSpentInUsdtPerTransaction(transaction.symbol, transaction, response, null)
+        def result = sut.getAmountSpentInUsdt(transaction, response, null)
 
         then:
         result == BigDecimal.valueOf(-150.78)
@@ -89,7 +89,7 @@ class CalculateAmountSpentSpec extends Specification {
 
         when:
         transactions.each { tx ->
-            sut.getAmountSpentInUsdtPerTransaction(tx.symbol, tx, response, null)
+            sut.getAmountSpentInUsdt(tx, response, null)
         }
 
         then:

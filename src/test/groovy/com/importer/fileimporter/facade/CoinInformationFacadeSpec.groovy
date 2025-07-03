@@ -9,6 +9,7 @@ import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.PortfolioService
 import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
+import org.springframework.web.server.ResponseStatusException
 import spock.lang.Specification
 import spock.lang.Subject
 
@@ -51,13 +52,13 @@ class CoinInformationFacadeSpec extends Specification {
     def "should calculate transaction information for a given symbol with buy and sell transactions"() {
         given:
         def symbol = "RLC"
-        def transactions = getTestTransactions()
         def portfolio = new Portfolio(name: "TestPortfolio")
+        def transactions = getTestTransactions(portfolio)
         def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
-        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
+        pricingFacade.getCurrentMarketPrice(symbol) >> 2
         calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
             Transaction t, CoinInformationResponse response, Portfolio portfolio1
             -> t.paidAmount }
@@ -68,17 +69,17 @@ class CoinInformationFacadeSpec extends Specification {
         then:
         with(response) {
             coinName == "RLC"
-            amount == new BigDecimal("80")
-            totalAmountBought == new BigDecimal("200")
-            totalAmountSold == new BigDecimal("120")
-            currentPositionInUsdt == new BigDecimal("160")
+            amount == 80
+            totalAmountBought == 200
+            totalAmountSold == 120
+            currentPositionInUsdt == 160
         }
 
         1 * holdingService.save(_ as Holding) >> { Holding h ->
-            assert h.amount == new BigDecimal("80")
-            assert h.totalAmountBought == new BigDecimal("200")
-            assert h.totalAmountSold == new BigDecimal("120")
-            assert h.currentPositionInUsdt == new BigDecimal("160")
+            assert h.amount == 80
+            assert h.totalAmountBought == 200
+            assert h.totalAmountSold == 120
+            assert h.currentPositionInUsdt == 160
             h
         }
     }
@@ -86,13 +87,13 @@ class CoinInformationFacadeSpec extends Specification {
     def "should calculate realized and unrealized profit correctly"() {
         given:
         def symbol = "RLC"
-        def transactions = getTestTransactions()
         def portfolio = new Portfolio(name: "TestPortfolio")
+        def transactions = getTestTransactions(portfolio)
         def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
-        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("2")
+        pricingFacade.getCurrentMarketPrice(symbol) >> 2
         calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
             Transaction t, CoinInformationResponse response, Portfolio portfolio1
                 -> t.paidAmount }
@@ -102,52 +103,57 @@ class CoinInformationFacadeSpec extends Specification {
 
         then:
         with(response) {
-            realizedProfit == new BigDecimal("-230.5")
-            unrealizedProfit == new BigDecimal("160")
-            unrealizedTotalProfitMinusTotalCost == new BigDecimal("-40.5")
+            totalAmountBought == 200
+            totalAmountSold == 120
+            currentPrice == 2
+            currentPositionInUsdt == (currentPrice * amount)
+            realizedProfit == -230.5
+            unrealizedProfit == 160
+            unrealizedTotalProfitMinusTotalCost == -40
         }
     }
 
     def "should handle a single buy transaction correctly"() {
         given:
         def symbol = "RLC"
-        def transactions = [createTransaction(symbol, "USDT", "BUY", new BigDecimal("1"), new BigDecimal("500"))]
         def portfolio = new Portfolio(name: "TestPortfolio")
+        def transactions = [createTransaction(symbol, "USDT", "BUY", 1, 500, portfolio)]
         def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
-        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("500")
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> new BigDecimal("500")
+        pricingFacade.getCurrentMarketPrice(symbol) >> 500
+        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> 500
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
 
         then:
         with(response) {
-            amount == new BigDecimal("1")
+            amount == 1
             realizedProfit == BigDecimal.ZERO
-            unrealizedProfit == new BigDecimal("500")
-            currentPositionInUsdt == new BigDecimal("500")
+            unrealizedProfit == 500
+            currentPositionInUsdt == 500
         }
     }
 
     def "should handle multiple transactions on a single account"() {
         given:
         def symbol = "RLC"
-        def transactions = [
-                createTransaction(symbol, "USDT", "BUY", new BigDecimal("1"), new BigDecimal("500")),
-                createTransaction(symbol, "USDT", "SELL", new BigDecimal("1"), new BigDecimal("200"))
-        ]
         def portfolio = new Portfolio(name: "TestPortfolio")
         def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
+        def transactions = [
+                createTransaction(symbol, "USDT", "BUY", 1, 500, portfolio),
+                createTransaction(symbol, "USDT", "SELL", 1, 200, portfolio)
+        ]
+
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
-        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("1000")
+        pricingFacade.getCurrentMarketPrice(symbol) >> 1000
         calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
-            Transaction t, CoinInformationResponse response, Portfolio portfolio1
-                -> t.paidAmount }
+            Transaction t, CoinInformationResponse response, Portfolio p -> t.paidAmount
+        }
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
@@ -155,22 +161,32 @@ class CoinInformationFacadeSpec extends Specification {
         then:
         with(response) {
             amount == BigDecimal.ZERO
-            realizedProfit == new BigDecimal("-300")
+            realizedProfit == -200
             unrealizedProfit == BigDecimal.ZERO
             currentPositionInUsdt == BigDecimal.ZERO
         }
     }
 
-    def static List<Transaction> getTestTransactions() {
-        def portfolio = new Portfolio(name: "TestPortfolio")
+    def "should throw 404 when portfolio not found"() {
+        given:
+        portfolioService.getByName("missing") >> Optional.empty()
+
+        when:
+        coinInformationFacade.getPortfolioTransactionsInformation("missing")
+
+        then:
+        thrown(ResponseStatusException)
+    }
+
+    def getTestTransactions(portfolio) {
         [
-                new Transaction(side: "BUY", pair: "RLCUSDT", price: 1, executed: 200, symbol: "RLC", paidWith: "USDT", paidAmount: 200, feeAmount: 0.2, portfolio: portfolio),
-                new Transaction(side: "SELL", pair: "RLCUSDT", price: 2.15, executed: 70, symbol: "RLC", paidWith: "USDT", paidAmount: 150.5, feeAmount: 0.15, portfolio: portfolio),
-                new Transaction(side: "SELL", pair: "RLCUSDT", price: 1.60, executed: 50, symbol: "RLC", paidWith: "USDT", paidAmount: 80, feeAmount: 0.091371, portfolio: portfolio)
+            new Transaction(side: "BUY",  pair: "RLCUSDT", price: 1,    executed: 200, symbol: "RLC", paidWith: "USDT", paidAmount: 200,   feeAmount: 0.2, portfolio: portfolio, processed: false),
+            new Transaction(side: "SELL", pair: "RLCUSDT", price: 2.15, executed: 70,  symbol: "RLC", paidWith: "USDT", paidAmount: 150.5, feeAmount: 0.15, portfolio: portfolio, processed: false),
+            new Transaction(side: "SELL", pair: "RLCUSDT", price: 1.60, executed: 50,  symbol: "RLC", paidWith: "USDT", paidAmount: 80,    feeAmount: 0.091371, portfolio: portfolio, processed: false)
         ]
     }
 
-    def static Transaction createTransaction(String symbol, String paidWith, String side, BigDecimal executed, BigDecimal price) {
+    def createTransaction(symbol, paidWith, side, executed, price, portfolio) {
         new Transaction(
                 executed: executed,
                 side: side,
@@ -179,7 +195,8 @@ class CoinInformationFacadeSpec extends Specification {
                 symbol: symbol,
                 paidWith: paidWith,
                 paidAmount: executed * price,
-                portfolio: new Portfolio(name: "TestPortfolio")
+                portfolio: portfolio,
+                processed: false
         )
     }
 }

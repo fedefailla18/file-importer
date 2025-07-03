@@ -11,9 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RequiredArgsConstructor
 @Component
@@ -23,29 +21,12 @@ public class CalculateAmountSpent {
     private final PricingFacade pricingFacade;
     private final HoldingService holdingService;
 
-    public BigDecimal execute(String symbol, List<Transaction> transactions, CoinInformationResponse response) {
-        return transactions.parallelStream()
-                .map(transaction -> getAmountSpentInUsdtPerTransaction(symbol, transaction, response, null))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    /**
-     * When transaction is sell I'm returning a negative number.
-     * TODO: revise this
-     * @param transaction
-     * @param response
-     * @param portfolio
-     * @return
-     */
-    public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
-        return getAmountSpentInUsdtPerTransaction(transaction.getSymbol(), transaction, response, portfolio);
-    }
-
     private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
         return pricingFacade.getPriceInUsdt(symbol, dateUtc);
     }
 
     /**
+     * When transaction is sell I'm returning a negative number.
      * This method not only gets the paid amount in USDT per transaction but also keep track of other fields such as:
      * spent: this field keeps the amount spent and since it's a key value pair, helps to keep track of the spent in each currency.
      * stableTotalCost: the total amount paid historically for this coin
@@ -57,11 +38,11 @@ public class CalculateAmountSpent {
      * @param portfolio
      * @return
      */
-    public BigDecimal getAmountSpentInUsdtPerTransaction(String symbol, Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
+    public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
+        String symbol = transaction.getSymbol();
         String paidWithSymbol = transaction.getPaidWith();
         BigDecimal paidAmount = transaction.getPaidAmount();
         BigDecimal executed = transaction.getExecuted();
-        BigDecimal totalHeldAmount = response.getAmount();
         boolean isBuy = OperationUtils.isBuy(transaction.getSide());
 
         // Only add the spent for the original transaction if it's a buy transaction
@@ -99,12 +80,6 @@ public class CalculateAmountSpent {
             response.addTotalRealizedProfit(paidAmount);
             return paidAmount.negate();
         }
-    }
-
-    private BigDecimal getCostBasis(BigDecimal totalHeldAmount, BigDecimal totalCost) {
-        return totalHeldAmount.compareTo(BigDecimal.ZERO) != 0 ?
-                totalCost.divide(totalHeldAmount, RoundingMode.HALF_UP) :
-                BigDecimal.ZERO;
     }
 
     private void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {

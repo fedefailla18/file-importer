@@ -74,7 +74,7 @@ public class CoinInformationService {
         BigDecimal realizedProfit = processSellTransactions(sellTransactions, response, portfolio, totalHeldAmount);
 
         BigDecimal currentMarketPrice = pricingFacade.getCurrentMarketPrice(symbol);
-        BigDecimal currentMarketValue = currentMarketPrice.multiply(totalHeldAmount);
+        BigDecimal currentMarketValue = currentMarketPrice.multiply(response.getAmount());
 
         response.setRealizedProfit(realizedProfit);
         response.setCurrentPrice(currentMarketPrice);
