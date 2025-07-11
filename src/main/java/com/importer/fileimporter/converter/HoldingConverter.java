@@ -3,8 +3,10 @@ package com.importer.fileimporter.converter;
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.entity.Holding;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
@@ -14,7 +16,9 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
         return HoldingDto.builder()
                 .symbol(source.getSymbol())
                 .amount(source.getAmount())
-                .portfolioName(source.getPortfolio().getName())
+                .portfolioName(Optional.ofNullable(source.getPortfolio())
+                        .orElseThrow(() -> new ResourceAccessException(String.format("Missing portfolio for holding %s", source.getSymbol())))
+                        .getName())
                 .percentage(source.getPercent())
                 .amountInBtc(source.getAmountInBtc())
                 .amountInUsdt(source.getAmountInUsdt())

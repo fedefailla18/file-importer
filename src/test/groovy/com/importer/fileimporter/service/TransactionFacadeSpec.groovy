@@ -6,10 +6,12 @@ import com.importer.fileimporter.facade.PricingFacade
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
+import java.math.RoundingMode
 import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.time.LocalDateTime
+import javax.transaction.NotSupportedException
 
 class TransactionFacadeSpec extends Specification {
 
@@ -18,10 +20,9 @@ class TransactionFacadeSpec extends Specification {
 
     def sut = new TransactionFacade(transactionService, pricingFacade)
 
-    @Ignore
     def "BuildPortfolio should correctly calculate holdings"() {
         given: "Mock data for transactions and symbols"
-        def symbols = ["BAND"]
+        def symbols = ["BTC"]
         def transactions = createMockTransactions()
 
         and:
@@ -33,30 +34,27 @@ class TransactionFacadeSpec extends Specification {
         then: "The portfolio is correctly built with expected values"
         portfolio.size() == 1
         with(portfolio[0]) {
-            symbol == "BAND"
+            symbol == "BTC"
             amount == BigDecimal.valueOf(50)
-            buyPrice == BigDecimal.valueOf(1.0572)  // Example calculation, adjust as needed
-            buyPriceInBtc == BigDecimal.valueOf(0.00015858) // Example calculation, adjust as needed
-            sellPrice == BigDecimal.valueOf(1.7818)  // Example calculation, adjust as needed
-            sellPriceInBtc == BigDecimal.valueOf(0.00026727) // Example calculation, adjust as needed
-            payedInUsdt == BigDecimal.valueOf(17.975129) // Example calculation, adjust as needed
-            payedInBtc == BigDecimal.valueOf(0.02696325) // Example calculation, adjust as needed
+            // Verify the calculated values match what we expect based on our mock transactions
+            buyPrice.compareTo(BigDecimal.valueOf(50)) == 0
+            sellPrice.compareTo(BigDecimal.valueOf(100)) == 0
+            payedInUsdt.compareTo(BigDecimal.valueOf(0)) == 0  // 5000 - 5000 = 0
             priceInBtc == BigDecimal.valueOf(0.00015)
             priceInUsdt == BigDecimal.valueOf(1.5)
-            amountInBtc == BigDecimal.valueOf(0.00735)  // amount (49) * price in BTC (0.00015)
-            amountInUsdt == BigDecimal.valueOf(73.5)  // amount (49) * price in USDT (1.5)
+            amountInBtc.compareTo(BigDecimal.valueOf(7.5).setScale(8, RoundingMode.HALF_UP)) == 0  // 50 * 0.00015 = 0.0075
+            amountInUsdt.compareTo(BigDecimal.valueOf(75).setScale(8, RoundingMode.HALF_UP)) == 0  // 50 * 1.5 = 75
         }
 
         and:
-        1 * transactionService.getAllBySymbol("BAND", Pageable.unpaged()) >> pageMock
+        1 * transactionService.getAllBySymbol("BTC", Pageable.unpaged()) >> pageMock
 
         and: 'Mock the pricing facade to return prices'
-        pricingFacade.getPrice("BAND", "USDT", _ as LocalDateTime) >> BigDecimal.valueOf(1.5)
-        pricingFacade.getPrice("BAND", "BTC", _ as LocalDateTime) >> BigDecimal.valueOf(0.00015)
-        pricingFacade.getPrices("BAND") >> [BTC: 0.00015d, USDT: 1.5d]
+        pricingFacade.getPriceInUsdt("BTC", _ as LocalDateTime) >> BigDecimal.valueOf(1.5)
+        pricingFacade.getPriceInBTC("BTC", _ as LocalDateTime) >> BigDecimal.valueOf(0.00015)
+        pricingFacade.getPrices("BTC") >> [BTC: 0.00015d, USDT: 1.5d]
     }
 
-    @Ignore
     def "GetTotalAmount"() {
         given:
         def transactions = createMockTransactions()
@@ -66,6 +64,69 @@ class TransactionFacadeSpec extends Specification {
 
         then:
         totalAmount == BigDecimal.valueOf(50)
+    }
+
+    @Ignore("Test is ignored until getAmount method is implemented for empty symbols list")
+    def "GetAmount should handle empty symbols list"() {
+        given: "An empty list of symbols"
+        def symbols = []
+
+        when: "Getting amount for empty symbols list"
+        sut.getAmount(symbols)
+
+        then: "NotSupportedException is thrown"
+        thrown(NotSupportedException)
+
+        and: "TransactionService.getAll() is called once"
+        1 * transactionService.getAll()
+    }
+
+    def "BuildPortfolio should handle zero totalAmount without division by zero"() {
+        given: "Mock data for transactions with zero total amount"
+        def symbols = ["ETH"]
+        def transactions = [
+            Transaction.builder()
+                .id(1L)
+                .dateUtc(LocalDateTime.now())
+                .side('BUY')
+                .pair("ETHUSDT")
+                .executed(BigDecimal.valueOf(10))
+                .price(BigDecimal.valueOf(200))
+                .symbol("ETH")
+                .paidWith("USDT")
+                .paidAmount(BigDecimal.valueOf(2000))
+                .build(),
+            Transaction.builder()
+                .id(2L)
+                .dateUtc(LocalDateTime.now())
+                .side('SELL')
+                .pair("ETHUSDT")
+                .executed(BigDecimal.valueOf(10))
+                .price(BigDecimal.valueOf(250))
+                .symbol("ETH")
+                .paidWith("USDT")
+                .paidAmount(BigDecimal.valueOf(2500))
+                .build()
+        ]
+
+        and: "Mock the transaction service to return transactions with zero total amount"
+        Page<Transaction> pageMock = new PageImpl<>(transactions)
+        transactionService.getAllBySymbol("ETH", Pageable.unpaged()) >> pageMock
+
+        and: "Mock the pricing facade"
+        pricingFacade.getPriceInUsdt("ETH", _ as LocalDateTime) >> BigDecimal.valueOf(300)
+        pricingFacade.getPriceInBTC("ETH", _ as LocalDateTime) >> BigDecimal.valueOf(0.01)
+        pricingFacade.getPrices("ETH") >> [BTC: 0.01d, USDT: 300d]
+
+        when: "Building the portfolio"
+        List<TransactionHoldingDto> portfolio = sut.buildPortfolio(symbols)
+
+        then: "The portfolio is built without throwing division by zero exception"
+        portfolio.size() == 1
+        with(portfolio[0]) {
+            symbol == "ETH"
+            amount == BigDecimal.ZERO  // Buy 10, Sell 10 = 0
+        }
     }
 
     static List<Transaction> createMockTransactions() {

@@ -80,7 +80,10 @@ public class TransactionFacade {
                 }
 
                 boolean isBuy = OperationUtils.isBuy(tr.getSide());
-                BigDecimal proportion = executed.divide(totalAmount.get(), 13, RoundingMode.HALF_UP);
+                // Avoid division by zero
+                BigDecimal proportion = totalAmount.get().compareTo(BigDecimal.ZERO) == 0 ? 
+                    BigDecimal.ZERO : 
+                    executed.divide(totalAmount.get(), 13, RoundingMode.HALF_UP);
 
                 if (isBuy) {
                     totalBuyAmountInUsdt = totalBuyAmountInUsdt.add(payedAmountInUsdt);

@@ -171,7 +171,7 @@ public class PortfolioDistributionFacade {
     }
 
     private Predicate<Holding> excludeWhenAmountIsAlmostZero() {
-        return holding -> new BigDecimal("0.3").compareTo(holding.getTotalAmountBought().subtract(holding.getTotalAmountSold())) < 0;
+        return holding -> new BigDecimal("0.03").compareTo(holding.getTotalAmountBought().subtract(holding.getTotalAmountSold())) < 0;
     }
 
     private HoldingDto updateHolding(HoldingDto e, Portfolio portfolio) {
@@ -194,11 +194,11 @@ public class PortfolioDistributionFacade {
         List<HoldingDto> holdingDtos = new ArrayList<>(holdingsBySymbol.values());
         portfolioDistribution.setHoldings(holdingDtos);
         portfolioDistribution.calculateHoldingPercent();
-        holdingDtos.sort(Comparator.comparing(HoldingDto::getAmountInUsdt, Comparator.reverseOrder()));
+        holdingDtos.sort((Comparator.comparing(HoldingDto::getAmountInUsdt, Comparator.nullsLast(Comparator.reverseOrder()))));
         return portfolioDistribution;
     }
 
-    // this could be in PorrfolioDistribution or other new class
+    // this could be in PortfolioDistribution or other new class
     public Map<String, HoldingDto> groupHoldingsBySymbol(List<Holding> holdings) {
         return holdings.stream()
                 .collect(Collectors.toMap(Holding::getSymbol, // Group holdings by symbol
@@ -210,6 +210,8 @@ public class PortfolioDistributionFacade {
                                     BigDecimal.ZERO;
                             BigDecimal priceInBtc = (e1.getPriceInBtc() != null && e2.getPriceInBtc() != null) ?
                                     e1.getPriceInBtc().add(e2.getPriceInBtc()) : BigDecimal.ZERO;
+                            BigDecimal percentage = (e1.getPercentage() != null && e2.getPercentage() != null) ?
+                                    e1.getPercentage().add(e2.getPercentage()) : BigDecimal.ZERO;
                             return HoldingDto.builder()
                                     .symbol(e1.getSymbol())
                                     .portfolioName(e1.getPortfolioName() + " - " + e2.getPortfolioName())
@@ -218,7 +220,7 @@ public class PortfolioDistributionFacade {
                                     .amount(e1.getAmount().add(e2.getAmount()))
                                     .amountInUsdt(addPreventingNull(e1.getAmountInUsdt(), e2.getAmountInUsdt()))
                                     .amountInBtc(addPreventingNull(e1.getAmountInBtc(), e2.getAmountInBtc()))
-                                    .percentage(e1.getPercentage().add(e2.getPercentage()))
+                                    .percentage(percentage)
                                     .build();
                         }
                 ));
