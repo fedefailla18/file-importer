@@ -14,16 +14,16 @@ import java.util.List;
 @Slf4j
 public class ProcessFileFactory {
 
-    private final BinanceProcessFile binanceProcessFile;
+    private final ProcessFileV1 processFileV1;
     private final ProcessFileV2 processFileV2;
 
 
     public FileInformationResponse processFile(MultipartFile file) throws IOException {
-        return binanceProcessFile.processFile(file);
+        return processFileV1.processFile(file);
     }
 
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols) throws IOException {
-        return binanceProcessFile.processFile(file, symbols);
+        return processFileV1.processFile(file, symbols);
     }
 
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio) throws IOException {

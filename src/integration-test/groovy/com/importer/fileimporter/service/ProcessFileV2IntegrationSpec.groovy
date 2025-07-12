@@ -1,9 +1,9 @@
 package com.importer.fileimporter.service
 
 import com.importer.fileimporter.BaseIntegrationSpec
+import com.importer.fileimporter.dto.BinanceTransactionAdapter
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.utils.IntegrationTestHelper
-import com.importer.fileimporter.utils.ProcessFileUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.web.multipart.MultipartFile
@@ -20,19 +20,23 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
     List<Map<String, String>> mockRows
     def symbolsInRows
 
-    def executedSymbols = ["SOL"," WAVES"," AEVO"," FET"," IMX"," XRP"," ETH"," BAND"," NEAR"," TIA"," ADA"," FTM"]
-
     def setup() {
         mockRows = IntegrationTestHelper.readCsvFile()
+        // Use the adapter pattern to extract symbols
         symbolsInRows = mockRows.stream()
-                .map( { ProcessFileUtils.getSymbolFromExecuted(it, null)} )
+                .map( { row -> 
+                    def adapter = new BinanceTransactionAdapter(row)
+                    return adapter.getSymbol()
+                } )
+                .filter( { it != null } )
+                .map( { it.trim() } )
                 .collect(Collectors.toSet())
     }
 
     def "should process file with portfolio and return file information response"() {
         given: "a multipart file with transaction data and predefined symbols"
         def multipartFile = getFile()
-        def portfolioName = "default-portfolio"
+        def portfolioName = "Binance"
 
         when: "processFile is called with a portfolio"
         def response = processFile.processFile(multipartFile, null, portfolioName)
@@ -40,7 +44,7 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
         then: "file information response should contain the correct number of rows and transactions"
         response.portfolio == portfolioName
         response.amount == mockRows.size()
-//        response.coinInformationResponse.size() == 12
+        response.coinInformationResponse.size() == symbolsInRows.size()
         response.coinInformationResponse.each { coinInfo ->
             assert coinInfo.coinName in symbolsInRows
             assert coinInfo.totalTransactions > 0
@@ -59,8 +63,7 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
     def "should process file with custom symbols and portfolio and return file information response"() {
         given: "a multipart file with transaction data and custom symbols"
         def file = getFile()
-//        List<String> customSymbols = ["FET", "WAVES"]
-        def portfolioName = "custom-portfolio"
+        def portfolioName = "Binance"
 
         when: "processFile is called with custom symbols and a portfolio"
         def response = processFile.processFile(file, null, portfolioName)
@@ -68,7 +71,7 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
         then: "file information response should contain the correct number of rows and transactions"
         response.portfolio == portfolioName
         response.amount == mockRows.size()
-//        response.coinInformationResponse.size() == 2  // TODO: this is wrong as not only custom symbols are processed
+        response.coinInformationResponse.size() == symbolsInRows.size()
         response.coinInformationResponse.each { coinInfo ->
             assert coinInfo.coinName in symbolsInRows
             assert coinInfo.totalTransactions > 0

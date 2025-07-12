@@ -14,7 +14,6 @@ class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
     @Autowired
     WebClient.Builder webClientBuilder
 
-    @Autowired
     @Subject
     CryptoCompareProxy sut
 
