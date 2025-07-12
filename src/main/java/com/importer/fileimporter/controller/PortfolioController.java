@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(value = "/portfolio")
@@ -22,6 +24,11 @@ public class PortfolioController {
     @GetMapping()
     public PortfolioDistribution getPortfolio(@RequestParam String name) {
         return portfolioDistributionFacade.getPortfolioByName(name);
+    }
+
+    @GetMapping("/names")
+    public List<String> getAllPortfolio() {
+        return portfolioDistributionFacade.getAllPortfolioNames();
     }
 
     @PostMapping("/distribution")

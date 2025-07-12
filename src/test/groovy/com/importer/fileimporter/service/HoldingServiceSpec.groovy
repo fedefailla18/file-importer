@@ -156,4 +156,81 @@ class HoldingServiceSpec extends Specification {
         1 * holdingRepository.findByPortfolioAndSymbol(_ as Portfolio, symbol) >> Optional.empty()
         thrown(ResponseStatusException)
     }
+    def "test updatePaidWithHolding - buy transaction"() {
+        given:
+        def portfolio = new Portfolio(name: "Test Portfolio")
+        def paidWithSymbol = "BTC"
+        def paidAmount = new BigDecimal("0.1")
+        def executed = new BigDecimal("1")
+        def paidInStable = new BigDecimal("1000")
+        def existingHolding = Holding.builder()
+                .symbol(paidWithSymbol)
+                .portfolio(portfolio)
+                .amount(new BigDecimal("1"))
+                .totalAmountSold(BigDecimal.ZERO)
+                .build()
+
+        when:
+        holdingService.updatePaidWithHolding(true, paidWithSymbol, paidAmount, portfolio, executed, paidInStable)
+
+        then:
+        1 * holdingRepository.findBySymbolAndPortfolioName(paidWithSymbol, "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.save(_) >> { Holding h ->
+            assert h.amount == new BigDecimal("1.1") // 1 + 0.1
+            assert h.totalAmountSold == BigDecimal.ZERO // Unchanged for buy
+            h
+        }
+    }
+
+    def "test updatePaidWithHolding - sell transaction"() {
+        given:
+        def portfolio = new Portfolio(name: "Test Portfolio")
+        def paidWithSymbol = "BTC"
+        def paidAmount = new BigDecimal("0.1")
+        def executed = new BigDecimal("1")
+        def paidInStable = new BigDecimal("1000")
+        def existingHolding = Holding.builder()
+                .symbol(paidWithSymbol)
+                .portfolio(portfolio)
+                .amount(new BigDecimal("1"))
+                .totalAmountSold(new BigDecimal("0.5"))
+                .build()
+
+        when:
+        holdingService.updatePaidWithHolding(false, paidWithSymbol, paidAmount, portfolio, executed, paidInStable)
+
+        then:
+        1 * holdingRepository.findBySymbolAndPortfolioName(paidWithSymbol, "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.save(_) >> { Holding h ->
+            assert h.amount == new BigDecimal("0.9") // 1 - 0.1
+            assert h.totalAmountSold == new BigDecimal("0.6") // 0.5 + 0.1
+            h
+        }
+    }
+
+    def "test updatePaidWithHolding - new holding"() {
+        given:
+        def portfolio = new Portfolio(name: "Test Portfolio")
+        def paidWithSymbol = "ETH"
+        def paidAmount = new BigDecimal("2")
+        def executed = new BigDecimal("1")
+        def paidInStable = new BigDecimal("2000")
+        def newHolding = Holding.builder()
+                .symbol(paidWithSymbol)
+                .portfolio(portfolio)
+                .amount(BigDecimal.ZERO)
+                .totalAmountSold(BigDecimal.ZERO)
+                .build()
+
+        when:
+        holdingService.updatePaidWithHolding(true, paidWithSymbol, paidAmount, portfolio, executed, paidInStable)
+
+        then:
+        1 * holdingRepository.findBySymbolAndPortfolioName(paidWithSymbol, "Test Portfolio") >> Optional.empty()
+        1 * holdingRepository.save(_) >> { Holding h ->
+            assert h.amount == new BigDecimal("2") // 0 + 2
+            assert h.totalAmountSold == BigDecimal.ZERO // Unchanged for buy
+            h
+        }
+    }
 }

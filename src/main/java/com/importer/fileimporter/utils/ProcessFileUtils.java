@@ -4,6 +4,8 @@ import lombok.experimental.UtilityClass;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
+import java.util.List;
 
 @UtilityClass
 public class ProcessFileUtils {
@@ -27,23 +29,33 @@ public class ProcessFileUtils {
         return bigDecimal.setScale(10, RoundingMode.UP);
     }
 
-    public String getSymbolFromNumber(String feeString) {
-        if (feeString == null || feeString.trim().isEmpty()) {
-            throw new IllegalArgumentException("Fee string cannot be null or empty");
+    public String getSymbolFromNumber(String valueString) {
+        if (valueString == null || valueString.trim().isEmpty()) {
+            throw new IllegalArgumentException("Value string cannot be null or empty");
+        }
+
+        // List of known symbols that contain numbers
+        List<String> specialSymbols = Arrays.asList("1INCH", "API3");
+
+        // Check if the valueString contains any of the special symbols
+        for (String specialSymbol : specialSymbols) {
+            if (valueString.contains(specialSymbol)) {
+                return specialSymbol;
+            }
         }
 
         // Use a regular expression to match the numeric part
         String regex = "[0-9.,]+";
-        String[] parts = feeString.split(regex);
+        String[] parts = valueString.split(regex);
 
         // If no parts found, raise an exception
         if (parts.length == 0) {
-            throw new IllegalArgumentException("Invalid fee string format");
+            throw new IllegalArgumentException("Invalid value string format");
         }
 
         // The symbol will be the non-numeric part at the end of the string
-        String feeSymbol = parts[parts.length - 1];
-        return feeSymbol;
+        String symbol = parts[parts.length - 1];
+        return symbol;
     }
 
 }

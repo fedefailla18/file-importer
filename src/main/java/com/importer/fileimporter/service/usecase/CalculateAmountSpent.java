@@ -32,11 +32,10 @@ public class CalculateAmountSpent {
      * stableTotalCost: the total amount paid historically for this coin
      * totalRealizedProfit: the total amount sold historically. This is the gross usdt
      *
-     * @param symbol
-     * @param transaction
-     * @param response
-     * @param portfolio
-     * @return
+     * @param transaction The transaction to calculate the amount spent for
+     * @param response The CoinInformationResponse object to update with the calculated values
+     * @param portfolio The portfolio associated with the transaction, can be null if no portfolio update is needed
+     * @return The amount spent in USDT (positive for buy, negative for sell)
      */
     public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
         String symbol = transaction.getSymbol();
@@ -65,18 +64,8 @@ public class CalculateAmountSpent {
             response.setStableTotalCost(response.getStableTotalCost().add(paidAmount));
             return paidAmount;
         } else {
-            // Calculating profit for the sale
-//            BigDecimal profitFromSale = executed.multiply(priceInStable).subtract(paidAmount); // TODO: This is wrong. executed*price is transaction.paidAmount
-//            BigDecimal realizedProfit = response.getRealizedProfit() == null ? BigDecimal.ZERO : response.getRealizedProfit();
-//            response.setRealizedProfit(realizedProfit.add(profitFromSale).setScale(5, RoundingMode.UP));
-
-//            BigDecimal costBasis = getCostBasis(totalHeldAmount, totalCost);
-//            realizedProfit = realizedProfit.add(amountSold.multiply(price.subtract(costBasis)));
-//            BigDecimal transactionTotalCost = costBasis.compareTo(BigDecimal.ZERO) != 0 ?
-//                    amountSold.multiply(costBasis) :
-//                    paidAmount;
-//            totalCost = totalCost.subtract(transactionTotalCost);
-
+            // For sell transactions, we add the amount to the total realized profit
+            // and return the negative of the paid amount (since it's money coming in, not going out)
             response.addTotalRealizedProfit(paidAmount);
             return paidAmount.negate();
         }

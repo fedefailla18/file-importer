@@ -4,6 +4,7 @@ plugins {
 	id 'io.spring.dependency-management' version '1.0.15.RELEASE'
 	id "groovy"
 	id 'org.hidetake.swagger.generator' version '2.19.2'
+	id 'jacoco'
 }
 
 //ext['groovy.version'] = "2.5.7"
@@ -71,6 +72,10 @@ dependencies {
 	implementation 'javax.validation:validation-api:2.0.1.Final'
 	implementation 'org.springframework.boot:spring-boot-starter-hateoas'
 
+	// OpenAPI/Swagger documentation
+	implementation 'org.springdoc:springdoc-openapi-ui:1.6.15'
+	implementation 'org.springdoc:springdoc-openapi-security:1.6.15'
+
 	//open api code generation
 	swaggerCodegen 'org.openapitools:openapi-generator-cli:7.3.0'
 	implementation 'io.swagger.core.v3:swagger-annotations:2.2.20'
@@ -112,3 +117,42 @@ task integrationTest(type: Test) {
 
 // Ensure integration tests run after unit tests
 check.dependsOn integrationTest
+
+// JaCoCo configuration
+jacoco {
+    toolVersion = "0.8.8"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// JaCoCo for integration tests
+task jacocoIntegrationTestReport(type: JacocoReport) {
+    dependsOn integrationTest
+    sourceSets sourceSets.main
+    executionData file("${project.buildDir}/jacoco/integrationTest.exec")
+    reports {
+        xml.required = true
+        html.required = true
+        html.outputLocation = file("${project.buildDir}/reports/jacoco/integrationTest")
+    }
+}
+
+// Combined JaCoCo report for both unit and integration tests
+task jacocoAllTestReport(type: JacocoReport) {
+    dependsOn test, integrationTest
+    sourceSets sourceSets.main
+    executionData fileTree(dir: "${project.buildDir}/jacoco", include: "*.exec")
+    reports {
+        xml.required = true
+        html.required = true
+        html.outputLocation = file("${project.buildDir}/reports/jacoco/allTests")
+    }
+}
+
+check.dependsOn jacocoTestReport, jacocoIntegrationTestReport, jacocoAllTestReport

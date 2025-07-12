@@ -53,6 +53,13 @@ public class PortfolioDistributionFacade {
     private final HoldingService holdingService;
     private final PricingFacade pricingFacade;
 
+    public List<String> getAllPortfolioNames() {
+        List<Portfolio> portfolios = portfolioService.getAll();
+        return portfolios.stream()
+                .map(Portfolio::getName)
+                .collect(Collectors.toList());
+    }
+
     public HoldingDto addPortfolioHolding(AddHoldingRequest request) {
         Symbol savedSymbol = symbolService.findOrSaveSymbol(request.getSymbol(), request.getName());
 
