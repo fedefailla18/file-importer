@@ -24,7 +24,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 import spock.lang.Specification
 
 @Transactional
-@SpringBootTest(classes = FileImporterApplication, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("integration-test")
 @AutoConfigureTestEntityManager
 @AutoConfigureMockMvc
@@ -60,7 +60,7 @@ abstract class BaseIntegrationSpec extends Specification {
     // Define a PostgreSQL container
     @ClassRule
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.1")
-            .withDatabaseName("importer_database")
+            .withDatabaseName("file_importer_schema")
             .withUsername("root")
             .withPassword("password")
             .withExposedPorts(60366)
@@ -85,9 +85,8 @@ abstract class BaseIntegrationSpec extends Specification {
                 password
         )
 
-        ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
-                new ClassPathResource("schema.sql")
-        )
+        ResourceDatabasePopulator populator = new ResourceDatabasePopulator()
+        populator.addScript(new ClassPathResource("schema.sql"))
         populator.execute(dataSource)
     }
 }

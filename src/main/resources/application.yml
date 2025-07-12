@@ -37,6 +37,7 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
     contexts: development, production
     default-schema: file_importer_schema
+    enabled: true
 
 crypto-compare:
   api-key: 53bdd104b9bb83f976930c67a45bf29bf7f8d3f9808ab350aa742f45a505417d
@@ -44,3 +45,14 @@ crypto-compare:
 jwt:
   secret: 5ed583b57732d0308978b2c241ab25d01ec857347433396fb2da4286547fcae8
   expiration: 86400000 # 24 hours in milliseconds
+
+# OpenAPI/Swagger configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    disable-swagger-default-url: true
+  packages-to-scan: com.importer.fileimporter.controller

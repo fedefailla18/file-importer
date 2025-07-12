@@ -54,20 +54,31 @@ public class HoldingService {
                                 .build());
     }
 
+    /**
+     * Updates the holding for the currency used to pay for a transaction.
+     * For buy transactions, it decreases the amount of the paid with currency.
+     * For sell transactions, it increases the amount of the paid with currency.
+     *
+     * @param isBuy Whether the transaction is a buy (true) or sell (false)
+     * @param paidWithSymbol The symbol of the currency used to pay
+     * @param paidAmount The amount paid in the paidWithSymbol currency
+     * @param portfolio The portfolio associated with the transaction
+     * @param executed The amount of the main currency executed in the transaction
+     * @param paidInStable The amount paid in stable currency (USDT)
+     */
     public void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
         Holding holding = getOrCreateByPortfolioAndSymbol(portfolio, paidWithSymbol);
         BigDecimal oldAmount = holding.getAmount();
         BigDecimal totalAmountSold = holding.getTotalAmountSold();
-//        BigDecimal stableTotalCost = holding.getStableTotalCost();
 
+        // For the paidWith currency, the logic is inverted:
+        // - When buying a coin, we're selling (decreasing) the paidWith currency
+        // - When selling a coin, we're buying (increasing) the paidWith currency
         BigDecimal updatedAmount = OperationUtils.accumulateExecutedAmount(oldAmount, paidAmount, isBuy);
         BigDecimal updatedTotalAmountSold = OperationUtils.accumulateExecutedAmount(totalAmountSold, paidAmount, isBuy);
-//        BigDecimal updatedStableTotalCost = OperationUtils.accumulateExecutedAmount(stableTotalCost, paidInStable, isBuy);
-
 
         holding.setAmount(updatedAmount);
         holding.setTotalAmountSold(updatedTotalAmountSold);
-//        holding.setStableTotalCost(updatedStableTotalCost);
 
         log.info("Updating {}. oldAmount = {}, updated amount = {}", paidWithSymbol, oldAmount, updatedAmount);
         save(holding);

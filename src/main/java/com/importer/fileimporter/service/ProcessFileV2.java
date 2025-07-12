@@ -42,7 +42,7 @@ public class ProcessFileV2 extends ProcessFile {
                 .build();
     }
 
-    private Map<String, CoinInformationResponse> getTransactionDetailInformation(List<Map<?, ?>> rows,
+    Map<String, CoinInformationResponse> getTransactionDetailInformation(List<Map<?, ?>> rows,
                                                                                  List<String> symbols,
                                                                                  String portfolioName) {
         Map<String, CoinInformationResponse> transactionsDetailsMap = new HashMap<>();
@@ -70,7 +70,7 @@ public class ProcessFileV2 extends ProcessFile {
         };
     }
 
-    private void processTransactionRow(TransactionData transactionData, String symbol,
+    void processTransactionRow(TransactionData transactionData, String symbol,
                                        Map<String, CoinInformationResponse> transactionDetails,
                                        Portfolio portfolio) {
         boolean isBuy = OperationUtils.isBuy(transactionData.getSide());

@@ -1,6 +1,7 @@
 package com.importer.fileimporter.service.usecase
 
 import com.importer.fileimporter.dto.CoinInformationResponse
+import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.service.HoldingService
@@ -174,5 +175,67 @@ class CalculateAmountSpentSpec extends Specification {
                 price: price,
                 paidAmount: paidAmount
         )
+    }
+    def "should update paid with holding for non-stable coin buy transaction"() {
+        given:
+        def symbol = "RLC"
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        def transaction = createTransaction(symbol, "BTC", "BUY", new BigDecimal("1"), new BigDecimal("0.1"))
+        def response = CoinInformationResponse.createEmpty(symbol)
+
+        and:
+        pricingFacade.getPriceInUsdt(symbol, _) >> 1000
+
+        when:
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, portfolio)
+
+        then:
+        amountSpent == 1000
+        response.getSpent().get("BTC") == new BigDecimal("0.1")
+        response.getStableTotalCost() == 1000
+
+        and: "updatePaidWithHolding should be called with correct parameters"
+        1 * holdingService.updatePaidWithHolding(false, "BTC", new BigDecimal("0.1"), portfolio, new BigDecimal("1"), 1000)
+    }
+
+    def "should update paid with holding for non-stable coin sell transaction"() {
+        given:
+        def symbol = "RLC"
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        def transaction = createTransaction(symbol, "BTC", "SELL", new BigDecimal("1"), new BigDecimal("0.1"))
+        def response = CoinInformationResponse.createEmpty(symbol)
+
+        and:
+        pricingFacade.getPriceInUsdt(symbol, _) >> 1000
+
+        when:
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, portfolio)
+
+        then:
+        amountSpent == -1000
+        response.getSpent().isEmpty()
+        response.totalRealizedProfitUsdt == 1000
+
+        and: "updatePaidWithHolding should be called with correct parameters"
+        1 * holdingService.updatePaidWithHolding(true, "BTC", new BigDecimal("0.1"), portfolio, new BigDecimal("1"), 1000)
+    }
+
+    def "should not update paid with holding for stable coin transactions"() {
+        given:
+        def symbol = "RLC"
+        def portfolio = new Portfolio(name: "TestPortfolio")
+        def transaction = createTransaction(symbol, "USDT", "BUY", new BigDecimal("1"), new BigDecimal("500"))
+        def response = CoinInformationResponse.createEmpty(symbol)
+
+        when:
+        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, portfolio)
+
+        then:
+        amountSpent == new BigDecimal("500")
+        response.getSpent().get("USDT") == new BigDecimal("500")
+        response.getStableTotalCost() == new BigDecimal("500")
+
+        and: "updatePaidWithHolding should not be called for stable coins"
+        0 * holdingService.updatePaidWithHolding(_, _, _, _, _, _)
     }
 }

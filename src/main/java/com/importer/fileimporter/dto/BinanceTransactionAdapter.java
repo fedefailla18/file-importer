@@ -70,8 +70,12 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
 
     @Override
     public String getSymbol() {
-        String executedString = row.get(EXECUTED_KEY).toString();
-        return ProcessFileUtils.getSymbolFromNumber(executedString);
+        try {
+            String executedString = row.get(EXECUTED_KEY).toString();
+            return ProcessFileUtils.getSymbolFromNumber(executedString);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("No symbol found in executed string");
+        }
     }
 
     @Override

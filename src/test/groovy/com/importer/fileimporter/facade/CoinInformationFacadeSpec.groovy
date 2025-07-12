@@ -178,6 +178,63 @@ class CoinInformationFacadeSpec extends Specification {
         thrown(ResponseStatusException)
     }
 
+    def "getPortfolioTransactionsInformation should filter out null responses"() {
+        given: "A portfolio with transactions for multiple symbols"
+        def portfolioName = "TestPortfolio"
+        def portfolio = new Portfolio(name: portfolioName)
+        portfolioService.getByName(portfolioName) >> Optional.of(portfolio)
+
+        and: "Transactions for multiple symbols"
+        def transactions = [
+            new Transaction(symbol: "BTC", portfolio: portfolio),
+            new Transaction(symbol: "ETH", portfolio: portfolio),
+            new Transaction(symbol: "LTC", portfolio: portfolio)
+        ]
+        transactionService.findByPortfolio(portfolio) >> transactions
+
+        and: "CoinInformationService returns null for some symbols (processed transactions)"
+        coinInformationService = Mock(CoinInformationService)
+        coinInformationFacade = new CoinInformationFacade(transactionService, portfolioService, coinInformationService)
+
+        coinInformationService.getCoinInformationResponse("BTC", _) >> null
+        coinInformationService.getCoinInformationResponse("ETH", _) >> new CoinInformationResponse(coinName: "ETH")
+        coinInformationService.getCoinInformationResponse("LTC", _) >> new CoinInformationResponse(coinName: "LTC")
+
+        when: "Getting portfolio transactions information"
+        def result = coinInformationFacade.getPortfolioTransactionsInformation(portfolioName)
+
+        then: "The result should not contain null responses"
+        result.size() == 2
+        result.every { it != null }
+        result.collect { it.coinName }.sort() == ["ETH", "LTC"]
+    }
+
+    def "getTransactionsInformation should filter out null responses"() {
+        given: "Transactions for multiple symbols"
+        def transactions = [
+            new Transaction(symbol: "BTC"),
+            new Transaction(symbol: "ETH"),
+            new Transaction(symbol: "LTC")
+        ]
+        transactionService.getAll() >> transactions
+
+        and: "CoinInformationService returns null for some symbols (processed transactions)"
+        coinInformationService = Mock(CoinInformationService)
+        coinInformationFacade = new CoinInformationFacade(transactionService, portfolioService, coinInformationService)
+
+        coinInformationService.getCoinInformationResponse("BTC", _) >> null
+        coinInformationService.getCoinInformationResponse("ETH", _) >> new CoinInformationResponse(coinName: "ETH")
+        coinInformationService.getCoinInformationResponse("LTC", _) >> new CoinInformationResponse(coinName: "LTC")
+
+        when: "Getting all transactions information"
+        def result = coinInformationFacade.getTransactionsInformation()
+
+        then: "The result should not contain null responses"
+        result.size() == 2
+        result.every { it != null }
+        result.collect { it.coinName }.sort() == ["ETH", "LTC"]
+    }
+
     def getTestTransactions(portfolio) {
         [
             new Transaction(side: "BUY",  pair: "RLCUSDT", price: 1,    executed: 200, symbol: "RLC", paidWith: "USDT", paidAmount: 200,   feeAmount: 0.2, portfolio: portfolio, processed: false),
