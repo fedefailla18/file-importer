@@ -73,6 +73,7 @@ public class CoinInformationResponse {
                 .realizedProfit(ZERO)
                 .totalRealizedProfitUsdt(ZERO)
                 .unrealizedProfit(ZERO)
+                .totalExecuted(ZERO)
                 .build();
     }
 

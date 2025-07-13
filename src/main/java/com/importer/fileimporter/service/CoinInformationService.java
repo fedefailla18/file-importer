@@ -59,9 +59,12 @@ public class CoinInformationService {
         List<Transaction> sellTransactions = new ArrayList<>();
 
         for (Transaction transaction : transactions) {
+
             if (OperationUtils.isBuy(transaction.getSide())) {
                 BigDecimal executed = transaction.getExecuted();
+
                 totalHeldAmount = totalHeldAmount.add(executed);
+
                 BigDecimal paidAmountInStable = calculateAmountSpent.getAmountSpentInUsdt(transaction, response, portfolio);
                 totalCostInStable = totalCostInStable.add(paidAmountInStable);
                 response.addTotalAmountBought(executed, transaction.getSide());

@@ -45,33 +45,55 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
 
     @Override
     public BigDecimal getExecuted() {
-        String executed = row.get(EXECUTED_KEY).toString()
-                .replace(coinName, "")
-                .replace(",", "");
-        double added = Double.parseDouble(executed);
-        return BigDecimal.valueOf(added);
+        String executedString = row.get(EXECUTED_KEY).toString();
+        try {
+            String executedSymbol = ProcessFileUtils.getSymbolFromNumber(executedString);
+            String executed = executedString
+                    .replace(executedSymbol, "")
+                    .replace(",", "");
+            double added = Double.parseDouble(executed);
+            return BigDecimal.valueOf(added);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error extracting executed amount from: " + executedString, e);
+        }
     }
 
     @Override
     public BigDecimal getAmount() {
-        String amount1 = row.get(AMOUNT_KEY).toString();
-        String amount = amount1
-                .substring(0, amount1.length() - coinName.length())
-                .replace(",", "");
-        return ProcessFileUtils.getBigDecimalWithScale(Double.valueOf(amount));
+        String amountString = row.get(AMOUNT_KEY).toString();
+        try {
+            String amountSymbol = ProcessFileUtils.getSymbolFromNumber(amountString);
+            String amount = amountString
+                    .replace(amountSymbol, "")
+                    .replace(",", "");
+            return ProcessFileUtils.getBigDecimalWithScale(Double.valueOf(amount));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error extracting amount from: " + amountString, e);
+        }
     }
 
     @Override
     public BigDecimal getFee() {
         String feeString = row.get(FEE_KEY).toString();
-        String fee = feeString.substring(0, feeString.length() - 6);
-        return ProcessFileUtils.getBigDecimalWithScale(Double.valueOf(fee));
+        try {
+            String feeSymbol = ProcessFileUtils.getSymbolFromNumber(feeString);
+            String fee = feeString
+                    .replace(feeSymbol, "")
+                    .replace(",", "");
+            return ProcessFileUtils.getBigDecimalWithScale(Double.valueOf(fee));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error extracting fee from: " + feeString, e);
+        }
     }
 
     @Override
     public String getSymbol() {
-        String executedString = row.get(EXECUTED_KEY).toString();
-        return ProcessFileUtils.getSymbolFromNumber(executedString);
+        try {
+            String executedString = row.get(EXECUTED_KEY).toString();
+            return ProcessFileUtils.getSymbolFromNumber(executedString);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("No symbol found in executed string");
+        }
     }
 
     @Override

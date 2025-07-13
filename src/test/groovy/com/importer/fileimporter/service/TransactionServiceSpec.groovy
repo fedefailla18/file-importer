@@ -14,8 +14,7 @@ import java.time.LocalDateTime
 class TransactionServiceSpec extends Specification {
 
     def transactionRepository = Mock(TransactionRepository)
-    def portfolioService = Mock(PortfolioService)
-    TransactionService transactionService = new TransactionService(transactionRepository, portfolioService)
+    TransactionService transactionService = new TransactionService(transactionRepository)
 
     def "test getAllBySymbol"() {
         given:

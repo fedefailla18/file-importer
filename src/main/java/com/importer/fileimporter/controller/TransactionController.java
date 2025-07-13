@@ -10,6 +10,12 @@ import com.importer.fileimporter.facade.CoinInformationFacade;
 import com.importer.fileimporter.service.ProcessFileFactory;
 import com.importer.fileimporter.service.TransactionFacade;
 import com.importer.fileimporter.service.TransactionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +47,7 @@ import java.util.List;
 @RestController
 @RequestMapping(value = "/transaction")
 @Slf4j
+@Tag(name = "Transaction", description = "Transaction management APIs")
 public class TransactionController {
 
     private final ProcessFileFactory processFileFactory;
@@ -48,17 +55,25 @@ public class TransactionController {
     private final TransactionFacade transactionFacade;
     private final CoinInformationFacade coinInformationFacade;
 
+    @Operation(summary = "Filter transactions", description = "Filter transactions by various criteria with pagination")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved transactions",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Page.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content)
+    })
     @GetMapping(value = "/filter")
-    public Page<Transaction> getTransactionsRangeDate(@RequestParam(required = false) String symbol,
-                                                      @RequestParam(required = false) String portfolioName,
-                                                      @RequestParam(required = false) String side,
-                                                      @RequestParam(required = false) String paidWith,
-                                                      @RequestParam(required = false) String paidAmountOperator,
-                                                      @RequestParam(required = false) BigDecimal paidAmount,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-                                                      @AuthenticationPrincipal User user,
-                                                      @PageableDefault(sort = "dateUtc", direction = Sort.Direction.DESC) Pageable pageable) {
+    public Page<Transaction> getTransactionsRangeDate(
+            @Parameter(description = "Symbol to filter by") @RequestParam(required = false) String symbol,
+            @Parameter(description = "Portfolio name to filter by") @RequestParam(required = false) String portfolioName,
+            @Parameter(description = "Transaction side (BUY/SELL)") @RequestParam(required = false) String side,
+            @Parameter(description = "Currency paid with") @RequestParam(required = false) String paidWith,
+            @Parameter(description = "Operator for paid amount (>, <, =, >=, <=)") @RequestParam(required = false) String paidAmountOperator,
+            @Parameter(description = "Amount paid") @RequestParam(required = false) BigDecimal paidAmount,
+            @Parameter(description = "Start date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "End date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Pagination parameters") @PageableDefault(sort = "dateUtc", direction = Sort.Direction.DESC) Pageable pageable) {
         return transactionFacade.filterTransactions(symbol, portfolioName, side, paidWith, paidAmountOperator, paidAmount,
                 startDate, endDate, user.getId(), pageable);
     }
@@ -79,19 +94,37 @@ public class TransactionController {
         return coinInformationFacade.getPortfolioTransactionsInformation(portfolio);
     }
 
+    @Operation(summary = "Upload transaction file", description = "Upload and process a file containing transactions")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "File successfully processed",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = FileInformationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid file or format", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content)
+    })
     @PostMapping(value = "/upload")
-    public FileInformationResponse uploadTransactions(@RequestBody MultipartFile file,
-                                                      @RequestParam(required = false) List<String> symbols) throws IOException {
+    public FileInformationResponse uploadTransactions(
+            @Parameter(description = "Transaction file to upload", required = true) @RequestBody MultipartFile file,
+            @Parameter(description = "List of symbols to filter by") @RequestParam(required = false) List<String> symbols) throws IOException {
         if (file.isEmpty()) {
             return null;
         }
         return processFileFactory.processFile(file, symbols);
     }
 
+    @Operation(summary = "Upload transaction file to portfolio", description = "Upload and process a file containing transactions and assign to a specific portfolio")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "File successfully processed",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = FileInformationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid file or format", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content)
+    })
     @PostMapping(value = "/upload/{portfolio}")
-    public FileInformationResponse uploadTransactionsWithPortfolio(@RequestBody MultipartFile file,
-                                                                   @RequestParam(required = false) List<String> symbols,
-                                                                   @PathVariable String portfolio) throws IOException {
+    public FileInformationResponse uploadTransactionsWithPortfolio(
+            @Parameter(description = "Transaction file to upload", required = true) @RequestBody MultipartFile file,
+            @Parameter(description = "List of symbols to filter by") @RequestParam(required = false) List<String> symbols,
+            @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolio) throws IOException {
         if (file.isEmpty()) {
             return null;
         }
@@ -120,9 +153,18 @@ public class TransactionController {
         return transactionService.getAll(pageable);
     }
 
+    @Operation(summary = "Add a new transaction", description = "Manually add a new transaction to the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Transaction successfully created",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Transaction.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid transaction data", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content)
+    })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Transaction addTransaction(@RequestBody TransactionDto request) {
+    public Transaction addTransaction(
+            @Parameter(description = "Transaction data", required = true) @RequestBody TransactionDto request) {
         return transactionFacade.save(request);
     }
 

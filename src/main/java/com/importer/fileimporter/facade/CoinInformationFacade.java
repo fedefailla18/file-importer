@@ -31,6 +31,7 @@ public class CoinInformationFacade {
                 .collect(Collectors.groupingByConcurrent(Transaction::getSymbol))
                 .entrySet().stream()
                 .map(this::getCoinInformationResponse)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 

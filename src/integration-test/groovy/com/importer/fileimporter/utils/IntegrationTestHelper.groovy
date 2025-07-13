@@ -24,7 +24,7 @@ class IntegrationTestHelper {
         return rows
     }
 
-    public static File getFile() {
+    static def getFile() {
         URL resourceUrl = IntegrationTestHelper.class.getResource('/integrationTest/sample_transactions.csv')
 
         if (resourceUrl == null) {

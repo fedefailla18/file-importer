@@ -1,5 +1,6 @@
 package com.importer.fileimporter.service;
 
+import com.importer.fileimporter.config.security.services.CurrentUserProvider;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.repository.PortfolioRepository;
@@ -17,11 +18,20 @@ import java.util.Optional;
 public class PortfolioService {
 
     private final PortfolioRepository portfolioRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public Portfolio findOrSave(String name) {
-        Optional<Portfolio> byName = getByName(name);
-        return byName
-                .orElseGet(() -> saveBasicEntity(name));
+        User currentUser = currentUserProvider.getCurrentUser();
+        Optional<Portfolio> byName;
+
+        if (currentUser != null) {
+            byName = getByNameForUser(name, currentUser);
+        } else {
+            byName = getByName(name);
+            log.warn("No authenticated user found when finding portfolio: " + name);
+        }
+
+        return byName.orElseGet(() -> saveBasicEntity(name));
     }
 
     public Optional<Portfolio> getByName(String name) {
@@ -42,10 +52,21 @@ public class PortfolioService {
 
     private Portfolio saveBasicEntity(String name) {
         log.info("New portfolio detected: " + name);
-        return portfolioRepository.save(Portfolio.builder()
+        User currentUser = currentUserProvider.getCurrentUser();
+
+        Portfolio portfolio = Portfolio.builder()
                 .name(name)
                 .creationDate(LocalDateTime.now())
-                .build());
+                .user(currentUser)
+                .build();
+
+        if (currentUser != null) {
+            log.info("Associating portfolio with user: " + currentUser.getUsername());
+        } else {
+            log.warn("No authenticated user found when creating portfolio: " + name);
+        }
+
+        return portfolioRepository.save(portfolio);
     }
 
     public List<Portfolio> findAll() {

@@ -53,6 +53,13 @@ public class PortfolioDistributionFacade {
     private final HoldingService holdingService;
     private final PricingFacade pricingFacade;
 
+    public List<String> getAllPortfolioNames() {
+        List<Portfolio> portfolios = portfolioService.getAll();
+        return portfolios.stream()
+                .map(Portfolio::getName)
+                .collect(Collectors.toList());
+    }
+
     public HoldingDto addPortfolioHolding(AddHoldingRequest request) {
         Symbol savedSymbol = symbolService.findOrSaveSymbol(request.getSymbol(), request.getName());
 
@@ -65,11 +72,11 @@ public class PortfolioDistributionFacade {
     }
 
     public HoldingDto getHolding(String portfolioName, String symbol) {
-        Symbol foundSymbol = symbolService.findSymbol(symbol);
+        Symbol foundSymbol = symbolService.findSymbol(symbol); // TODO: symbol are not being store in a table
         Optional<Portfolio> portfolio = getByName(portfolioName);
         return portfolio.flatMap(p ->
                         Optional.ofNullable(
-                                holdingService.getHolding(p, foundSymbol.getSymbol()))
+                                holdingService.getHolding(p, symbol))
                         .map(HoldingConverter.Mapper::createFrom))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
     }
@@ -102,6 +109,9 @@ public class PortfolioDistributionFacade {
         }
         Portfolio portfolio = getByName(name)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
+        if (portfolio.getHoldings().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio does not hold any holdings. Try calculate holdings first.");
+        }
         return calculatePortfolioInBtcAndUsdt(portfolio);
     }
 

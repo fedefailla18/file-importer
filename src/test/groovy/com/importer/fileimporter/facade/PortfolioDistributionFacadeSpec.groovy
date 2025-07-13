@@ -284,19 +284,10 @@ class PortfolioDistributionFacadeSpec extends Specification {
         portfolio.holdings = []
 
         when: "Calculating portfolio values"
-        def result = portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt(portfolioName)
+        portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt(portfolioName)
 
         then: "The result has the correct portfolio name"
-        result.portfolioName == portfolioName
-
-        and: "The holdings list is empty"
-        result.holdings.isEmpty()
-
-        and: "The total USDT value is zero"
-        result.totalUsdt == BigDecimal.ZERO
-
-        and: "No exceptions are thrown"
-        noExceptionThrown()
+        thrown(ResponseStatusException)
     }
 
     def "calculatePortfolioInBtcAndUsdt should handle zero total USDT value without division by zero"() {
