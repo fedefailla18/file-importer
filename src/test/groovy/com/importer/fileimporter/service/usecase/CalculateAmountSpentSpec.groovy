@@ -20,10 +20,10 @@ class CalculateAmountSpentSpec extends Specification {
                         pair: "RLCUSDT",
                         price: 1,
                         executed: 200,
-                symbol: "RLC",
-                paidWith: "USDT",
-                paidAmount: 200,
-                feeAmount: 0.2
+                        symbol: "RLC",
+                        paidWith: "USDT",
+                        paidAmount: 200,
+                        feeAmount: 0.2
         )
 
         def response = CoinInformationResponse.createEmpty('RLC')

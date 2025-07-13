@@ -233,4 +233,56 @@ class HoldingServiceSpec extends Specification {
             h
         }
     }
+
+    def "test updatePaidWithHolding - null paidAmount"() {
+        given:
+        def portfolio = new Portfolio(name: "Test Portfolio")
+        def paidWithSymbol = "BTC"
+        BigDecimal paidAmount = null
+        def executed = new BigDecimal("1")
+        def paidInStable = new BigDecimal("1000")
+        def existingHolding = Holding.builder()
+                .symbol(paidWithSymbol)
+                .portfolio(portfolio)
+                .amount(new BigDecimal("1"))
+                .totalAmountSold(new BigDecimal("0.5"))
+                .build()
+
+        when:
+        holdingService.updatePaidWithHolding(false, paidWithSymbol, paidAmount, portfolio, executed, paidInStable)
+
+        then:
+        1 * holdingRepository.findBySymbolAndPortfolioName(paidWithSymbol, "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.save(_) >> { Holding h ->
+            assert h.amount == new BigDecimal("1") // 1 - 0 (null paidAmount treated as 0)
+            assert h.totalAmountSold == new BigDecimal("0.5") // 0.5 + 0 (null paidAmount treated as 0)
+            h
+        }
+    }
+
+    def "test updatePaidWithHolding - null totalAmountSold"() {
+        given:
+        def portfolio = new Portfolio(name: "Test Portfolio")
+        def paidWithSymbol = "BTC"
+        def paidAmount = new BigDecimal("0.1")
+        def executed = new BigDecimal("1")
+        def paidInStable = new BigDecimal("1000")
+        def existingHolding = Holding.builder()
+                .symbol(paidWithSymbol)
+                .portfolio(portfolio)
+                .amount(new BigDecimal("1"))
+                .totalAmountSold(null)
+                .build()
+
+        when:
+        holdingService.updatePaidWithHolding(false, paidWithSymbol, paidAmount, portfolio, executed, paidInStable)
+
+        then:
+        1 * holdingRepository.findBySymbolAndPortfolioName(paidWithSymbol, "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.save(_) >> { Holding h ->
+            assert h.amount == new BigDecimal("0.9") // 1 - 0.1
+            assert h.totalAmountSold == new BigDecimal("0.1") // null treated as 0, then 0 + 0.1
+            h
+        }
+    }
 }

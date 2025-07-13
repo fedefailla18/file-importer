@@ -11,7 +11,7 @@ class CoinInformationServiceSpec extends Specification {
 
     def pricingFacade = Mock(PricingFacade)
     def holdingService = Mock(HoldingService)
-    def calculateAmountSpent = Mock(CalculateAmountSpent)
+    def calculateAmountSpent = new CalculateAmountSpent(pricingFacade, holdingService)
     def transactionService = Mock(TransactionService)
 
     def coinInformationService = new CoinInformationService(pricingFacade, holdingService, calculateAmountSpent, transactionService)

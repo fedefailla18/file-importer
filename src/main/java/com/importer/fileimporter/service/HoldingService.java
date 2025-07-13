@@ -56,8 +56,8 @@ public class HoldingService {
 
     /**
      * Updates the holding for the currency used to pay for a transaction.
-     * For buy transactions, it decreases the amount of the paid with currency.
-     * For sell transactions, it increases the amount of the paid with currency.
+     * For buy transactions, it increases the amount of the paid with currency.
+     * For sell transactions, it decreases the amount of the paid with currency.
      *
      * @param isBuy Whether the transaction is a buy (true) or sell (false)
      * @param paidWithSymbol The symbol of the currency used to pay
@@ -71,11 +71,16 @@ public class HoldingService {
         BigDecimal oldAmount = holding.getAmount();
         BigDecimal totalAmountSold = holding.getTotalAmountSold();
 
-        // For the paidWith currency, the logic is inverted:
-        // - When buying a coin, we're selling (decreasing) the paidWith currency
-        // - When selling a coin, we're buying (increasing) the paidWith currency
+        // For the paidWith currency:
+        // - When buying a coin, we're increasing the paidWith currency
+        // - When selling a coin, we're decreasing the paidWith currency
         BigDecimal updatedAmount = OperationUtils.accumulateExecutedAmount(oldAmount, paidAmount, isBuy);
-        BigDecimal updatedTotalAmountSold = OperationUtils.accumulateExecutedAmount(totalAmountSold, paidAmount, isBuy);
+
+        // totalAmountSold should only be updated for sell transactions
+        BigDecimal safePaidAmount = paidAmount != null ? paidAmount : BigDecimal.ZERO;
+        BigDecimal updatedTotalAmountSold = isBuy ? 
+            totalAmountSold : 
+            (totalAmountSold != null ? totalAmountSold : BigDecimal.ZERO).add(safePaidAmount);
 
         holding.setAmount(updatedAmount);
         holding.setTotalAmountSold(updatedTotalAmountSold);

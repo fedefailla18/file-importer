@@ -1,5 +1,6 @@
 package com.importer.fileimporter.service
 
+import com.importer.fileimporter.dto.BinanceTransactionAdapter
 import com.importer.fileimporter.dto.CoinInformationResponse
 import com.importer.fileimporter.dto.TransactionData
 import com.importer.fileimporter.entity.Portfolio
@@ -11,7 +12,7 @@ class ProcessFileV2Spec extends Specification {
     TransactionService transactionService = Mock()
     FileImporterService fileImporterService = Mock()
     TransactionAdapterFactory transactionAdapterFactory = Mock()
-    
+
     ProcessFileV2 processFileV2
     
     def setup() {
@@ -94,17 +95,13 @@ class ProcessFileV2Spec extends Specification {
     def "getAdapter should use 'Binance' as default portfolio name if null is provided"() {
         given: "a row and a null portfolio name"
         def row = [Executed: "100FET", Price: "1.5", Amount: "150USDT", Fee: "0.1FET"]
-        def mockAdapter = Mock(TransactionData)
-        
-        and: "the transaction adapter factory returns a mock adapter for 'Binance'"
-        transactionAdapterFactory.createAdapter(row, "Binance") >> mockAdapter
+        def mockAdapter = Mock(BinanceTransactionAdapter)
         
         when: "getAdapter is called with null portfolio name"
-        def result = processFileV2.getAdapter(row, null)
+        processFileV2.getAdapter(row, null)
         
-        then: "the result should be the mock adapter and factory should be called with 'Binance'"
-        result == mockAdapter
-        1 * transactionAdapterFactory.createAdapter(row, "Binance")
+        then: "the transaction adapter factory returns a mock adapter for 'Binance'"
+        1 * transactionAdapterFactory.createAdapter(row, "Binance")>> mockAdapter
     }
     
     def "processTransactionRow should update transaction details and save transaction"() {

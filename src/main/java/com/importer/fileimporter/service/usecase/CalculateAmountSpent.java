@@ -21,10 +21,6 @@ public class CalculateAmountSpent {
     private final PricingFacade pricingFacade;
     private final HoldingService holdingService;
 
-    private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
-        return pricingFacade.getPriceInUsdt(symbol, dateUtc);
-    }
-
     /**
      * When transaction is sell I'm returning a negative number.
      * This method not only gets the paid amount in USDT per transaction but also keep track of other fields such as:
@@ -43,6 +39,12 @@ public class CalculateAmountSpent {
         BigDecimal paidAmount = transaction.getPaidAmount();
         BigDecimal executed = transaction.getExecuted();
         boolean isBuy = OperationUtils.isBuy(transaction.getSide());
+
+
+        if (paidAmount == null || executed == null) {
+            log.warn("Paid amount or executed amount is null for transaction: {}", transaction);
+            return BigDecimal.ZERO;
+        }
 
         // Only add the spent for the original transaction if it's a buy transaction
         if (isBuy) {
@@ -69,6 +71,10 @@ public class CalculateAmountSpent {
             response.addTotalRealizedProfit(paidAmount);
             return paidAmount.negate();
         }
+    }
+
+    private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
+        return pricingFacade.getPriceInUsdt(symbol, dateUtc);
     }
 
     private void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
