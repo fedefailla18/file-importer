@@ -35,11 +35,11 @@ public class HoldingService {
     }
 
     public Optional<Holding> getByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return getBySymbolAndPortfolioName(portfolio, symbol);
+        return getBySymbolAndPortfolioName(portfolio.getName(), symbol);
     }
 
     public Holding getOrCreateByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        Optional<Holding> bySymbolAndPortfolioName = getBySymbolAndPortfolioName(portfolio, symbol);
+        Optional<Holding> bySymbolAndPortfolioName = getBySymbolAndPortfolioName(portfolio.getName(), symbol);
         log.info("getting holding for: {}", bySymbolAndPortfolioName
                 .map(e -> e.getSymbol() + " - amount: " + e.getAmount())
                 .orElse(symbol + ". New Holding!"));
@@ -136,7 +136,7 @@ public class HoldingService {
     }
 
     public Holding getHolding(Portfolio portfolio, String symbol) {
-        return holdingRepository.findByPortfolioAndSymbol(portfolio, symbol)
+        return holdingRepository.findByPortfolioAndSymbolIgnoreCase(portfolio, symbol)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Holding not found"));
     }
 
@@ -145,7 +145,7 @@ public class HoldingService {
     }
 
     public List<HoldingDto> getBySymbol(String symbol) {
-        return holdingRepository.findAllBySymbol(symbol).stream()
+        return holdingRepository.findAllBySymbolIgnoreCase(symbol).stream()
                 .map(HoldingConverter.Mapper::createFrom)
                 .collect(Collectors.toList());
     }
@@ -156,7 +156,37 @@ public class HoldingService {
         return holdingRepository.saveAll(fromRequest);
     }
 
-    private Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
-        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
+    public Optional<Holding> getBySymbolAndPortfolioName(String portfolio, String symbol) {
+        return holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(symbol, portfolio);
+    }
+
+    /**
+     * Resets the holdings for a given symbol.
+     * Sets all amounts to zero for all holdings with the given symbol.
+     *
+     * @param symbol The symbol to reset holdings for
+     * @return The number of holdings that were reset
+     */
+    public int resetHoldingsBySymbol(String symbol) {
+        List<Holding> holdings = holdingRepository.findAllBySymbolIgnoreCase(symbol);
+        int count = 0;
+
+        for (Holding holding : holdings) {
+            holding.setAmount(BigDecimal.ZERO);
+            holding.setAmountInBtc(BigDecimal.ZERO);
+            holding.setAmountInUsdt(BigDecimal.ZERO);
+            holding.setTotalAmountBought(BigDecimal.ZERO);
+            holding.setTotalAmountSold(BigDecimal.ZERO);
+            holding.setStableTotalCost(BigDecimal.ZERO);
+            holding.setCurrentPositionInUsdt(BigDecimal.ZERO);
+            holding.setTotalRealizedProfitUsdt(BigDecimal.ZERO);
+            holding.setModified(LocalDateTime.now());
+            holding.setModifiedBy(this.getClass().getName() + ".resetHoldingsBySymbol");
+            save(holding);
+            count++;
+        }
+
+        log.info("Reset {} holdings for symbol: {}", count, symbol);
+        return count;
     }
 }

@@ -1,5 +1,8 @@
 package com.importer.fileimporter
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.importer.fileimporter.controller.TransactionController
+import com.importer.fileimporter.facade.CoinInformationFacade
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
@@ -8,6 +11,7 @@ import com.importer.fileimporter.service.FileImporterService
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
+import io.restassured.RestAssured
 import org.junit.ClassRule
 import org.postgresql.Driver
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,10 +19,12 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEnti
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.SimpleDriverDataSource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
 import spock.lang.Specification
@@ -57,6 +63,22 @@ abstract class BaseIntegrationSpec extends Specification {
     @Autowired
     HoldingService holdingService
 
+    @Autowired
+    CoinInformationFacade coinInformationFacade
+
+
+    @LocalServerPort
+    private static int port
+
+    @Autowired
+    MockMvc mockMvc
+
+    @Autowired
+    ObjectMapper objectMapper
+
+    @Autowired
+    TransactionController transactionController
+
     // Define a PostgreSQL container
     @ClassRule
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.1")
@@ -66,6 +88,8 @@ abstract class BaseIntegrationSpec extends Specification {
             .withExposedPorts(60366)
 
     static  {
+        RestAssured.port = port
+
         postgres.setPortBindings(["60366:5432"])
         postgres.start()
         // Execute schema.sql to create the schema

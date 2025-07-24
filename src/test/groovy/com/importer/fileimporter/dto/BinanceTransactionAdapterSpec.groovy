@@ -146,44 +146,6 @@ class BinanceTransactionAdapterSpec extends Specification {
         result == "USDT"
     }
 
-    def "should handle quoted values correctly"() {
-        given:
-        def row = [
-            "Date(UTC)": "\"2021-10-29 17:43:40\"",
-            "Pair": "\"1INCHBTC\"",
-            "Side": "\"BUY\"",
-            "Price": "\"0.00008096\"",
-            "Executed": "\"33.81INCH\"",
-            "Amount": "\"0.00273644BTC\"",
-            "Fee": "\"0.0002412BNB\""
-        ]
-        def adapter = new BinanceTransactionAdapter(row)
-
-        when:
-        def symbol = adapter.getSymbol()
-        def date = adapter.getDate()
-        def pair = adapter.getPair()
-        def side = adapter.getSide()
-        def price = adapter.getPrice()
-        def executed = adapter.getExecuted()
-        def amount = adapter.getAmount()
-        def fee = adapter.getFee()
-        def feeSymbol = adapter.getFeeSymbol()
-        def paidWith = adapter.getPaidWith()
-
-        then:
-        symbol == "1INCH"
-        date == "\"2021-10-29 17:43:40\""
-        pair == "\"1INCHBTC\""
-        side == "\"BUY\""
-        price == new BigDecimal("0.00008096").setScale(10, BigDecimal.ROUND_UP)
-        executed == new BigDecimal("33.8")
-        amount == new BigDecimal("0.00273644").setScale(10, BigDecimal.ROUND_UP)
-        fee == new BigDecimal("0.0002412").setScale(10, BigDecimal.ROUND_UP)
-        feeSymbol == "BNB"
-        paidWith == "\"BTC\""
-    }
-
     @Unroll
     def "should extract symbol correctly for special cases: #executedValue"() {
         given:

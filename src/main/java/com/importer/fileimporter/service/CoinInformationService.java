@@ -127,6 +127,13 @@ public class CoinInformationService {
         holdingService.save(holding);
     }
 
+    /**
+     * Updates the fields of a Holding entity with values from a CoinInformationResponse.
+     * This method ensures that all updates are null-safe by using the OperationUtils.sumBigDecimal method.
+     *
+     * @param holding The Holding entity to update
+     * @param response The CoinInformationResponse containing the new values
+     */
     private void updateHoldingFields(Holding holding, CoinInformationResponse response) {
         // Null-safe updates for all fields
         holding.setAmount(OperationUtils.sumBigDecimal(holding.getAmount(), response.getAmount()));
@@ -135,7 +142,16 @@ public class CoinInformationService {
         holding.setStableTotalCost(OperationUtils.sumBigDecimal(holding.getStableTotalCost(), response.getStableTotalCost()));
         holding.setCurrentPositionInUsdt(OperationUtils.sumBigDecimal(holding.getCurrentPositionInUsdt(), response.getCurrentPositionInUsdt()));
         holding.setTotalRealizedProfitUsdt(OperationUtils.sumBigDecimal(holding.getTotalRealizedProfitUsdt(), response.getTotalRealizedProfitUsdt()));
-        holding.setAmountInUsdt(OperationUtils.sumBigDecimal(holding.getAmountInUsdt(), response.getUnrealizedProfit()));
+
+        // Set amountInUsdt to the current market value (amount * current price)
+        // This ensures it reflects the current value of the holding in USDT
+        if (response.getAmount() != null && response.getCurrentPrice() != null) {
+            BigDecimal currentValueInUsdt = response.getAmount().multiply(response.getCurrentPrice());
+            holding.setAmountInUsdt(OperationUtils.sumBigDecimal(holding.getAmountInUsdt(), currentValueInUsdt));
+        } else {
+            // Fallback to unrealizedProfit if amount or currentPrice is null
+            holding.setAmountInUsdt(OperationUtils.sumBigDecimal(holding.getAmountInUsdt(), response.getUnrealizedProfit()));
+        }
     }
 
 }

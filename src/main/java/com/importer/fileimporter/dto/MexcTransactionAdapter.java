@@ -1,10 +1,12 @@
 package com.importer.fileimporter.dto;
 
 import com.importer.fileimporter.utils.OperationUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.Map;
 
+@Slf4j
 public class MexcTransactionAdapter extends TransactionCoinName {
 
     private static final String PARES_KEY = "Pares";
@@ -51,11 +53,21 @@ public class MexcTransactionAdapter extends TransactionCoinName {
 
     @Override
     public BigDecimal getPrice() {
-        return new BigDecimal(row.get(PRECIO_PROMEDIO_COMPLETO_KEY).toString());
+        try {
+            return new BigDecimal(row.get(PRECIO_PROMEDIO_COMPLETO_KEY).toString());
+        } catch (Exception e) {
+            log.warn(String.format("Can't convert %s", row.get(PRECIO_DE_ORDEN_KEY).toString()), e);
+            return null;
+        }
     }
 
     public BigDecimal getPrecioDeOrden() {
-        return new BigDecimal(row.get(PRECIO_DE_ORDEN_KEY).toString());
+        try {
+            return new BigDecimal(row.get(PRECIO_DE_ORDEN_KEY).toString());
+        } catch (Exception e) {
+            log.warn(String.format("Can't convert %s", row.get(PRECIO_DE_ORDEN_KEY).toString()), e);
+            return null;
+        }
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.importer.fileimporter.converter.TransactionConverter;
 import com.importer.fileimporter.dto.TransactionDto;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
+import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.facade.PricingFacade;
 import com.importer.fileimporter.utils.OperationUtils;
@@ -20,11 +21,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -38,6 +35,8 @@ public class TransactionFacade {
 
     private final TransactionService transactionService;
     private final PricingFacade pricingFacade;
+    private final HoldingService holdingService;
+    private final PortfolioService portfolioService;
 
     public List<TransactionHoldingDto> buildPortfolio(List<String> symbols) {
         List<TransactionHoldingDto> holdingDtos = new ArrayList<>();
@@ -166,20 +165,45 @@ public class TransactionFacade {
 
     public Transaction save(TransactionDto transactionDto) {
         Transaction transaction = TransactionConverter.Mapper.createTo(transactionDto);
-        if (transaction.getPrice() == null ||
-                Strings.isNullOrEmpty(transaction.getPaidWith()) ||
-                Strings.isNullOrEmpty(transaction.getPair())) {
+
+        if (transaction.getPrice() == null || transaction.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             BigDecimal priceInUsdt = pricingFacade.getPriceInUsdt(transaction.getSymbol(), transaction.getDateUtc());
             transaction.setPrice(priceInUsdt);
-            transaction.setPair(transaction.getSymbol() + USDT);
             transaction.setPaidWith(USDT);
             transaction.setPaidAmount(transaction.getExecuted().multiply(priceInUsdt));
         }
+
+        String portfolioName = transactionDto.getPortfolioName();
+
+        if (Strings.isNullOrEmpty(portfolioName)) {
+            throw new IllegalArgumentException("Portfolio name cannot be null or empty");
+        }
+
+        Portfolio portfolio = portfolioService.findOrSave(portfolioName);
+        transaction.setPortfolio(portfolio);
+        log.info("Transaction assigned to portfolio: {}", portfolioName);
+
+        String origin = this.getClass() + " - ADD TRANSACTION MANUALLY";
+        transaction.setCreatedBy(origin);
+        transaction.setModifiedBy(origin);
+        transaction.setCreated(LocalDateTime.now());
+        transaction.setModified(LocalDateTime.now());
+
         return transactionService.save(transaction);
     }
 
     public void deleteTransactions() {
         transactionService.deleteTransactions();
+    }
+
+    public Map<String, Integer> unprocessTransactions(String symbol ) {
+        int transactionsCount = transactionService.unprocessTransactionsBySymbol(symbol);
+        int holdingsCount = holdingService.resetHoldingsBySymbol(symbol);
+
+        return new HashMap<>() {{
+            put("transactions", transactionsCount);
+            put("holdings", holdingsCount);
+        }};
     }
 
     public Page<Transaction> filterTransactions(String symbol, String portfolioName, String side, String paidWith, String paidAmountOperator, BigDecimal paidAmount, LocalDate startDate, LocalDate endDate, UUID id, Pageable pageable) {

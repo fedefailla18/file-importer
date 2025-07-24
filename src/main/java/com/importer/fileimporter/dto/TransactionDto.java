@@ -27,4 +27,5 @@ public class TransactionDto {
     private String modifiedBy;
     private boolean processed;
     private LocalDateTime lastProcessedAt;
+    private String portfolioName;
 }

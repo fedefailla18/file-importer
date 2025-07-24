@@ -33,7 +33,7 @@ class HoldingServiceSpec extends Specification {
         result.symbol == "BTC"
 
         and:
-        1 * holdingRepository.findBySymbolAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
         1 * holdingRepository.save(_) >> { Holding h ->
             assert h.amount == amount
             assert h.symbol == "BTC"
@@ -58,7 +58,7 @@ class HoldingServiceSpec extends Specification {
         result.symbol == "ETH"
 
         and:
-        1 * holdingRepository.findBySymbolAndPortfolioName("ETH", "Test Portfolio") >> Optional.empty()
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName("ETH", "Test Portfolio") >> Optional.empty()
         1 * holdingRepository.save(_) >> { Holding h ->
             assert h.amount == amount
             assert h.symbol == "ETH"
@@ -81,7 +81,7 @@ class HoldingServiceSpec extends Specification {
         def result = holdingService.getByPortfolioAndSymbol(portfolio, symbol)
 
         then:
-        1 * holdingRepository.findBySymbolAndPortfolioName(symbol, "Test Portfolio") >> holding
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(symbol, "Test Portfolio") >> holding
 
         and:
         result == holding

@@ -1,6 +1,8 @@
 package com.importer.fileimporter.service
 
+import com.importer.fileimporter.dto.TransactionDto
 import com.importer.fileimporter.dto.TransactionHoldingDto
+import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.facade.PricingFacade
 import org.springframework.data.domain.Page
@@ -17,8 +19,10 @@ class TransactionFacadeSpec extends Specification {
 
     def transactionService = Mock(TransactionService)
     def pricingFacade = Mock(PricingFacade)
+    def holdingService = Mock(HoldingService)
+    def portfolioService = Mock(PortfolioService)
 
-    def sut = new TransactionFacade(transactionService, pricingFacade)
+    def sut = new TransactionFacade(transactionService, pricingFacade, holdingService, portfolioService)
 
     def "BuildPortfolio should correctly calculate holdings"() {
         given: "Mock data for transactions and symbols"
@@ -64,21 +68,6 @@ class TransactionFacadeSpec extends Specification {
 
         then:
         totalAmount == BigDecimal.valueOf(50)
-    }
-
-    @Ignore("Test is ignored until getAmount method is implemented for empty symbols list")
-    def "GetAmount should handle empty symbols list"() {
-        given: "An empty list of symbols"
-        def symbols = []
-
-        when: "Getting amount for empty symbols list"
-        sut.getAmount(symbols)
-
-        then: "NotSupportedException is thrown"
-        thrown(NotSupportedException)
-
-        and: "TransactionService.getAll() is called once"
-        1 * transactionService.getAll()
     }
 
     def "BuildPortfolio should handle zero totalAmount without division by zero"() {
@@ -127,6 +116,142 @@ class TransactionFacadeSpec extends Specification {
             symbol == "ETH"
             amount == BigDecimal.ZERO  // Buy 10, Sell 10 = 0
         }
+    }
+
+    def "Save should assign portfolio when portfolioName is provided"() {
+        given: "A transaction DTO with portfolio name"
+        def portfolioName = "TestPortfolio"
+        def transactionDto = TransactionDto.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .portfolioName(portfolioName)
+                .build()
+
+        and: "A portfolio that will be returned by the service"
+        def portfolio = Portfolio.builder()
+                .name(portfolioName)
+                .creationDate(LocalDateTime.now())
+                .build()
+
+        and: "A transaction that will be created from the DTO"
+        def transaction = Transaction.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .build()
+
+        and: "A saved transaction with portfolio"
+        def savedTransaction = Transaction.builder()
+                .id(1L)
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .portfolio(portfolio)
+                .build()
+
+        when: "The save method is called"
+        def result = sut.save(transactionDto)
+
+        then: "The portfolio service is called to find or save the portfolio"
+        1 * portfolioService.findOrSave(portfolioName) >> portfolio
+
+        and: "The transaction is saved with the portfolio"
+        1 * transactionService.save({ Transaction t ->
+            t.portfolio == portfolio && t.symbol == "ETH"
+        }) >> savedTransaction
+
+        and: "The result has the correct portfolio"
+        result.portfolio == portfolio
+        result.symbol == "ETH"
+    }
+
+    def "Save should use default portfolio when portfolioName is not provided"() {
+        given: "A transaction DTO without portfolio name"
+        def transactionDto = TransactionDto.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .build()
+
+        and: "A default portfolio that will be returned by the service"
+        def defaultPortfolio = Portfolio.builder()
+                .name("Default")
+                .creationDate(LocalDateTime.now())
+                .build()
+
+        and: "A transaction that will be created from the DTO"
+        def transaction = Transaction.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .build()
+
+        and: "A saved transaction with default portfolio"
+        def savedTransaction = Transaction.builder()
+                .id(1L)
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .portfolio(defaultPortfolio)
+                .build()
+
+        when: "The save method is called"
+        def result = sut.save(transactionDto)
+
+        then: "The portfolio service is called to find or save the default portfolio"
+        1 * portfolioService.findOrSave("Default") >> defaultPortfolio
+
+        and: "The transaction is saved with the default portfolio"
+        1 * transactionService.save({ Transaction t ->
+            t.portfolio == defaultPortfolio && t.symbol == "ETH"
+        }) >> savedTransaction
+
+        and: "The result has the default portfolio"
+        result.portfolio == defaultPortfolio
+        result.symbol == "ETH"
+    }
+
+    def "Save should fetch price from pricingFacade when price is missing or not positive"() {
+        given: "A transaction DTO without price, pair, or paidWith"
+        def transactionDto = TransactionDto.builder()
+                .symbol("BTC")
+                .executed(BigDecimal.valueOf(2.0))
+                .side("BUY")
+                .dateUtc(LocalDateTime.now())
+                .portfolioName("MyPortfolio")
+                .build()
+
+        and: "Mocks for pricing and portfolio"
+        def portfolio = Portfolio.builder().name("MyPortfolio").build()
+        def priceFromFacade = BigDecimal.valueOf(30000)
+        pricingFacade.getPriceInUsdt("BTC", _ as LocalDateTime) >> priceFromFacade
+        portfolioService.findOrSave("MyPortfolio") >> portfolio
+
+        and: "Capture the saved transaction"
+        Transaction savedTransaction = null
+        transactionService.save(_ as Transaction) >> { Transaction t -> savedTransaction = t; return t }
+
+        when: "Calling save"
+        def result = sut.save(transactionDto)
+
+        then: "The price is fetched from pricingFacade"
+        result.price == priceFromFacade
+        result.paidWith == "USDT"
+        result.paidAmount == BigDecimal.valueOf(2.0).multiply(priceFromFacade)
+
+        and: "Portfolio is correctly assigned"
+        result.portfolio.name == "MyPortfolio"
+
+        and: "Saved transaction has correct values"
+        savedTransaction.symbol == "BTC"
+        savedTransaction.price == priceFromFacade
     }
 
     static List<Transaction> createMockTransactions() {
