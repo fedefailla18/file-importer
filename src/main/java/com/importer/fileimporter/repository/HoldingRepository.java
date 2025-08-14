@@ -16,13 +16,6 @@ public interface HoldingRepository extends JpaRepository<Holding, UUID> {
 
     @Query("select holding " +
             "from Holding holding " +
-            "where holding.symbol = :symbol " +
-            "and holding.portfolio.name = :portfolio")
-    Optional<Holding> findBySymbolAndPortfolioName(@Param("symbol") String symbol,
-                                                   @Param("portfolio") String portfolio);
-
-    @Query("select holding " +
-            "from Holding holding " +
             "where UPPER(holding.symbol) = UPPER(:symbol) " +
             "and holding.portfolio.name = :portfolio")
     Optional<Holding> findBySymbolIgnoreCaseAndPortfolioName(@Param("symbol") String symbol,
@@ -30,16 +23,6 @@ public interface HoldingRepository extends JpaRepository<Holding, UUID> {
 
     @Query("select holding from Holding holding where UPPER(holding.symbol) = UPPER(:symbol)")
     List<Holding> findAllBySymbolIgnoreCase(@Param("symbol") String symbol);
-
-    @Query("select holding " +
-            "from Holding holding " +
-            "where holding.portfolio.name = :portfolio")
-    Optional<Holding> findByPortfolioName(@Param("portfolio") String portfolio);
-
-    Optional<Holding> findByPortfolioAndSymbol(@Param("portfolio") Portfolio portfolio, @Param("symbol") String symbol);
-
-    @Query("select holding from Holding holding where holding.portfolio = :portfolio and UPPER(holding.symbol) = UPPER(:symbol)")
-    Optional<Holding> findByPortfolioAndSymbolIgnoreCase(@Param("portfolio") Portfolio portfolio, @Param("symbol") String symbol);
 
     List<Holding> findAllByPortfolio(@Param("portfolio") Portfolio portfolio);
 }

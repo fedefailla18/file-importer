@@ -135,11 +135,6 @@ public class HoldingService {
                 .build());
     }
 
-    public Holding getHolding(Portfolio portfolio, String symbol) {
-        return holdingRepository.findByPortfolioAndSymbolIgnoreCase(portfolio, symbol)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Holding not found"));
-    }
-
     public Holding save(Holding holding) {
         return holdingRepository.save(holding);
     }
