@@ -56,7 +56,11 @@ public class OperationUtils {
     public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, Boolean isBuy) {
         return isBuy ?
                 getSafeValue(currentAmount).add(getSafeValue(executed)) :
-                getSafeValue(currentAmount).subtract(getSafeValue(executed));
+                safeSubtract(currentAmount, executed);
+    }
+
+    public static BigDecimal safeSubtract(BigDecimal currentAmount, BigDecimal executed) {
+        return getSafeValue(currentAmount).subtract(getSafeValue(executed));
     }
 
     public BigDecimal sumBigDecimal(BigDecimal bigDecimal1, BigDecimal bigDecimal2) {
@@ -65,7 +69,7 @@ public class OperationUtils {
         return safeValue1.add(safeValue2);
     }
 
-    private BigDecimal getSafeValue(BigDecimal value) {
+    public BigDecimal getSafeValue(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
     }
 

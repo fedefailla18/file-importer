@@ -58,7 +58,7 @@ public class CalculateAmountSpent {
             priceInStable = getPriceInStable(symbol, transaction.getDateUtc());
             paidAmount = priceInStable.multiply(executed);
             if (portfolio != null) {
-                updatePaidWithHolding(!isBuy, paidWithSymbol, transaction.getPaidAmount(), portfolio, executed, paidAmount);
+                updatePaidWithHolding(isBuy, paidWithSymbol, transaction.getPaidAmount(), portfolio, executed, paidAmount);
             }
         }
 

@@ -7,6 +7,8 @@ import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.service.HoldingService
 import spock.lang.Specification
 
+import java.time.LocalDateTime
+
 class CalculateAmountSpentSpec extends Specification {
 
     def pricingFacade = Mock(PricingFacade)
@@ -15,26 +17,25 @@ class CalculateAmountSpentSpec extends Specification {
 
     def "GetAmountSpentInUsdtPerTransaction. Single BUY transaction"() {
         given:
-        def transaction = new Transaction(
-                        side: "BUY",
-                        pair: "RLCUSDT",
-                        price: 1,
-                        executed: 200,
-                        symbol: "RLC",
-                        paidWith: "USDT",
-                        paidAmount: 200,
-                        feeAmount: 0.2
-        )
-
-        def response = CoinInformationResponse.createEmpty('RLC')
+        def transaction = Transaction.builder()
+            .symbol("ETH")
+            .pair("ETHUSDT")
+            .side("BUY")
+            .paidWith("USDT")
+            .executed(new BigDecimal("1.0"))
+            .price(new BigDecimal("4000"))
+            .paidAmount(new BigDecimal("4000"))
+            .dateUtc(LocalDateTime.now())
+            .build()
+        def response = CoinInformationResponse.createEmpty('ETH')
 
         when:
         def result = sut.getAmountSpentInUsdt(transaction, response, null)
 
         then:
-        result == 200
-        response.getStableTotalCost() == 200
-        response.getSpent().get("USDT") == 200
+        result == 4000
+        response.getStableTotalCost() == 4000
+        response.getSpent().get("USDT") == 4000
     }
 
     def "GetAmountSpentInUsdtPerTransaction. Single SELL transaction"() {
@@ -195,7 +196,7 @@ class CalculateAmountSpentSpec extends Specification {
         response.getStableTotalCost() == 1000
 
         and: "updatePaidWithHolding should be called with correct parameters"
-        1 * holdingService.updatePaidWithHolding(false, "BTC", new BigDecimal("0.1"), portfolio, new BigDecimal("1"), 1000)
+        1 * holdingService.updatePaidWithHolding(true, "BTC", new BigDecimal("0.1"), portfolio, new BigDecimal("1"), 1000)
     }
 
     def "should update paid with holding for non-stable coin sell transaction"() {
@@ -217,7 +218,7 @@ class CalculateAmountSpentSpec extends Specification {
         response.totalRealizedProfitUsdt == 1000
 
         and: "updatePaidWithHolding should be called with correct parameters"
-        1 * holdingService.updatePaidWithHolding(true, "BTC", new BigDecimal("0.1"), portfolio, new BigDecimal("1"), 1000)
+        1 * holdingService.updatePaidWithHolding(false, "BTC", new BigDecimal("0.1"), portfolio, new BigDecimal("1"), 1000)
     }
 
     def "should not update paid with holding for stable coin transactions"() {
@@ -237,5 +238,47 @@ class CalculateAmountSpentSpec extends Specification {
 
         and: "updatePaidWithHolding should not be called for stable coins"
         0 * holdingService.updatePaidWithHolding(_, _, _, _, _, _)
+    }
+
+    def "should return ZERO when paidAmount is null"() {
+        given:
+        def transaction = Transaction.builder()
+            .symbol("ETH")
+            .pair("ETHUSDT")
+            .side("BUY")
+            .paidWith("USDT")
+            .executed(new BigDecimal("1.0"))
+            .price(new BigDecimal("4000"))
+            // paidAmount is null
+            .dateUtc(LocalDateTime.now())
+            .build()
+        def response = CoinInformationResponse.createEmpty('ETH')
+
+        when:
+        def result = sut.getAmountSpentInUsdt(transaction, response, null)
+
+        then:
+        result == BigDecimal.ZERO
+    }
+
+    def "should return ZERO when executed is null"() {
+        given:
+        def transaction = Transaction.builder()
+            .symbol("ETH")
+            .pair("ETHUSDT")
+            .side("BUY")
+            .paidWith("USDT")
+            // executed is null
+            .price(new BigDecimal("4000"))
+            .paidAmount(new BigDecimal("4000"))
+            .dateUtc(LocalDateTime.now())
+            .build()
+        def response = CoinInformationResponse.createEmpty('ETH')
+
+        when:
+        def result = sut.getAmountSpentInUsdt(transaction, response, null)
+
+        then:
+        result == BigDecimal.ZERO
     }
 }

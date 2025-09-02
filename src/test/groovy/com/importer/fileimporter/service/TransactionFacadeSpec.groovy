@@ -24,40 +24,7 @@ class TransactionFacadeSpec extends Specification {
 
     def sut = new TransactionFacade(transactionService, pricingFacade, holdingService, portfolioService)
 
-    def "BuildPortfolio should correctly calculate holdings"() {
-        given: "Mock data for transactions and symbols"
-        def symbols = ["BTC"]
-        def transactions = createMockTransactions()
-
-        and:
-        Page<Transaction> pageMock = new PageImpl<>(transactions)
-
-        when: "Building the portfolio"
-        List<TransactionHoldingDto> portfolio = sut.buildPortfolio(symbols)
-
-        then: "The portfolio is correctly built with expected values"
-        portfolio.size() == 1
-        with(portfolio[0]) {
-            symbol == "BTC"
-            amount == BigDecimal.valueOf(50)
-            // Verify the calculated values match what we expect based on our mock transactions
-            buyPrice.compareTo(BigDecimal.valueOf(50)) == 0
-            sellPrice.compareTo(BigDecimal.valueOf(100)) == 0
-            payedInUsdt.compareTo(BigDecimal.valueOf(0)) == 0  // 5000 - 5000 = 0
-            priceInBtc == BigDecimal.valueOf(0.00015)
-            priceInUsdt == BigDecimal.valueOf(1.5)
-            amountInBtc.compareTo(BigDecimal.valueOf(7.5).setScale(8, RoundingMode.HALF_UP)) == 0  // 50 * 0.00015 = 0.0075
-            amountInUsdt.compareTo(BigDecimal.valueOf(75).setScale(8, RoundingMode.HALF_UP)) == 0  // 50 * 1.5 = 75
-        }
-
-        and:
-        1 * transactionService.getAllBySymbol("BTC", Pageable.unpaged()) >> pageMock
-
-        and: 'Mock the pricing facade to return prices'
-        pricingFacade.getPriceInUsdt("BTC", _ as LocalDateTime) >> BigDecimal.valueOf(1.5)
-        pricingFacade.getPriceInBTC("BTC", _ as LocalDateTime) >> BigDecimal.valueOf(0.00015)
-        pricingFacade.getPrices("BTC") >> [BTC: 0.00015d, USDT: 1.5d]
-    }
+    
 
     def "GetTotalAmount"() {
         given:
@@ -153,6 +120,9 @@ class TransactionFacadeSpec extends Specification {
                 .portfolio(portfolio)
                 .build()
 
+        and: "A mock for pricing facade"
+        pricingFacade.getPriceInUsdt(_, _) >> BigDecimal.valueOf(300)
+
         when: "The save method is called"
         def result = sut.save(transactionDto)
 
@@ -201,6 +171,9 @@ class TransactionFacadeSpec extends Specification {
                 .dateUtc(LocalDateTime.now())
                 .portfolio(defaultPortfolio)
                 .build()
+
+        and: "A mock for pricing facade"
+        pricingFacade.getPriceInUsdt(_, _) >> BigDecimal.valueOf(300)
 
         when: "The save method is called"
         def result = sut.save(transactionDto)

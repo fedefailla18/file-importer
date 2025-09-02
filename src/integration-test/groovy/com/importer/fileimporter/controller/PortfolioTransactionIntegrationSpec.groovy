@@ -1,13 +1,9 @@
 package com.importer.fileimporter.controller
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
-import io.restassured.RestAssured
 import io.restassured.http.ContentType
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.http.HttpStatus
 
 import java.time.LocalDateTime
@@ -20,12 +16,7 @@ class PortfolioTransactionIntegrationSpec extends BaseIntegrationSpec {
 
     def setup() {
 
-        portfolio = Portfolio.builder()
-                .name("TestPortfolio")
-                .creationDate(LocalDateTime.now())
-                .build()
-        portfolioRepository.save(portfolio)
-
+        portfolio = portfolioRepository.findByName("Test").get()
         // Create test transactions
         def transaction1 = new Transaction(
             symbol: "ETH",

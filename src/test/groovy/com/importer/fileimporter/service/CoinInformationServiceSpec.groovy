@@ -122,4 +122,19 @@ class CoinInformationServiceSpec extends Specification {
         result.currentPrice == currentPrice
         result.currentPositionInUsdt == expectedAmountInUsdt
     }
+
+    def "should return empty response when transactions list is empty"() {
+        given:
+        def symbol = "ETH"
+        def transactions = []
+
+        when:
+        def result = coinInformationService.getCoinInformationResponse(symbol, transactions)
+
+        then:
+        result.getCoinName() == symbol
+        result.getAmount() == BigDecimal.ZERO
+        result.getStableTotalCost() == BigDecimal.ZERO
+        result.getTotalTransactions() == 0
+    }
 }

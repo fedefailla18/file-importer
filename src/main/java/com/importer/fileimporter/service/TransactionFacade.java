@@ -71,7 +71,7 @@ public class TransactionFacade {
                     payedAmountInUsdt = priceInUsdt.multiply(executed).setScale(8, RoundingMode.HALF_UP);
                     payedAmountInBtc = payedAmount;
                     priceInBtc = price;
-                } else if (USDT.equals(payedWith)) {
+                } else if (USDT.equals(payedWith) || "USD".equals(payedWith)) {
                     priceInBtc = pricingFacade.getPriceInBTC(symbol, dateUtc);
                     payedAmountInBtc = priceInBtc.multiply(executed).setScale(8, RoundingMode.HALF_UP);
                     payedAmountInUsdt = payedAmount;
@@ -142,10 +142,10 @@ public class TransactionFacade {
 
             Map<String, Double> price = pricingFacade.getPrices(symbol);
             holdingDto.setPriceInBtc(BigDecimal.valueOf(price.get(BTC)));
-            holdingDto.setAmountInBtc(totalAmount.get().multiply(BigDecimal.valueOf(price.get(BTC))));
+            holdingDto.setAmountInBtc(totalAmount.get().multiply(BigDecimal.valueOf(price.get(BTC))).setScale(8, RoundingMode.HALF_UP));
 
             holdingDto.setPriceInUsdt(BigDecimal.valueOf(price.get(USDT)));
-            holdingDto.setAmountInUsdt(totalAmount.get().multiply(BigDecimal.valueOf(price.get(USDT))));
+            holdingDto.setAmountInUsdt(totalAmount.get().multiply(BigDecimal.valueOf(price.get(USDT))).setScale(8, RoundingMode.HALF_UP));
             holdingDtos.add(holdingDto);
         }
         return holdingDtos;
@@ -176,7 +176,7 @@ public class TransactionFacade {
         String portfolioName = transactionDto.getPortfolioName();
 
         if (Strings.isNullOrEmpty(portfolioName)) {
-            throw new IllegalArgumentException("Portfolio name cannot be null or empty");
+            portfolioName = "Default";
         }
 
         Portfolio portfolio = portfolioService.findOrSave(portfolioName);

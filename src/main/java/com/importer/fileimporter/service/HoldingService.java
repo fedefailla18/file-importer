@@ -67,6 +67,9 @@ public class HoldingService {
      * @param paidInStable The amount paid in stable currency (USDT)
      */
     public void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
+        if (isBuy) {
+            throw new RuntimeException("Buy transactions should not be processed with updatePaidWithHolding");
+        }
         Holding holding = getOrCreateByPortfolioAndSymbol(portfolio, paidWithSymbol);
         BigDecimal oldAmount = holding.getAmount();
         BigDecimal totalAmountSold = holding.getTotalAmountSold();
@@ -74,12 +77,11 @@ public class HoldingService {
         // For the paidWith currency:
         // - When buying a coin, we're increasing the paidWith currency
         // - When selling a coin, we're decreasing the paidWith currency
-        BigDecimal updatedAmount = OperationUtils.accumulateExecutedAmount(oldAmount, paidAmount, isBuy);
+        BigDecimal updatedAmount = OperationUtils.safeSubtract(oldAmount, paidAmount);
 
         // totalAmountSold should only be updated for sell transactions
         BigDecimal safePaidAmount = paidAmount != null ? paidAmount : BigDecimal.ZERO;
-        BigDecimal updatedTotalAmountSold = isBuy ? 
-            totalAmountSold : 
+        BigDecimal updatedTotalAmountSold =
             (totalAmountSold != null ? totalAmountSold : BigDecimal.ZERO).add(safePaidAmount);
 
         holding.setAmount(updatedAmount);

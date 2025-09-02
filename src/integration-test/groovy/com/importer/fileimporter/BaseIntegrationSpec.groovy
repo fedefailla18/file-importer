@@ -1,17 +1,21 @@
 package com.importer.fileimporter
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.importer.fileimporter.config.security.jwt.JwtService
 import com.importer.fileimporter.controller.TransactionController
+import com.importer.fileimporter.entity.User
 import com.importer.fileimporter.facade.CoinInformationFacade
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
 import com.importer.fileimporter.repository.TransactionRepository
+import com.importer.fileimporter.repository.UserRepository
 import com.importer.fileimporter.service.FileImporterService
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import io.restassured.RestAssured
+import io.restassured.builder.RequestSpecBuilder
 import org.junit.ClassRule
 import org.postgresql.Driver
 import org.springframework.beans.factory.annotation.Autowired
@@ -37,49 +41,66 @@ import spock.lang.Specification
 abstract class BaseIntegrationSpec extends Specification {
 
     @Autowired
-    FileImporterService fileImporterService
+    protected FileImporterService fileImporterService
 
     @Autowired
-    TransactionService transactionService
+    protected TransactionService transactionService
 
     @Autowired
-    TransactionRepository transactionRepository
+    protected TransactionRepository transactionRepository
 
     @Autowired
-    PortfolioRepository portfolioRepository
+    protected PortfolioRepository portfolioRepository
 
     @Autowired
-    PriceHistoryRepository priceHistoryRepository
+    protected PriceHistoryRepository priceHistoryRepository
 
     @Autowired
-    TestEntityManager entityManager
+    protected TestEntityManager entityManager
 
     @Autowired
-    CalculateAmountSpent calculateAmountSpent
+    protected CalculateAmountSpent calculateAmountSpent
 
     @Autowired
-    PricingFacade pricingFacade
+    protected PricingFacade pricingFacade
 
     @Autowired
-    HoldingService holdingService
+    protected HoldingService holdingService
 
     @Autowired
-    CoinInformationFacade coinInformationFacade
+    protected CoinInformationFacade coinInformationFacade
 
+    @Autowired
+    protected JwtService jwtService
+
+    @Autowired
+    protected MockMvc mockMvc
+
+    @Autowired
+    protected ObjectMapper objectMapper
+
+    @Autowired
+    protected TransactionController transactionController
+
+    @Autowired
+    protected UserRepository userRepository
 
     @LocalServerPort
-    private static int port
+    protected int port
 
-    @Autowired
-    MockMvc mockMvc
+    def setup() {
+        RestAssured.port = port
 
-    @Autowired
-    ObjectMapper objectMapper
+        User testUser = userRepository.findByUsername("Test").orElse(null)
+        if (testUser) {
+            String token = jwtService.generateToken(testUser)
+            // Configure RestAssured to include the token in all requests
+            RestAssured.requestSpecification = new RequestSpecBuilder()
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build()
+        }
+    }
 
-    @Autowired
-    TransactionController transactionController
-
-    // Define a PostgreSQL container
     @ClassRule
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.1")
             .withDatabaseName("file_importer_schema")
@@ -88,7 +109,6 @@ abstract class BaseIntegrationSpec extends Specification {
             .withExposedPorts(60366)
 
     static  {
-        RestAssured.port = port
 
         postgres.setPortBindings(["60366:5432"])
         postgres.start()
