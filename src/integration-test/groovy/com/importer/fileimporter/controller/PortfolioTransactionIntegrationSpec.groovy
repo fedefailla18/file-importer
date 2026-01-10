@@ -42,8 +42,8 @@ class PortfolioTransactionIntegrationSpec extends BaseIntegrationSpec {
             price: new BigDecimal("40000")
         )
 
-        transactionRepository.save(transaction1)
-        transactionRepository.save(transaction2)
+        transactionRepository.saveAndFlush(transaction1)
+        transactionRepository.saveAndFlush(transaction2)
     }
 
     def "test getInformation endpoint with portfolio"() {

@@ -16,12 +16,10 @@ public class OperationUtils {
     public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USD", "USDC");
 
     public static final String BUY_STRING = "BUY";
-    public static final Predicate<String> IS_BUY;
     public static final String SELL_STRING = "SELL";
 
-    static {
-        IS_BUY = BUY_STRING::equals;
-    }
+    private static final List<String> BUY_ALIASES = List.of(BUY_STRING, "COMPRA");
+    private static final List<String> SELL_ALIASES = List.of(SELL_STRING, "VENTA");
 
     public static final String USDT = "USDT";
     public static final String BTC = "BTC";
@@ -32,11 +30,15 @@ public class OperationUtils {
 
     public boolean isBuy(TransactionData transactionData) {
         String side = transactionData.getSide();
-        return IS_BUY.test(side);
+        return isBuy(side);
     }
 
     public boolean isBuy(String side) {
-        return IS_BUY.test(side);
+        return BUY_ALIASES.stream().anyMatch(alias -> alias.equalsIgnoreCase(side));
+    }
+
+    public boolean isSell(String side) {
+        return SELL_ALIASES.stream().anyMatch(alias -> alias.equalsIgnoreCase(side));
     }
 
     public BigDecimal sumAmount(AtomicReference<BigDecimal> amountSpent, BigDecimal payedAmount, String side) {
@@ -46,7 +48,12 @@ public class OperationUtils {
     public BigDecimal sumAmount(BigDecimal currentAmount, BigDecimal paidAmount, String side) {
         currentAmount = getSafeValue(currentAmount);
         paidAmount = getSafeValue(paidAmount);
-        return isBuy(side) ? currentAmount.add(paidAmount) : currentAmount.subtract(paidAmount);
+        if (isBuy(side)) {
+            return currentAmount.add(paidAmount);
+        } else if (isSell(side)) {
+            return currentAmount.subtract(paidAmount);
+        }
+        return currentAmount;
     }
 
     public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, String side) {

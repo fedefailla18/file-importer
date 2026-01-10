@@ -172,7 +172,7 @@ public class PortfolioDistributionFacade {
                             .totalAmountBought(e.getTotalAmountBought())
                             .totalAmountSold(e.getTotalAmountSold())
                             .totalRealizedProfitUsdt(e.getTotalRealizedProfitUsdt())
-                            .stableTotalCost(e.getStableTotalCost())
+                            .inventoryCostUsdt(e.getInventoryCostUsdt())
                             .currentPositionInUsdt(e.getCurrentPositionInUsdt())
                             .build());
                 }
@@ -247,7 +247,7 @@ public class PortfolioDistributionFacade {
                                     // Include transaction history metrics
                                     .totalAmountBought(addPreventingNull(e1.getTotalAmountBought(), e2.getTotalAmountBought()))
                                     .totalAmountSold(addPreventingNull(e1.getTotalAmountSold(), e2.getTotalAmountSold()))
-                                    .stableTotalCost(addPreventingNull(e1.getStableTotalCost(), e2.getStableTotalCost()))
+                                    .inventoryCostUsdt(addPreventingNull(e1.getInventoryCostUsdt(), e2.getInventoryCostUsdt()))
                                     .currentPositionInUsdt(addPreventingNull(e1.getCurrentPositionInUsdt(), e2.getCurrentPositionInUsdt()))
                                     .totalRealizedProfitUsdt(addPreventingNull(e1.getTotalRealizedProfitUsdt(), e2.getTotalRealizedProfitUsdt()))
                                     .build();

@@ -7,6 +7,9 @@ import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import spock.lang.Specification
 
+import java.math.RoundingMode
+import java.time.LocalDateTime
+
 class CoinInformationServiceSpec extends Specification {
 
     def pricingFacade = Mock(PricingFacade)
@@ -56,8 +59,10 @@ class CoinInformationServiceSpec extends Specification {
         def symbol = "RLC"
         def portfolio = new Portfolio(name: "Test")
         def transactions = [
-                new Transaction(symbol: symbol, side: "BUY", executed: 1, paidWith: "USDT", paidAmount: 100, portfolio: portfolio),
-                new Transaction(symbol: symbol, side: "SELL", executed: 2, paidWith: "USDT", paidAmount: 200, portfolio: portfolio)
+                new Transaction(symbol: symbol, side: "BUY", executed: 1, paidWith: "USDT", paidAmount: 100, portfolio: portfolio,
+                        dateUtc: LocalDateTime.parse("2024-01-03T10:00:00")),
+                new Transaction(symbol: symbol, side: "SELL", executed: 2, paidWith: "USDT", paidAmount: 200, portfolio: portfolio,
+                        dateUtc: LocalDateTime.parse("2024-01-03T10:00:00"))
         ]
         pricingFacade.getCurrentMarketPrice(_) >> 100
         holdingService.getOrCreateByPortfolioAndSymbol(_, _) >> new Holding(symbol: symbol, portfolio: portfolio)
@@ -67,7 +72,7 @@ class CoinInformationServiceSpec extends Specification {
 
         then:
         result.amount == 0
-        result.realizedProfit == 200
+        result.getRealizedProfit() == 200
     }
 
     def "should correctly update holding fields including amountInUsdt"() {
@@ -96,7 +101,7 @@ class CoinInformationServiceSpec extends Specification {
             amountInUsdt: BigDecimal.ZERO,
             totalAmountBought: BigDecimal.ZERO,
             totalAmountSold: BigDecimal.ZERO,
-            stableTotalCost: BigDecimal.ZERO,
+            inventoryCostUsdt: BigDecimal.ZERO,
             currentPositionInUsdt: BigDecimal.ZERO,
             totalRealizedProfitUsdt: BigDecimal.ZERO
         )
@@ -112,7 +117,7 @@ class CoinInformationServiceSpec extends Specification {
         // Verify the holding was saved with the correct values
         1 * holdingService.save({ Holding savedHolding ->
             savedHolding.amount == initialAmount &&
-            savedHolding.amountInUsdt.setScale(1, BigDecimal.ROUND_HALF_UP) == expectedAmountInUsdt.setScale(1, BigDecimal.ROUND_HALF_UP) &&
+            savedHolding.getAmountInUsdt().setScale(1, BigDecimal.ROUND_HALF_UP) == expectedAmountInUsdt.setScale(1, BigDecimal.ROUND_HALF_UP) &&
             savedHolding.totalAmountBought == initialAmount &&
             savedHolding.currentPositionInUsdt == expectedAmountInUsdt
         })
@@ -137,4 +142,43 @@ class CoinInformationServiceSpec extends Specification {
         result.getStableTotalCost() == BigDecimal.ZERO
         result.getTotalTransactions() == 0
     }
+
+    def "happy path: average cost sell reduces basis and realizes profit"() {
+        given: "a portfolio and buy/sell transactions"
+        def portfolio = new Portfolio(name: "Test")
+        def symbol = "BTC"
+
+        def buy1 = new Transaction(
+                symbol: symbol, side: "BUY", executed: 1.0, paidWith: "USDT",
+                paidAmount: 10000, portfolio: portfolio, dateUtc: LocalDateTime.parse("2024-01-01T10:00:00")
+        )
+        def buy2 = new Transaction(
+                symbol: symbol, side: "BUY", executed: 1.0, paidWith: "USDT",
+                paidAmount: 12000, portfolio: portfolio, dateUtc: LocalDateTime.parse("2024-01-02T10:00:00")
+        )
+        def sell1 = new Transaction(
+                symbol: symbol, side: "SELL", executed: 1.5, paidWith: "USDT",
+                paidAmount: 18000, portfolio: portfolio, dateUtc: LocalDateTime.parse("2024-01-03T10:00:00")
+        )
+        def txs = [buy2, sell1, buy1] // out of order on purpose
+
+        and: "the holding is mocked"
+        def holding = new Holding(symbol: symbol, portfolio: portfolio, amount: BigDecimal.ZERO)
+        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+
+        and: "the current price is mocked"
+        pricingFacade.getCurrentMarketPrice(symbol) >> new BigDecimal("12000") // Current price for remaining 0.5 BTC
+
+        when: "calculating coin information response"
+        def resp = coinInformationService.getCoinInformationResponse(symbol, txs)
+
+        then: "the final state of the response is correct"
+        resp.amount.setScale(1, RoundingMode.HALF_UP) == new BigDecimal("0.5")
+        resp.totalAmountBought.setScale(1, RoundingMode.HALF_UP) == new BigDecimal("2.0")
+        resp.totalAmountSold.setScale(1, RoundingMode.HALF_UP) == new BigDecimal("1.5")
+        resp.stableTotalCost.setScale(1, RoundingMode.HALF_UP) == new BigDecimal("5500.0") // (10000+12000)/2 * 0.5
+        resp.getTotalRealizedProfitUsdt().setScale(1, RoundingMode.HALF_UP) == new BigDecimal("1500.0") // 18000 - (1.5 * 11000 avg cost)
+        resp.currentPositionInUsdt == new BigDecimal("6000.0") // 0.5 * 12000
+    }
+
 }

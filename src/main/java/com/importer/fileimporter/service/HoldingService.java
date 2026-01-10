@@ -59,14 +59,12 @@ public class HoldingService {
      * For buy transactions, it increases the amount of the paid with currency.
      * For sell transactions, it decreases the amount of the paid with currency.
      *
-     * @param isBuy Whether the transaction is a buy (true) or sell (false)
+     * @param isBuy          Whether the transaction is a buy (true) or sell (false)
      * @param paidWithSymbol The symbol of the currency used to pay
-     * @param paidAmount The amount paid in the paidWithSymbol currency
-     * @param portfolio The portfolio associated with the transaction
-     * @param executed The amount of the main currency executed in the transaction
-     * @param paidInStable The amount paid in stable currency (USDT)
+     * @param paidAmount     The amount paid in the paidWithSymbol currency
+     * @param portfolio      The portfolio associated with the transaction
      */
-    public void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
+    public void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio) {
         if (isBuy) {
             throw new RuntimeException("Buy transactions should not be processed with updatePaidWithHolding");
         }
@@ -174,7 +172,7 @@ public class HoldingService {
             holding.setAmountInUsdt(BigDecimal.ZERO);
             holding.setTotalAmountBought(BigDecimal.ZERO);
             holding.setTotalAmountSold(BigDecimal.ZERO);
-            holding.setStableTotalCost(BigDecimal.ZERO);
+            holding.setInventoryCostUsdt(BigDecimal.ZERO);
             holding.setCurrentPositionInUsdt(BigDecimal.ZERO);
             holding.setTotalRealizedProfitUsdt(BigDecimal.ZERO);
             holding.setModified(LocalDateTime.now());

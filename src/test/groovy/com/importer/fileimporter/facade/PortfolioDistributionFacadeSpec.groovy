@@ -102,7 +102,7 @@ class PortfolioDistributionFacadeSpec extends Specification {
                 priceInBtc: new BigDecimal("1.0"),
                 totalAmountBought: new BigDecimal("2.0"),
                 totalAmountSold: new BigDecimal("0.5"),
-                stableTotalCost: new BigDecimal("40000.0"),
+                    setInventoryCostUsdt: new BigDecimal("40000.0"),
                 currentPositionInUsdt: new BigDecimal("45000.0"),
                 totalRealizedProfitUsdt: new BigDecimal("5000.0")
             ),
@@ -116,7 +116,7 @@ class PortfolioDistributionFacadeSpec extends Specification {
                 priceInBtc: new BigDecimal("1.0"),
                 totalAmountBought: new BigDecimal("1.0"),
                 totalAmountSold: new BigDecimal("0.5"),
-                stableTotalCost: new BigDecimal("20000.0"),
+                    setInventoryCostUsdt: new BigDecimal("20000.0"),
                 currentPositionInUsdt: new BigDecimal("15000.0"),
                 totalRealizedProfitUsdt: new BigDecimal("3000.0")
             )
@@ -135,7 +135,7 @@ class PortfolioDistributionFacadeSpec extends Specification {
                 .percentage(BigDecimal.ZERO)
                 .totalAmountBought(h.totalAmountBought)
                 .totalAmountSold(h.totalAmountSold)
-                .stableTotalCost(h.stableTotalCost)
+                .inventoryCostUsdt(h.inventoryCostUsdt)
                 .currentPositionInUsdt(h.currentPositionInUsdt)
                 .totalRealizedProfitUsdt(h.totalRealizedProfitUsdt)
                 .build()
@@ -160,7 +160,7 @@ class PortfolioDistributionFacadeSpec extends Specification {
             // Verify transaction history metrics are correctly merged
             totalAmountBought.toString() == "3"
             totalAmountSold.toString() == "1"
-            stableTotalCost.toString() == "60000"
+            inventoryCostUsdt.toString() == "60000"
             currentPositionInUsdt.toString() == "60000"
             totalRealizedProfitUsdt.toString() == "8000"
         }

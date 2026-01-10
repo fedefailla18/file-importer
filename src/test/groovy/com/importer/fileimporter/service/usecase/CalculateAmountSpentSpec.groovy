@@ -30,7 +30,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('ETH')
 
         when:
-        def result = sut.getAmountSpentInUsdt(transaction, response, null)
+        def result = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         result == 4000
@@ -52,7 +52,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('RLC')
 
         when:
-        def result = sut.getAmountSpentInUsdt(transaction, response, null)
+        def result = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         result == BigDecimal.valueOf(-150.78)
@@ -91,7 +91,7 @@ class CalculateAmountSpentSpec extends Specification {
 
         when:
         transactions.each { tx ->
-            sut.getAmountSpentInUsdt(tx, response, null)
+            sut.getAmountInUsdt(tx, response, null)
         }
 
         then:
@@ -107,7 +107,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty(symbol)
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
+        def amountSpent = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         amountSpent == new BigDecimal("500")
@@ -125,7 +125,7 @@ class CalculateAmountSpentSpec extends Specification {
         pricingFacade.getPriceInUsdt(symbol, _) >> 1000
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
+        def amountSpent = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         amountSpent == 1000
@@ -140,7 +140,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty(symbol)
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
+        def amountSpent = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         amountSpent == new BigDecimal("-500")
@@ -158,7 +158,7 @@ class CalculateAmountSpentSpec extends Specification {
         pricingFacade.getPriceInUsdt(symbol, _) >> 1000
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, null)
+        def amountSpent = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         amountSpent == -1000
@@ -188,7 +188,7 @@ class CalculateAmountSpentSpec extends Specification {
         pricingFacade.getPriceInUsdt(symbol, _) >> 1000
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, portfolio)
+        def amountSpent = sut.getAmountInUsdt(transaction, response, portfolio)
 
         then:
         amountSpent == 1000
@@ -210,7 +210,7 @@ class CalculateAmountSpentSpec extends Specification {
         pricingFacade.getPriceInUsdt(symbol, _) >> 1000
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, portfolio)
+        def amountSpent = sut.getAmountInUsdt(transaction, response, portfolio)
 
         then:
         amountSpent == -1000
@@ -229,7 +229,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty(symbol)
 
         when:
-        def amountSpent = sut.getAmountSpentInUsdt(transaction, response, portfolio)
+        def amountSpent = sut.getAmountInUsdt(transaction, response, portfolio)
 
         then:
         amountSpent == new BigDecimal("500")
@@ -255,7 +255,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('ETH')
 
         when:
-        def result = sut.getAmountSpentInUsdt(transaction, response, null)
+        def result = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         result == BigDecimal.ZERO
@@ -276,7 +276,7 @@ class CalculateAmountSpentSpec extends Specification {
         def response = CoinInformationResponse.createEmpty('ETH')
 
         when:
-        def result = sut.getAmountSpentInUsdt(transaction, response, null)
+        def result = sut.getAmountInUsdt(transaction, response, null)
 
         then:
         result == BigDecimal.ZERO

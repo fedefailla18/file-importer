@@ -99,8 +99,9 @@ public class Holding {
     /**
      * The total cost in stable currency (USDT) spent to acquire this holding.
      * This represents the historical cost basis.
+     * - “How much stable/fiat is currently invested in the units I still hold?”
      */
-    private BigDecimal stableTotalCost;
+    private BigDecimal inventoryCostUsdt;
 
     /**
      * The current market value of the holding in USDT.

@@ -33,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
 import spock.lang.Specification
 
+import javax.persistence.EntityManager
+
 @Transactional
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("integration-test")
@@ -57,6 +59,8 @@ abstract class BaseIntegrationSpec extends Specification {
 
     @Autowired
     protected TestEntityManager entityManager
+    @Autowired
+    protected EntityManager entityManager1
 
     @Autowired
     protected CalculateAmountSpent calculateAmountSpent

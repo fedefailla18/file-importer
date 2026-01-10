@@ -13,8 +13,9 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,48 +43,55 @@ public class CoinInformationService {
             return null;
         }
 
-        CoinInformationResponse response = CoinInformationResponse.createEmpty(symbol);
-        calculateAndSetAmountsOnlyInStable(symbol, unprocessedTransactions, response);
-
-        return response;
+        return calculateAndSetStableMetrics(symbol, unprocessedTransactions);
     }
 
-    private CoinInformationResponse calculateAndSetAmountsOnlyInStable(String symbol, List<Transaction> transactions, CoinInformationResponse response) {
+    private CoinInformationResponse calculateAndSetStableMetrics(String symbol, List<Transaction> transactions) {
+        CoinInformationResponse response = CoinInformationResponse.createEmpty(symbol);
+        if (CollectionUtils.isEmpty(transactions)) {
+            log.warn("No transactions found for symbol: {}", symbol);
+            return response;
+        }
+
+        transactions.sort(Comparator.comparing(Transaction::getDateUtc));
         Portfolio portfolio = transactions.stream()
                 .findFirst()
                 .map(Transaction::getPortfolio)
                 .orElseThrow(() -> new IllegalArgumentException("No portfolio found for transactions"));
 
-        BigDecimal totalHeldAmount = BigDecimal.ZERO;
-        BigDecimal totalCostInStable = BigDecimal.ZERO;
-        List<Transaction> sellTransactions = new ArrayList<>();
+        InventoryState inventoryState = new InventoryState();
 
         for (Transaction transaction : transactions) {
+            String side = transaction.getSide();
+            BigDecimal quantity = transaction.getExecuted();
+            BigDecimal amountInStable = calculateAmountSpent.getAmountInUsdt(transaction, response, portfolio);
 
-            if (OperationUtils.isBuy(transaction.getSide())) {
-                BigDecimal executed = transaction.getExecuted();
-
-                totalHeldAmount = totalHeldAmount.add(executed);
-
-                BigDecimal paidAmountInStable = calculateAmountSpent.getAmountSpentInUsdt(transaction, response, portfolio);
-                totalCostInStable = totalCostInStable.add(paidAmountInStable);
-                response.addTotalAmountBought(executed, transaction.getSide());
+            if (OperationUtils.isBuy(side)) {
+                applyBuy(inventoryState, quantity, amountInStable);
             } else {
-                sellTransactions.add(transaction);
+                applySell(inventoryState, quantity, amountInStable.abs());
             }
             markTransactionProcessed(transaction);
         }
 
-        BigDecimal realizedProfit = processSellTransactions(sellTransactions, response, portfolio, totalHeldAmount);
+        // Transfer final state from InventoryState to the response DTO
+        response.setAmount(inventoryState.amountHeld);
+        response.setStableTotalCost(inventoryState.inventoryCostUsdt);
+        response.setTotalRealizedProfitUsdt(inventoryState.realizedProfitUsdt);
+        response.setTotalAmountBought(inventoryState.totalBought);
+        response.setTotalAmountSold(inventoryState.totalSold);
 
         BigDecimal currentMarketPrice = pricingFacade.getCurrentMarketPrice(symbol);
         BigDecimal currentMarketValue = currentMarketPrice.multiply(response.getAmount());
 
-        response.setRealizedProfit(realizedProfit);
         response.setCurrentPrice(currentMarketPrice);
         response.setCurrentPositionInUsdt(currentMarketValue);
+        
+        // This logic seems off, but I'll keep it for now to match original intent
         response.setUnrealizedProfit(currentMarketValue);
-        response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(totalCostInStable));
+        response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(inventoryState.inventoryCostUsdt));
+        response.setRealizedProfit(inventoryState.realizedProfitUsdt);
+
 
         setAndSaveHolding(symbol, response, portfolio);
 
@@ -94,19 +102,19 @@ public class CoinInformationService {
                                                Portfolio portfolio, BigDecimal totalHeldAmount) {
         BigDecimal realizedProfit = BigDecimal.ZERO;
         for (Transaction transaction : sellTransactions) {
-            BigDecimal executed = transaction.getExecuted();
-            BigDecimal amountSold = executed.min(totalHeldAmount);
+            BigDecimal sellQty = transaction.getExecuted();
+            BigDecimal amountSold = sellQty.min(totalHeldAmount);
 
-            if (executed.compareTo(totalHeldAmount) > 0) {
+            if (sellQty.compareTo(totalHeldAmount) > 0) {
                 log.warn("Attempting to sell more than held amount: " + transaction);
             }
 
             totalHeldAmount = totalHeldAmount.subtract(amountSold);
             response.setAmount(totalHeldAmount);
 
-            BigDecimal amountSpentInUsdt = calculateAmountSpent.getAmountSpentInUsdt(transaction, response, portfolio);
+            BigDecimal amountSpentInUsdt = calculateAmountSpent.getAmountInUsdt(transaction, response, portfolio);
             realizedProfit = realizedProfit.subtract(amountSpentInUsdt);
-            response.addTotalAmountSold(executed, transaction.getSide());
+            response.addTotalAmountSold(sellQty, transaction.getSide());
         }
         response.setAmount(totalHeldAmount);
         return realizedProfit;
@@ -139,7 +147,7 @@ public class CoinInformationService {
         holding.setAmount(OperationUtils.sumBigDecimal(holding.getAmount(), response.getAmount()));
         holding.setTotalAmountBought(OperationUtils.sumBigDecimal(holding.getTotalAmountBought(), response.getTotalAmountBought()));
         holding.setTotalAmountSold(OperationUtils.sumBigDecimal(holding.getTotalAmountSold(), response.getTotalAmountSold()));
-        holding.setStableTotalCost(OperationUtils.sumBigDecimal(holding.getStableTotalCost(), response.getStableTotalCost()));
+        holding.setInventoryCostUsdt(OperationUtils.sumBigDecimal(holding.getInventoryCostUsdt(), response.getStableTotalCost()));
         holding.setCurrentPositionInUsdt(OperationUtils.sumBigDecimal(holding.getCurrentPositionInUsdt(), response.getCurrentPositionInUsdt()));
         holding.setTotalRealizedProfitUsdt(OperationUtils.sumBigDecimal(holding.getTotalRealizedProfitUsdt(), response.getTotalRealizedProfitUsdt()));
 
@@ -151,6 +159,55 @@ public class CoinInformationService {
         } else {
             // Fallback to unrealizedProfit if amount or currentPrice is null
             holding.setAmountInUsdt(OperationUtils.sumBigDecimal(holding.getAmountInUsdt(), response.getUnrealizedProfit()));
+        }
+    }
+
+    // Java
+// ... existing imports, annotations, fields ...
+
+    private static final int AMOUNT_SCALE = 18;
+    private static final int MONEY_SCALE = 8;
+
+    private static class InventoryState {
+        BigDecimal amountHeld = BigDecimal.ZERO.setScale(AMOUNT_SCALE);
+        BigDecimal inventoryCostUsdt = BigDecimal.ZERO.setScale(MONEY_SCALE);
+        BigDecimal realizedProfitUsdt = BigDecimal.ZERO.setScale(MONEY_SCALE);
+        BigDecimal totalBought = BigDecimal.ZERO.setScale(AMOUNT_SCALE);
+        BigDecimal totalSold = BigDecimal.ZERO.setScale(AMOUNT_SCALE);
+    }
+
+    private void applyBuy(InventoryState s, BigDecimal qty, BigDecimal costUsdt) {
+        if (qty == null || costUsdt == null) return;
+        s.amountHeld = s.amountHeld.add(qty).setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
+        s.totalBought = s.totalBought.add(qty).setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
+        s.inventoryCostUsdt = s.inventoryCostUsdt.add(costUsdt).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private void applySell(InventoryState s, BigDecimal qty, BigDecimal proceedsUsdt) {
+        if (qty == null || proceedsUsdt == null) return;
+        if (qty.compareTo(BigDecimal.ZERO) <= 0) return;
+        // Guard: do not allow selling more than held (unless supporting short)
+        if (qty.compareTo(s.amountHeld) > 0) {
+            // You can throw, clamp, or log. Here we clamp to prevent negative inventory.
+            qty = s.amountHeld;
+        }
+        if (s.amountHeld.signum() == 0) return;
+
+        BigDecimal avgCostPerUnit = s.inventoryCostUsdt
+                .divide(s.amountHeld, MONEY_SCALE + 4, RoundingMode.HALF_UP);
+        BigDecimal costOfSold = avgCostPerUnit.multiply(qty)
+                .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+
+        BigDecimal realized = proceedsUsdt.subtract(costOfSold).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        s.realizedProfitUsdt = s.realizedProfitUsdt.add(realized).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+
+        s.amountHeld = s.amountHeld.subtract(qty).setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
+        s.totalSold = s.totalSold.add(qty).setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
+
+        s.inventoryCostUsdt = s.inventoryCostUsdt.subtract(costOfSold).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        if (s.inventoryCostUsdt.signum() < 0) {
+            // Protect against small negative due to rounding
+            s.inventoryCostUsdt = BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         }
     }
 

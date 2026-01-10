@@ -71,7 +71,7 @@ public class HoldingDto {
      * The total cost in stable currency (USDT) spent to acquire this holding.
      * This represents the historical cost basis.
      */
-    private BigDecimal stableTotalCost;
+    private BigDecimal inventoryCostUsdt;
 
     /**
      * The current market value of the holding in USDT.

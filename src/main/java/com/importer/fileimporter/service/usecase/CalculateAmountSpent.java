@@ -33,7 +33,7 @@ public class CalculateAmountSpent {
      * @param portfolio The portfolio associated with the transaction, can be null if no portfolio update is needed
      * @return The amount spent in USDT (positive for buy, negative for sell)
      */
-    public BigDecimal getAmountSpentInUsdt(Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
+    public BigDecimal getAmountInUsdt(Transaction transaction, CoinInformationResponse response, Portfolio portfolio) {
         String symbol = transaction.getSymbol();
         String paidWithSymbol = transaction.getPaidWith();
         BigDecimal paidAmount = transaction.getPaidAmount();
@@ -58,7 +58,7 @@ public class CalculateAmountSpent {
             priceInStable = getPriceInStable(symbol, transaction.getDateUtc());
             paidAmount = priceInStable.multiply(executed);
             if (portfolio != null) {
-                updatePaidWithHolding(isBuy, paidWithSymbol, transaction.getPaidAmount(), portfolio, executed, paidAmount);
+                holdingService.updatePaidWithHolding(isBuy, paidWithSymbol, paidAmount, portfolio);
             }
         }
 
@@ -75,10 +75,6 @@ public class CalculateAmountSpent {
 
     private BigDecimal getPriceInStable(String symbol, LocalDateTime dateUtc) {
         return pricingFacade.getPriceInUsdt(symbol, dateUtc);
-    }
-
-    private void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
-        holdingService.updatePaidWithHolding(isBuy, paidWithSymbol, paidAmount, portfolio, executed, paidInStable);
     }
 
 }

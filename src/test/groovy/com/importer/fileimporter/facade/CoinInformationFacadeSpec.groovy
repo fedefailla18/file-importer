@@ -59,7 +59,7 @@ class CoinInformationFacadeSpec extends Specification {
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 2
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
+        calculateAmountSpent.getAmountInUsdt(_, _, _) >> {
             Transaction t, CoinInformationResponse response, Portfolio portfolio1
             -> t.paidAmount }
 
@@ -94,7 +94,7 @@ class CoinInformationFacadeSpec extends Specification {
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 2
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
+        calculateAmountSpent.getAmountInUsdt(_, _, _) >> {
             Transaction t, CoinInformationResponse response, Portfolio portfolio1
                 -> t.paidAmount }
 
@@ -123,7 +123,7 @@ class CoinInformationFacadeSpec extends Specification {
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 500
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> 500
+        calculateAmountSpent.getAmountInUsdt(_, _, _) >> 500
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
@@ -151,7 +151,7 @@ class CoinInformationFacadeSpec extends Specification {
         transactionService.getAllBySymbol(symbol) >> transactions
         holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 1000
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
+        calculateAmountSpent.getAmountInUsdt(_, _, _) >> {
             Transaction t, CoinInformationResponse response, Portfolio p -> t.paidAmount
         }
 
