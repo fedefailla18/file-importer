@@ -5,6 +5,7 @@ import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.utils.IntegrationTestHelper
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
 
@@ -33,8 +34,15 @@ class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
         given: "a set of predefined transactions"
         def symbol = "BAND"
 
+        def testUser = userRepository.save(new User(username: "testuser", email: "test@user.com", password: "password"))
+
+        def portfolio = portfolioRepository.save(Portfolio.builder()
+                .name("Binance")
+                .creationDate(LocalDateTime.now())
+                .user(testUser)
+                .build())
+
         // Create test transactions for BAND
-        def portfolio = portfolioRepository.findByName("Binance").orElse(portfolio1)
         def transaction1 = transactionService.save(
             new Transaction(
                 symbol: symbol,
@@ -43,7 +51,7 @@ class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
                 paidWith: "USDT",
                 paidAmount: new BigDecimal("200"),
                 portfolio: portfolio,
-                dateUtc: LocalDateTime.now(),
+                dateUtc: LocalDateTime.now().minus(1, ChronoUnit.DAYS),
                 pair: "BANDUSDT",
                 price: new BigDecimal("2")
             )

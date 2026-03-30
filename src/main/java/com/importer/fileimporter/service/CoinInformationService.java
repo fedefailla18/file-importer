@@ -86,7 +86,7 @@ public class CoinInformationService {
 
         response.setCurrentPrice(currentMarketPrice);
         response.setCurrentPositionInUsdt(currentMarketValue);
-        
+
         // This logic seems off, but I'll keep it for now to match original intent
         response.setUnrealizedProfit(currentMarketValue);
         response.setUnrealizedTotalProfitMinusTotalCost(currentMarketValue.subtract(inventoryState.inventoryCostUsdt));
@@ -189,6 +189,7 @@ public class CoinInformationService {
         // Guard: do not allow selling more than held (unless supporting short)
         if (qty.compareTo(s.amountHeld) > 0) {
             // You can throw, clamp, or log. Here we clamp to prevent negative inventory.
+            log.warn("Attempting to sell more than held amount: {} > {}", qty, s.amountHeld);
             qty = s.amountHeld;
         }
         if (s.amountHeld.signum() == 0) return;
