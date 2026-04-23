@@ -33,6 +33,10 @@ public class TransactionHoldingDto {
     private BigDecimal amountInUsdt;
     private BigDecimal percentage;
 
+    private BigDecimal stableTotalCost;
+    private BigDecimal totalRealizedProfitUsdt;
+    private BigDecimal currentPositionInUsdt;
+
     public static TransactionHoldingDto emptyTransactionHoldingDto(String symbol, BigDecimal totalAmount) {
         return TransactionHoldingDto.builder()
                 .symbol(symbol)

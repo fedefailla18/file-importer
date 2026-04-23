@@ -39,20 +39,20 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
     @Override
     public BigDecimal getPrice() {
         String price = row.get(PRICE_KEY).toString()
+                .replace("\"", "")
                 .replace(",", "");
         return ProcessFileUtils.getBigDecimalWithScale(Double.valueOf(price));
     }
 
     @Override
     public BigDecimal getExecuted() {
-        String executedString = row.get(EXECUTED_KEY).toString();
+        String executedString = row.get(EXECUTED_KEY).toString().replace("\"", "");
         try {
             String executedSymbol = ProcessFileUtils.getSymbolFromNumber(executedString);
             String executed = executedString
                     .replace(executedSymbol, "")
                     .replace(",", "");
-            double added = Double.parseDouble(executed);
-            return BigDecimal.valueOf(added);
+            return new BigDecimal(executed);
         } catch (Exception e) {
             throw new IllegalArgumentException("Error extracting executed amount from: " + executedString, e);
         }
@@ -60,7 +60,7 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
 
     @Override
     public BigDecimal getAmount() {
-        String amountString = row.get(AMOUNT_KEY).toString();
+        String amountString = row.get(AMOUNT_KEY).toString().replace("\"", "");
         try {
             String amountSymbol = ProcessFileUtils.getSymbolFromNumber(amountString);
             String amount = amountString
@@ -74,7 +74,7 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
 
     @Override
     public BigDecimal getFee() {
-        String feeString = row.get(FEE_KEY).toString();
+        String feeString = row.get(FEE_KEY).toString().replace("\"", "");
         try {
             String feeSymbol = ProcessFileUtils.getSymbolFromNumber(feeString);
             String fee = feeString
@@ -89,7 +89,7 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
     @Override
     public String getSymbol() {
         try {
-            String executedString = row.get(EXECUTED_KEY).toString();
+            String executedString = row.get(EXECUTED_KEY).toString().replace("\"", "");
             return ProcessFileUtils.getSymbolFromNumber(executedString);
         } catch (Exception e) {
             throw new IllegalArgumentException("No symbol found in executed string");
@@ -98,7 +98,7 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
 
     @Override
     public String getFeeSymbol() {
-        String feeString = row.get(FEE_KEY).toString();
+        String feeString = row.get(FEE_KEY).toString().replace("\"", "");
         String feeSymbol = ProcessFileUtils.getSymbolFromNumber(feeString);
 
         if (feeSymbol.matches("\\s*")) {
@@ -110,7 +110,7 @@ public class BinanceTransactionAdapter extends TransactionCoinName {
 
     @Override
     public String getPaidWith() {
-        return getPair().replace(getCoinName(), "");
+        return getPair().replace(getCoinName(), "").replace("\"", "");
     }
 
 }

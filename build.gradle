@@ -82,6 +82,7 @@ dependencies {
 
 	implementation('org.apache.tomcat:tomcat-annotations-api:9.0.10')
 	implementation 'org.apache.poi:poi:5.2.4'
+	implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
 	testImplementation('org.spockframework:spock-core:2.0-M3-groovy-3.0')
 	testImplementation('org.spockframework:spock-spring:2.0-M3-groovy-3.0')
@@ -103,6 +104,9 @@ dependencies {
 
 test {
 	useJUnitPlatform()
+	if (project.hasProperty('excludeTests')) {
+		exclude "**/${project.property('excludeTests')}.*"
+	}
 }
 
 // Task to run integration tests

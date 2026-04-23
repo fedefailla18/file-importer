@@ -23,11 +23,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
 
     List<Transaction> findAllByPortfolio(Portfolio portfolio);
 
+    List<Transaction> findAllByPortfolioAndSymbol(Portfolio portfolio, String symbol);
+
     @Query("SELECT t FROM Transaction t " +
             "WHERE (:symbol IS NULL OR t.symbol = :symbol) " +
-            "AND (:portfolioId IS NULL OR t.portfolio.id = COALESCE(:portfolioId, t.portfolio.id)) " +
-            "AND (:startDate IS NULL OR DATE(t.dateUtc) >= :startDate) " +
-            "AND (:endDate IS NULL OR DATE(t.dateUtc) <= :endDate) " +
+            "AND (CAST(:portfolioId AS string) IS NULL OR t.portfolio.id = :portfolioId) " +
+            "AND (CAST(:startDate AS string) IS NULL OR t.dateUtc >= CAST(:startDate AS timestamp)) " +
+            "AND (CAST(:endDate AS string) IS NULL OR t.dateUtc <= CAST(:endDate AS timestamp)) " +
             "ORDER BY t.dateUtc DESC")
     Page<Transaction> findBySymbolAndPortfolioAndDateRange(@Param("symbol") String symbol,
                                                            @Param("portfolioId") UUID portfolioId,

@@ -1,10 +1,18 @@
 # File-importer
-File-importer is a useful app written in Java 11 and SpringBoot
-to allow the users upload a Binance transactions file and get accurate information.
+File-importer (InvestTracker) is a specialized Spring Boot application designed for crypto investors to track their portfolio's performance, cost basis, and realized/unrealized gains.
+
+It was born from the need to accurately account for historical transactions, especially through volatile market cycles (like the 2021 bull run and subsequent dips), providing a clear view of how a portfolio appreciates or depreciates over time.
+
+## Core Features
+
+- **Historical Ingestion**: Support for importing large volumes of transaction data from exchanges (Binance, MEXC) via CSV/Excel.
+- **Accurate Accounting**: Precise cost basis tracking (Average Cost) and Realized Profit/Loss calculation.
+- **Portfolio Valuation**: Real-time (cached) market value tracking in USDT.
+- **DIP Analytics**: Track your "buying the dip" efficiency by monitoring your average entry prices.
 
 ## Useful resources
 
-To get prices in real time we use:
+To get prices in real time we use CryptoCompare. You will need an API key:
 
         https://www.cryptocompare.com/cryptopian/api-keys
 

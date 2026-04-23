@@ -5,9 +5,9 @@ This document contains a detailed list of actionable improvement tasks for the f
 
 ## Transaction Processing
 
-[ ] Improve transaction processing logic in TransactionFacade to handle edge cases
-[ ] Fix potential division by zero in proportion calculation when total amount is zero
-[ ] Add validation for transaction data before processing
+[x] Improve transaction processing logic in TransactionFacade to handle edge cases (Migrated to TransactionProcessor)
+[x] Fix potential division by zero in proportion calculation when total amount is zero
+[x] Add validation for transaction data before processing
 [ ] Implement better error handling for failed transactions
 [ ] Add logging for transaction processing steps to aid debugging
 [ ] Ensure transaction dates are properly handled across time zones
@@ -15,18 +15,18 @@ This document contains a detailed list of actionable improvement tasks for the f
 
 ## Portfolio Calculation
 
-[ ] Review and fix the portfolio calculation logic in buildPortfolio method
-[ ] Ensure correct aggregation of buy and sell transactions
-[ ] Fix the commented-out stableTotalCost calculation in HoldingService
+[x] Review and fix the portfolio calculation logic in buildPortfolio method
+[x] Ensure correct aggregation of buy and sell transactions
+[x] Fix the commented-out stableTotalCost calculation in HoldingService
 [ ] Implement proper handling of fees in portfolio calculations
-[ ] Add support for calculating realized and unrealized gains/losses
+[x] Add support for calculating realized and unrealized gains/losses
 [ ] Ensure portfolio calculations are consistent across different views
 [ ] Review the threshold in excludeWhenAmountIsAlmostZero method to prevent excluding valid holdings
 
 ## Price History and Retrieval
 
-[ ] Improve error handling in PricingFacade to avoid returning empty maps
-[ ] Implement caching for frequently accessed price data
+[x] Improve error handling in PricingFacade to avoid returning empty maps
+[x] Implement caching for frequently accessed price data
 [ ] Extend the fallback time window for historical price lookups
 [ ] Add retry mechanism for external price API calls
 [ ] Implement fallback data sources for when primary price source is unavailable
@@ -62,8 +62,8 @@ This document contains a detailed list of actionable improvement tasks for the f
 
 ## Architecture Improvements
 
-[ ] Refactor TransactionFacade to separate concerns (calculation, data retrieval, etc.)
-[ ] Consider implementing a dedicated portfolio calculation service
+[x] Refactor TransactionFacade to separate concerns (calculation, data retrieval, etc.)
+[x] Consider implementing a dedicated portfolio calculation service (Created TransactionProcessor)
 [ ] Implement event-driven updates for portfolio values
 [ ] Add support for different calculation strategies (FIFO, LIFO, etc.)
 [ ] Consider implementing a batch processing system for large transaction volumes

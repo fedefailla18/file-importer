@@ -41,4 +41,6 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, UUID
                                                             @Param("symbolPair") String symbolPair,
                                                             @Param("time") LocalDateTime time);
 
+    boolean existsBySymbolAndSymbolpairAndTime(String symbol, String symbolpair, LocalDateTime time);
+
 }

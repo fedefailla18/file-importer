@@ -24,45 +24,6 @@ public abstract class ProcessFile {
         return fileImporterService.getRows(file);
     }
 
-    CoinInformationResponse createNewCoinInfo(String symbol) {
-        return CoinInformationResponse.createEmpty(symbol);
-    }
-
-    void updateCoinInfo(CoinInformationResponse coinInfo, TransactionData transactionData, boolean isBuy) {
-        coinInfo.setTotalExecuted(calculateAmount(coinInfo.getAmount(), isBuy, transactionData.getExecuted()));
-        updateSpentAndAvgPrice(coinInfo, transactionData, isBuy);
-        coinInfo.addRows(transactionData);
-    }
-
-    void updateSpentAndAvgPrice(CoinInformationResponse coinInfo, TransactionData transactionData, boolean isBuy) {
-        String paidWith = transactionData.getPaidWith();
-        STABLE.stream()
-                .filter(paidWith::contains)
-                .findFirst()
-                .ifPresent(stableCoin -> {
-                    BigDecimal amount = transactionData.getAmount();
-                    BigDecimal updatedSpent = updateAmountSpent(coinInfo.getStableTotalCost(), amount, isBuy);
-                    coinInfo.setStableTotalCost(updatedSpent);
-                });
-
-        calculateSpent(transactionData.getAmount(), coinInfo, paidWith, isBuy);
-    }
-
-    BigDecimal updateAmountSpent(BigDecimal currentSpent, BigDecimal amount, boolean isBuy) {
-        return isBuy ? currentSpent.add(amount) : currentSpent.subtract(amount);
-    }
-
-    void calculateSpent(BigDecimal amount, CoinInformationResponse coinInfo, String symbolPair, boolean isBuy) {
-        coinInfo.getSpent().merge(symbolPair, amount,
-                (current, newAmount) -> isBuy ? current.add(newAmount) : current.subtract(newAmount));
-    }
-
-    BigDecimal calculateAmount(BigDecimal currentAmount, boolean isBuy, BigDecimal amountToAdjust) {
-        return isBuy ?
-                currentAmount.add(amountToAdjust) :
-                currentAmount.subtract(amountToAdjust);
-    }
-
     protected TransactionData getAdapter(Map<?, ?> row, String portfolioName) {
         final String name = portfolioName == null ? "Binance" : portfolioName;
         return transactionAdapterFactory.createAdapter(row, name);

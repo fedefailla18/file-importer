@@ -7,7 +7,6 @@ import com.importer.fileimporter.repository.TransactionRepository
 import com.importer.fileimporter.service.FileImporterService
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.TransactionService
-import com.importer.fileimporter.service.usecase.CalculateAmountSpent
 import org.junit.ClassRule
 import org.postgresql.Driver
 import org.springframework.beans.factory.annotation.Autowired
@@ -21,6 +20,11 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
+import com.importer.fileimporter.entity.User
+import com.importer.fileimporter.repository.UserRepository
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
+import spock.lang.Shared
 import spock.lang.Specification
 
 @Transactional
@@ -46,16 +50,38 @@ abstract class BaseIntegrationSpec extends Specification {
     PriceHistoryRepository priceHistoryRepository
 
     @Autowired
-    TestEntityManager entityManager
+    UserRepository userRepository
 
     @Autowired
-    CalculateAmountSpent calculateAmountSpent
+    TestEntityManager entityManager
 
     @Autowired
     PricingFacade pricingFacade
 
     @Autowired
     HoldingService holdingService
+
+    @Shared
+    User defaultUser
+
+    def setup() {
+        if (defaultUser == null) {
+            defaultUser = userRepository.findByUsername("default_user").orElseGet({
+                def user = User.builder()
+                        .username("default_user")
+                        .email("default@example.com")
+                        .password("change_me")
+                        .build()
+                userRepository.save(user)
+            })
+        }
+        def auth = new UsernamePasswordAuthenticationToken(defaultUser, null, [])
+        SecurityContextHolder.getContext().setAuthentication(auth)
+    }
+
+    def cleanup() {
+        SecurityContextHolder.clearContext()
+    }
 
     // Define a PostgreSQL container
     @ClassRule

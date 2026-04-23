@@ -10,7 +10,7 @@ class IntegrationTestHelper {
 
         file.eachLine { line, lineNumber ->
             if (lineNumber == 1) return // Skip the header line
-            def fields = line.split(',')
+            def fields = line.split(',').collect { it.replace('"', '') }
             rows << [
                     'Date(UTC)': fields[0],
                     'Pair'     : fields[1],

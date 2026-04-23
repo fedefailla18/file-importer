@@ -8,7 +8,8 @@ import com.importer.fileimporter.service.CoinInformationService
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.PortfolioService
 import com.importer.fileimporter.service.TransactionService
-import com.importer.fileimporter.service.usecase.CalculateAmountSpent
+import com.importer.fileimporter.service.TransactionProcessor
+import com.importer.fileimporter.facade.PricingFacade
 import org.springframework.web.server.ResponseStatusException
 import spock.lang.Specification
 import spock.lang.Subject
@@ -19,11 +20,11 @@ class CoinInformationFacadeSpec extends Specification {
 
     def pricingFacade = Mock(PricingFacade)
     def holdingService = Mock(HoldingService)
-    def calculateAmountSpent = Mock(CalculateAmountSpent)
+    def transactionProcessor = Mock(TransactionProcessor)
     def transactionService = Mock(TransactionService)
     def portfolioService = Mock(PortfolioService)
 
-    def coinInformationService = new CoinInformationService(pricingFacade, holdingService, calculateAmountSpent, transactionService)
+    def coinInformationService = new CoinInformationService(pricingFacade, holdingService, transactionProcessor)
 
     @Subject
     def coinInformationFacade = new CoinInformationFacade(transactionService, portfolioService, coinInformationService)
@@ -42,10 +43,9 @@ class CoinInformationFacadeSpec extends Specification {
             amount == BigDecimal.ZERO
             totalAmountBought == BigDecimal.ZERO
             totalAmountSold == BigDecimal.ZERO
-            realizedProfit == BigDecimal.ZERO
+            totalRealizedProfitUsdt == BigDecimal.ZERO
             unrealizedProfit == BigDecimal.ZERO
             currentPositionInUsdt == BigDecimal.ZERO
-            avgEntryPrice.isEmpty()
         }
     }
 
@@ -57,11 +57,13 @@ class CoinInformationFacadeSpec extends Specification {
         def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
         transactionService.getAllBySymbol(symbol) >> transactions
-        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        holdingService.getHolding(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 2
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
-            Transaction t, CoinInformationResponse response, Portfolio portfolio1
-            -> t.paidAmount }
+        holding.amount = 80
+        holding.totalAmountBought = 200
+        holding.totalAmountSold = 120
+        holding.stableTotalCost = 100
+        holding.totalRealizedProfitUsdt = 50
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
@@ -74,14 +76,6 @@ class CoinInformationFacadeSpec extends Specification {
             totalAmountSold == 120
             currentPositionInUsdt == 160
         }
-
-        1 * holdingService.save(_ as Holding) >> { Holding h ->
-            assert h.amount == 80
-            assert h.totalAmountBought == 200
-            assert h.totalAmountSold == 120
-            assert h.currentPositionInUsdt == 160
-            h
-        }
     }
 
     def "should calculate realized and unrealized profit correctly"() {
@@ -92,11 +86,13 @@ class CoinInformationFacadeSpec extends Specification {
         def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
         transactionService.getAllBySymbol(symbol) >> transactions
-        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        holdingService.getHolding(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 2
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
-            Transaction t, CoinInformationResponse response, Portfolio portfolio1
-                -> t.paidAmount }
+        holding.amount = 80
+        holding.totalAmountBought = 200
+        holding.totalAmountSold = 120
+        holding.stableTotalCost = 100
+        holding.totalRealizedProfitUsdt = -230.5
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
@@ -107,9 +103,8 @@ class CoinInformationFacadeSpec extends Specification {
             totalAmountSold == 120
             currentPrice == 2
             currentPositionInUsdt == (currentPrice * amount)
-            realizedProfit == -230.5
-            unrealizedProfit == 160
-            unrealizedTotalProfitMinusTotalCost == -40
+            totalRealizedProfitUsdt == -230.5
+            unrealizedProfit == 60
         }
     }
 
@@ -121,9 +116,12 @@ class CoinInformationFacadeSpec extends Specification {
         def holding = new Holding(symbol: symbol, portfolio: portfolio)
 
         transactionService.getAllBySymbol(symbol) >> transactions
-        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        holdingService.getHolding(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 500
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> 500
+        holding.amount = 1
+        holding.stableTotalCost = 500
+        holding.totalRealizedProfitUsdt = 0
+        holding.totalAmountBought = 1
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
@@ -131,8 +129,8 @@ class CoinInformationFacadeSpec extends Specification {
         then:
         with(response) {
             amount == 1
-            realizedProfit == BigDecimal.ZERO
-            unrealizedProfit == 500
+            totalRealizedProfitUsdt == BigDecimal.ZERO
+            unrealizedProfit == 0
             currentPositionInUsdt == 500
         }
     }
@@ -149,11 +147,11 @@ class CoinInformationFacadeSpec extends Specification {
         ]
 
         transactionService.getAllBySymbol(symbol) >> transactions
-        holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol) >> holding
+        holdingService.getHolding(portfolio, symbol) >> holding
         pricingFacade.getCurrentMarketPrice(symbol) >> 1000
-        calculateAmountSpent.getAmountSpentInUsdt(_, _, _) >> {
-            Transaction t, CoinInformationResponse response, Portfolio p -> t.paidAmount
-        }
+        holding.amount = 0
+        holding.stableTotalCost = 0
+        holding.totalRealizedProfitUsdt = -300
 
         when:
         def response = coinInformationFacade.getTransactionsInformationBySymbol(symbol)
@@ -161,7 +159,7 @@ class CoinInformationFacadeSpec extends Specification {
         then:
         with(response) {
             amount == BigDecimal.ZERO
-            realizedProfit == -200
+            totalRealizedProfitUsdt == -300
             unrealizedProfit == BigDecimal.ZERO
             currentPositionInUsdt == BigDecimal.ZERO
         }
