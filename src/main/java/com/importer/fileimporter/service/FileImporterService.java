@@ -49,7 +49,7 @@ public class FileImporterService {
     }
 
     public List<Map<?, ?>> getRows(File input) throws IOException {
-        CsvSchema csv = CsvSchema.emptySchema().withHeader();
+        CsvSchema csv = CsvSchema.emptySchema().withHeader().withColumnSeparator(',').withQuoteChar('"');
         CsvMapper csvMapper = new CsvMapper();
         MappingIterator<Map<?, ?>> mappingIterator = csvMapper.reader().forType(Map.class).with(csv)
                 .readValues(input);

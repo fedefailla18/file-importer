@@ -2,8 +2,11 @@ package com.importer.fileimporter.service;
 
 import com.google.common.base.Strings;
 import com.importer.fileimporter.converter.TransactionConverter;
+import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.dto.TransactionDto;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
+import com.importer.fileimporter.entity.Holding;
+import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.facade.PricingFacade;
 import com.importer.fileimporter.utils.OperationUtils;
@@ -19,13 +22,11 @@ import javax.transaction.NotSupportedException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static com.importer.fileimporter.utils.OperationUtils.BTC;
@@ -38,130 +39,76 @@ public class TransactionFacade {
 
     private final TransactionService transactionService;
     private final PricingFacade pricingFacade;
+    private final TransactionProcessor transactionProcessor;
+    private final HoldingService holdingService;
+    private final PortfolioService portfolioService;
 
     public List<TransactionHoldingDto> buildPortfolio(List<String> symbols) {
-        List<TransactionHoldingDto> holdingDtos = new ArrayList<>();
-
-        for (String symbol : symbols) {
-            List<Transaction> transactions = transactionService.getAllBySymbol(symbol.toUpperCase(), Pageable.unpaged())
-                    .getContent().stream()
-                    .sorted(Comparator.comparing(Transaction::getDateUtc))
-                    .collect(Collectors.toList());
-            AtomicReference<BigDecimal> totalAmount = getTotalAmount(transactions);
-
-            TransactionHoldingDto holdingDto = TransactionHoldingDto.emptyTransactionHoldingDto(symbol, totalAmount.get());
-
-            BigDecimal totalBuyAmountInUsdt = BigDecimal.ZERO;
-            BigDecimal totalBuyAmountInBtc = BigDecimal.ZERO;
-            BigDecimal totalSellAmountInUsdt = BigDecimal.ZERO;
-            BigDecimal totalSellAmountInBtc = BigDecimal.ZERO;
-
-            for (Transaction tr : transactions) {
-                BigDecimal executed = tr.getExecuted();
-                BigDecimal payedAmount = tr.getPaidAmount();
-                BigDecimal payedAmountInUsdt = BigDecimal.ZERO;
-                BigDecimal priceInUsdt = BigDecimal.ZERO;
-                BigDecimal payedAmountInBtc = BigDecimal.ZERO;
-                BigDecimal priceInBtc = BigDecimal.ZERO;
-                String payedWith = tr.getPaidWith();
-                BigDecimal price = tr.getPrice();
-                LocalDateTime dateUtc = tr.getDateUtc();
-
-                if (BTC.equals(payedWith)) {
-                    priceInUsdt = pricingFacade.getPriceInUsdt(symbol, dateUtc);
-                    payedAmountInUsdt = priceInUsdt.multiply(executed).setScale(8, RoundingMode.HALF_UP);
-                    payedAmountInBtc = payedAmount;
-                    priceInBtc = price;
-                } else if (USDT.equals(payedWith)) {
-                    priceInBtc = pricingFacade.getPriceInBTC(symbol, dateUtc);
-                    payedAmountInBtc = priceInBtc.multiply(executed).setScale(8, RoundingMode.HALF_UP);
-                    payedAmountInUsdt = payedAmount;
-                    priceInUsdt = price;
-                }
-
-                boolean isBuy = OperationUtils.isBuy(tr.getSide());
-                // Avoid division by zero
-                BigDecimal proportion = totalAmount.get().compareTo(BigDecimal.ZERO) == 0 ? 
-                    BigDecimal.ZERO : 
-                    executed.divide(totalAmount.get(), 13, RoundingMode.HALF_UP);
-
-                if (isBuy) {
-                    totalBuyAmountInUsdt = totalBuyAmountInUsdt.add(payedAmountInUsdt);
-                    totalBuyAmountInBtc = totalBuyAmountInBtc.add(payedAmountInBtc);
-                    holdingDto.setBuyPrice(holdingDto.getBuyPrice().add(proportion.multiply(priceInUsdt)));
-                    holdingDto.setBuyPriceInBtc(holdingDto.getBuyPriceInBtc().add(proportion.multiply(priceInBtc)));
-                    holdingDto.setPayedInUsdt(holdingDto.getPayedInUsdt().add(payedAmountInUsdt));
-                    holdingDto.setPayedInBtc(holdingDto.getPayedInBtc().add(payedAmountInBtc));
-                } else {
-                    totalSellAmountInUsdt = totalSellAmountInUsdt.add(payedAmountInUsdt);
-                    totalSellAmountInBtc = totalSellAmountInBtc.add(payedAmountInBtc);
-                    holdingDto.setSellPrice(holdingDto.getSellPrice().add(proportion.multiply(priceInUsdt)));
-                    holdingDto.setSellPriceInBtc(holdingDto.getSellPriceInBtc().add(proportion.multiply(priceInBtc)));
-                    holdingDto.setPayedInUsdt(holdingDto.getPayedInUsdt().subtract(payedAmountInUsdt));
-                    holdingDto.setPayedInBtc(holdingDto.getPayedInBtc().subtract(payedAmountInBtc));
-                }
-            }
-
-            // Assuming the use of a map to retrieve current prices
-            Map<String, Double> price = pricingFacade.getPrices(symbol);
-            BigDecimal priceInBtc = BigDecimal.valueOf(price.get(BTC));
-            BigDecimal priceInUsdt = BigDecimal.valueOf(price.get(USDT));
-
-            holdingDto.setPriceInBtc(priceInBtc);
-            holdingDto.setAmountInBtc(totalAmount.get().multiply(priceInBtc).setScale(8, RoundingMode.HALF_UP));
-            holdingDto.setPriceInUsdt(priceInUsdt);
-            holdingDto.setAmountInUsdt(totalAmount.get().multiply(priceInUsdt).setScale(8, RoundingMode.HALF_UP));
-
-            holdingDtos.add(holdingDto);
-        }
-        return holdingDtos;
+        return getAmount(symbols);
     }
 
     @SneakyThrows
     public List<TransactionHoldingDto> getAmount(List<String> symbols) {
         List<TransactionHoldingDto> holdingDtos = new ArrayList<>();
         if (CollectionUtils.isEmpty(symbols)) {
-            // need to fetch all transactions and group them
-            transactionService.getAll();
-            throw new NotSupportedException();
-        }
-        for (String symbol : symbols) {
-            List<Transaction> transactions = transactionService.getAllBySymbol(symbol, Pageable.unpaged())
-                    .getContent();
-            AtomicReference<BigDecimal> totalAmount = getTotalAmount(transactions);
-
-            TransactionHoldingDto holdingDto = TransactionHoldingDto.builder()
-                    .symbol(symbol)
-                    .amount(totalAmount.get())
-                    .buyPrice(BigDecimal.ZERO)
-                    .buyPriceInBtc(BigDecimal.ZERO)
-                    .sellPrice(BigDecimal.ZERO)
-                    .sellPriceInBtc(BigDecimal.ZERO)
-                    .payedInUsdt(BigDecimal.ZERO)
-                    .payedInBtc(BigDecimal.ZERO)
-                    .build();
-
-            Map<String, Double> price = pricingFacade.getPrices(symbol);
-            holdingDto.setPriceInBtc(BigDecimal.valueOf(price.get(BTC)));
-            holdingDto.setAmountInBtc(totalAmount.get().multiply(BigDecimal.valueOf(price.get(BTC))));
-
-            holdingDto.setPriceInUsdt(BigDecimal.valueOf(price.get(USDT)));
-            holdingDto.setAmountInUsdt(totalAmount.get().multiply(BigDecimal.valueOf(price.get(USDT))));
-            holdingDtos.add(holdingDto);
+            // Fetch all portfolios and their holdings
+            List<Portfolio> portfolios = portfolioService.findAll();
+            for (Portfolio portfolio : portfolios) {
+                List<Holding> holdings = holdingService.getByPortfolio(portfolio);
+                holdingDtos.addAll(holdings.stream()
+                        .map(this::mapToTransactionHoldingDto)
+                        .collect(Collectors.toList()));
+            }
+        } else {
+            // For now, if symbols are provided, we search in all portfolios
+            for (String symbol : symbols) {
+                List<HoldingDto> holdingsBySymbol = holdingService.getBySymbol(symbol.toUpperCase());
+                for (HoldingDto holdingDto : holdingsBySymbol) {
+                    holdingDtos.add(mapToTransactionHoldingDto(holdingDto));
+                }
+            }
         }
         return holdingDtos;
     }
 
-    AtomicReference<BigDecimal> getTotalAmount(List<Transaction> transactions) {
-        AtomicReference<BigDecimal> totalAmount = new AtomicReference<>(BigDecimal.ZERO);
-        transactions
-                .forEach(tr -> {
-                    // 1 calculate total amount
-                    String side = tr.getSide();
-                    BigDecimal executed = tr.getExecuted();
-                    totalAmount.set(OperationUtils.accumulateExecutedAmount(totalAmount.get(), executed, side));
-                });
-        return totalAmount;
+    private TransactionHoldingDto mapToTransactionHoldingDto(Holding holding) {
+        BigDecimal amount = holding.getAmount() != null ? holding.getAmount() : BigDecimal.ZERO;
+        Map<String, Double> prices = pricingFacade.getPrices(holding.getSymbol());
+        BigDecimal priceInBtc = BigDecimal.valueOf(prices.getOrDefault(BTC, 0.0));
+        BigDecimal priceInUsdt = BigDecimal.valueOf(prices.getOrDefault(USDT, 0.0));
+
+        return TransactionHoldingDto.builder()
+                .symbol(holding.getSymbol())
+                .amount(amount)
+                .priceInBtc(priceInBtc)
+                .amountInBtc(amount.multiply(priceInBtc).setScale(8, RoundingMode.HALF_UP))
+                .priceInUsdt(priceInUsdt)
+                .amountInUsdt(amount.multiply(priceInUsdt).setScale(8, RoundingMode.HALF_UP))
+                .stableTotalCost(holding.getStableTotalCost())
+                .totalRealizedProfitUsdt(holding.getTotalRealizedProfitUsdt())
+                .currentPositionInUsdt(amount.multiply(priceInUsdt).setScale(2, RoundingMode.HALF_UP))
+                .percentage(holding.getPercent())
+                .build();
+    }
+
+    private TransactionHoldingDto mapToTransactionHoldingDto(HoldingDto holdingDto) {
+        BigDecimal amount = holdingDto.getAmount() != null ? holdingDto.getAmount() : BigDecimal.ZERO;
+        Map<String, Double> prices = pricingFacade.getPrices(holdingDto.getSymbol());
+        BigDecimal priceInBtc = BigDecimal.valueOf(prices.getOrDefault(BTC, 0.0));
+        BigDecimal priceInUsdt = BigDecimal.valueOf(prices.getOrDefault(USDT, 0.0));
+
+        return TransactionHoldingDto.builder()
+                .symbol(holdingDto.getSymbol())
+                .amount(amount)
+                .priceInBtc(priceInBtc)
+                .amountInBtc(amount.multiply(priceInBtc).setScale(8, RoundingMode.HALF_UP))
+                .priceInUsdt(priceInUsdt)
+                .amountInUsdt(amount.multiply(priceInUsdt).setScale(8, RoundingMode.HALF_UP))
+                .stableTotalCost(holdingDto.getStableTotalCost())
+                .totalRealizedProfitUsdt(holdingDto.getTotalRealizedProfitUsdt())
+                .currentPositionInUsdt(amount.multiply(priceInUsdt).setScale(2, RoundingMode.HALF_UP))
+                .percentage(holdingDto.getPercentage())
+                .build();
     }
 
     public Transaction save(TransactionDto transactionDto) {
@@ -175,7 +122,7 @@ public class TransactionFacade {
             transaction.setPaidWith(USDT);
             transaction.setPaidAmount(transaction.getExecuted().multiply(priceInUsdt));
         }
-        return transactionService.save(transaction);
+        return transactionProcessor.process(transaction);
     }
 
     public void deleteTransactions() {

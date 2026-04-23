@@ -105,4 +105,8 @@ public class TransactionService {
     public List<Transaction> findByPortfolio(Portfolio portfolio) {
         return transactionRepository.findAllByPortfolio(portfolio);
     }
+
+    public List<Transaction> findByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
+        return transactionRepository.findAllByPortfolioAndSymbol(portfolio, symbol);
+    }
 }

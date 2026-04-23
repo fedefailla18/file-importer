@@ -1,9 +1,10 @@
 package com.importer.fileimporter.facade;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.importer.fileimporter.entity.PriceHistory;
 import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
 import com.importer.fileimporter.service.PriceHistoryService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -14,17 +15,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static com.importer.fileimporter.utils.OperationUtils.BTC;
 import static com.importer.fileimporter.utils.OperationUtils.USDT;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PricingFacade {
 
     private final PriceHistoryService priceHistoryService;
     private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
+
+    private final Cache<String, Map<String, Double>> priceCache = Caffeine.newBuilder()
+            .expireAfterWrite(1, TimeUnit.MINUTES)
+            .maximumSize(500)
+            .build();
+
+    private final Cache<String, BigDecimal> singlePriceCache = Caffeine.newBuilder()
+            .expireAfterWrite(1, TimeUnit.MINUTES)
+            .maximumSize(1000)
+            .build();
+
+    public PricingFacade(PriceHistoryService priceHistoryService, GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper) {
+        this.priceHistoryService = priceHistoryService;
+        this.getSymbolHistoricPriceHelper = getSymbolHistoricPriceHelper;
+    }
 
     public BigDecimal getPriceInUsdt(String symbol, LocalDateTime dateTime) {
         return getPrice(symbol, USDT, dateTime);
@@ -58,23 +74,32 @@ public class PricingFacade {
     }
 
     public Map<String, Double> getPrices(String symbol) {
-        try {
-            Map<String, Number> price = getSymbolHistoricPriceHelper.getPrice(symbol);
-            Map<String, Double> priceAsDouble = new HashMap<>();
+        return priceCache.get(symbol, k -> {
+            try {
+                Map<String, Number> price = getSymbolHistoricPriceHelper.getPrice(k);
+                Map<String, Double> priceAsDouble = new HashMap<>();
 
-            for (Map.Entry<String, Number> entry : price.entrySet()) {
-                priceAsDouble.put(entry.getKey(), entry.getValue().doubleValue());
+                for (Map.Entry<String, Number> entry : price.entrySet()) {
+                    priceAsDouble.put(entry.getKey(), entry.getValue().doubleValue());
+                }
+
+                return priceAsDouble;
+            } catch (Exception e) {
+                log.error("Error in pricingFacade when getting prices. Symbol: " + k, e);
+                return new HashMap<>();
             }
-
-            return priceAsDouble;
-        } catch (java.lang.ClassCastException e) {
-            log.error("Error in pricingFacade when getting prices. Symbol: " + symbol, e);
-            return new HashMap<>();
-        }
+        });
     }
 
     public BigDecimal getCurrentMarketPrice(String symbol) {
-        return getSymbolHistoricPriceHelper.getCurrentMarketPriceInUSDT(symbol);
+        return singlePriceCache.get(symbol, k -> {
+            try {
+                return getSymbolHistoricPriceHelper.getCurrentMarketPriceInUSDT(k);
+            } catch (Exception e) {
+                log.error("Error fetching current market price for {}: {}", k, e.getMessage());
+                return BigDecimal.ZERO;
+            }
+        });
     }
 
     public Map<String, Double> getPrices(List<String> symbol) {

@@ -57,14 +57,8 @@ public class PriceHistoryService {
     }
 
     private List<CryptoCompareResponse.ChartData> validateData(String symbolPair, String usdt, List<CryptoCompareResponse.ChartData> dataList) {
-        String collect = repository.findAll().stream()
-                .filter(e -> e.getSymbol().equals(symbolPair) &&
-                        e.getSymbolpair().equals(usdt))
-                .map(PriceHistory::getTime)
-                .map(LocalDateTime::toString)
-                .collect(Collectors.joining());
         return dataList.stream()
-                .filter(e -> !collect.contains(e.getTime().toString()))
+                .filter(e -> !repository.existsBySymbolAndSymbolpairAndTime(symbolPair, usdt, e.getTime()))
                 .collect(Collectors.toList());
     }
 

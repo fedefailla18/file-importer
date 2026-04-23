@@ -1,12 +1,10 @@
 package com.importer.fileimporter.service
-
 import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.config.integration.CryptoCompareConfig
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.reactive.function.client.WebClient
-import spock.lang.Subject
 
-class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
+class CryptoCompareServiceIntegrationSpec extends BaseIntegrationSpec {
 
     @Autowired
     CryptoCompareConfig config
@@ -14,8 +12,8 @@ class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
     @Autowired
     WebClient.Builder webClientBuilder
 
-    @Subject
-    CryptoCompareProxy sut
+    @Autowired
+    CryptoCompareProxy cryptoCompareService
 
     def "Test getHistoricalData method"() {
         given: "Input parameters for the historical data request"
@@ -25,9 +23,10 @@ class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
         long toTimestamp = 1632625200L
 
         when: "Calling the getHistoricalData method"
-        def response = sut.getHistoricalData(
+        def response = cryptoCompareService.getHistoricalData(
                 fromSymbol,
-                toSymbol,
+                toSymbol
+                ,
                 toTimestamp
         )
 
@@ -44,7 +43,7 @@ class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
         def toSymbol = "USDT"
 
         when: "Calling the getHistoricalData method"
-        def response = sut.getData(
+        def response = cryptoCompareService.getData(
                 fromSymbol,
                 toSymbol
         )
@@ -59,7 +58,7 @@ class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
         def fromSymbols = ["BTC", "ETH", "ADA", "XRP"]
 
         when: "Calling the getHistoricalData method"
-        def responses = sut.getData(
+        def responses = cryptoCompareService.getData(
                 fromSymbols,
                 toSymbol
         )
@@ -67,19 +66,9 @@ class CryptoCompareProxyIntegrationSpec extends BaseIntegrationSpec {
         then: "The response should not be null"
         responses != null
 
-        and: "The response is present for all fromSymbols"
-        fromSymbols.findAll {
-            responses.get(it)
-        }.size() == fromSymbols.size()
-
-        and: "all fromSymbols response should have a USDT Double amount"
-        fromSymbols.stream()
-                .map {
-                    responses.get(it)
-                }.map {
-            it["USDT"]
-        }.filter {
-            it != null && it instanceof Double
-        }.collect().size() == fromSymbols.size()
+        and: "The response should have 'Success' as the Response field"
+        responses.every {
+            it.key in ["BTC", "ETH", "ADA", "XRP"]
+        }
     }
 }

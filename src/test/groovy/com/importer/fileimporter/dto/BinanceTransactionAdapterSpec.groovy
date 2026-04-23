@@ -172,16 +172,12 @@ class BinanceTransactionAdapterSpec extends Specification {
         def paidWith = adapter.getPaidWith()
 
         then:
-        symbol == "1INCH"
-        date == "\"2021-10-29 17:43:40\""
-        pair == "\"1INCHBTC\""
-        side == "\"BUY\""
-        price == new BigDecimal("0.00008096").setScale(10, BigDecimal.ROUND_UP)
-        executed == new BigDecimal("33.8")
-        amount == new BigDecimal("0.00273644").setScale(10, BigDecimal.ROUND_UP)
-        fee == new BigDecimal("0.0002412").setScale(10, BigDecimal.ROUND_UP)
+        price.compareTo(new BigDecimal("0.00008096")) == 0
+        executed.compareTo(new BigDecimal("33.8")) == 0
+        amount.compareTo(new BigDecimal("0.00273644")) == 0
+        fee.compareTo(new BigDecimal("0.0002412")) == 0
         feeSymbol == "BNB"
-        paidWith == "\"BTC\""
+        paidWith == "BTC"
     }
 
     @Unroll

@@ -7,7 +7,6 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
 import com.importer.fileimporter.repository.HoldingRepository;
-import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -52,41 +51,6 @@ public class HoldingService {
                                 .totalAmountSold(BigDecimal.ZERO)
                                 .totalAmountBought(BigDecimal.ZERO)
                                 .build());
-    }
-
-    /**
-     * Updates the holding for the currency used to pay for a transaction.
-     * For buy transactions, it increases the amount of the paid with currency.
-     * For sell transactions, it decreases the amount of the paid with currency.
-     *
-     * @param isBuy Whether the transaction is a buy (true) or sell (false)
-     * @param paidWithSymbol The symbol of the currency used to pay
-     * @param paidAmount The amount paid in the paidWithSymbol currency
-     * @param portfolio The portfolio associated with the transaction
-     * @param executed The amount of the main currency executed in the transaction
-     * @param paidInStable The amount paid in stable currency (USDT)
-     */
-    public void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio, BigDecimal executed, BigDecimal paidInStable) {
-        Holding holding = getOrCreateByPortfolioAndSymbol(portfolio, paidWithSymbol);
-        BigDecimal oldAmount = holding.getAmount();
-        BigDecimal totalAmountSold = holding.getTotalAmountSold();
-
-        // For the paidWith currency:
-        // - When buying a coin, we're increasing the paidWith currency
-        // - When selling a coin, we're decreasing the paidWith currency
-        BigDecimal updatedAmount = OperationUtils.accumulateExecutedAmount(oldAmount, paidAmount, isBuy);
-
-        // totalAmountSold should only be updated for sell transactions
-        BigDecimal safePaidAmount = paidAmount != null ? paidAmount : BigDecimal.ZERO;
-        BigDecimal updatedTotalAmountSold = isBuy ? 
-            totalAmountSold : 
-            (totalAmountSold != null ? totalAmountSold : BigDecimal.ZERO).add(safePaidAmount);
-
-        holding.setAmount(updatedAmount);
-        holding.setTotalAmountSold(updatedTotalAmountSold);
-
-        log.info("Updating {}. oldAmount = {}, updated amount = {}", paidWithSymbol, oldAmount, updatedAmount);
-        save(holding);
     }
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
@@ -137,7 +101,7 @@ public class HoldingService {
 
     public Holding getHolding(Portfolio portfolio, String symbol) {
         return holdingRepository.findByPortfolioAndSymbol(portfolio, symbol)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Holding not found"));
+                .orElseGet(() -> getOrCreateByPortfolioAndSymbol(portfolio, symbol));
     }
 
     public Holding save(Holding holding) {

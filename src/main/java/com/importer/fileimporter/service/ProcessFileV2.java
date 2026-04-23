@@ -4,92 +4,90 @@ import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
 import com.importer.fileimporter.dto.TransactionData;
 import com.importer.fileimporter.entity.Portfolio;
-import com.importer.fileimporter.utils.OperationUtils;
+import com.importer.fileimporter.entity.Transaction;
+import com.importer.fileimporter.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class ProcessFileV2 extends ProcessFile {
 
     private final PortfolioService portfolioService;
+    private final TransactionProcessor transactionProcessor;
+    private final CoinInformationService coinInformationService;
     private final TransactionService transactionService;
 
     public ProcessFileV2(PortfolioService portfolioService,
-                         TransactionService transactionService,
                          FileImporterService fileImporterService,
-                         TransactionAdapterFactory transactionAdapterFactory) {
+                         TransactionAdapterFactory transactionAdapterFactory,
+                         TransactionProcessor transactionProcessor,
+                         CoinInformationService coinInformationService,
+                         TransactionService transactionService) {
         super(fileImporterService, transactionAdapterFactory);
         this.portfolioService = portfolioService;
+        this.transactionProcessor = transactionProcessor;
+        this.coinInformationService = coinInformationService;
         this.transactionService = transactionService;
     }
 
-    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio) throws IOException {
+    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolioName) throws IOException {
         List<Map<?, ?>> rows = getRows(file);
-        Map<String, CoinInformationResponse> transactionDetailInformation = getTransactionDetailInformation(rows, symbols, portfolio);
+        Portfolio portfolio = portfolioService.findOrSave(portfolioName);
+        log.info("Processing {} rows for portfolio: {}", rows.size(), portfolio.getName());
+
+        Set<String> processedSymbols = new HashSet<>();
+
+        rows.forEach(row -> {
+            try {
+                TransactionData transactionData = getAdapter(row, portfolio.getName());
+                String symbol = transactionData.getSymbol();
+                if (symbol != null && !symbol.isEmpty()) {
+                    Transaction transaction = mapToTransaction(transactionData, portfolio);
+                    transactionProcessor.process(transaction);
+                    processedSymbols.add(symbol);
+                }
+            } catch (Exception e) {
+                log.error("[ERROR_LOG] Error processing row: {}", e.getMessage(), e);
+            }
+        });
+
+        List<CoinInformationResponse> coinInfos = processedSymbols.stream()
+                .map(symbol -> coinInformationService.getCoinInformationResponse(symbol, transactionService.findByPortfolioAndSymbol(portfolio, symbol)))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
 
         return FileInformationResponse.builder()
-                .portfolio(portfolio)
+                .portfolio(portfolioName)
                 .amount(rows.size())
-                .coinInformationResponse(transactionDetailInformation.values())
+                .coinInformationResponse(coinInfos)
                 .build();
     }
 
-    Map<String, CoinInformationResponse> getTransactionDetailInformation(List<Map<?, ?>> rows,
-                                                                                 List<String> symbols,
-                                                                                 String portfolioName) {
-        Map<String, CoinInformationResponse> transactionsDetailsMap = new HashMap<>();
-        Portfolio portfolio = portfolioService.findOrSave(portfolioName);
-        log.info("Portfolio created: " + portfolio.getName());
-        rows.forEach(processRow(symbols, transactionsDetailsMap, portfolio));
-        return transactionsDetailsMap;
+    private Transaction mapToTransaction(TransactionData data, Portfolio portfolio) {
+        return Transaction.builder()
+                .dateUtc(DateUtils.getLocalDateTime(data.getDate()))
+                .pair(data.getPair())
+                .executed(data.getExecuted())
+                .side(data.getSide())
+                .price(data.getPrice())
+                .symbol(data.getSymbol())
+                .paidWith(data.getPaidWith())
+                .paidAmount(data.getAmount())
+                .feeAmount(data.getFee())
+                .created(LocalDateTime.now())
+                .createdBy("ProcessFileV2")
+                .portfolio(portfolio)
+                .build();
     }
-
-    private Consumer<Map<?, ?>> processRow(List<String> symbols,
-                                           Map<String, CoinInformationResponse> transactionDetails,
-                                           Portfolio portfolio) {
-        return row -> {
-            TransactionData transactionData = getAdapter(row, portfolio.getName());
-            String symbol = transactionData.getSymbol();
-            log.info(this.getClass().getName() + " - Processing row for: " + symbol);
-            if (symbol.isEmpty()) {
-                return;
-            }
-            try {
-                processTransactionRow(transactionData, symbol, transactionDetails, portfolio);
-            } catch (Exception e) {
-                log.error("Error processing row: {}", e.getMessage(), e);
-            }
-        };
-    }
-
-    void processTransactionRow(TransactionData transactionData, String symbol,
-                                       Map<String, CoinInformationResponse> transactionDetails,
-                                       Portfolio portfolio) {
-        boolean isBuy = OperationUtils.isBuy(transactionData.getSide());
-
-        transactionDetails.computeIfAbsent(symbol, k -> createNewCoinInfo(symbol));
-        CoinInformationResponse coinInfo = transactionDetails.get(symbol);
-
-        updateCoinInfo(coinInfo, transactionData, isBuy);
-        saveTransaction(transactionData, portfolio);
-    }
-
-    private void saveTransaction(TransactionData transactionData, Portfolio portfolio) {
-        transactionService.saveTransaction(
-                transactionData.getCoinName(), transactionData.getPaidWith(), transactionData.getDate(), transactionData.getPair(),
-                transactionData.getSide(), transactionData.getPrice(), transactionData.getExecuted(),
-                transactionData.getAmount(), transactionData.getFee(),
-                ProcessFileV2.log.getName() + " - Process File",
-                portfolio
-        );
-    }
-
 }
