@@ -45,7 +45,7 @@ class ProcessFileV2Spec extends Specification {
         portfolioService.findOrSave(portfolioName) >> portfolio
         
         and: "the transaction adapter factory returns transaction data"
-        transactionAdapterFactory.createAdapter(rows[0], portfolioName) >> Mock(TransactionData) {
+        transactionAdapterFactory.createAdapter(rows[0], "BINANCE") >> Mock(TransactionData) {
             getSymbol() >> "FET"
             getSide() >> "BUY"
             getExecuted() >> BigDecimal.valueOf(100)
@@ -54,7 +54,7 @@ class ProcessFileV2Spec extends Specification {
             getPair() >> "FETUSDT"
             getPrice() >> BigDecimal.valueOf(1.5)
         }
-        transactionAdapterFactory.createAdapter(rows[1], portfolioName) >> Mock(TransactionData) {
+        transactionAdapterFactory.createAdapter(rows[1], "BINANCE") >> Mock(TransactionData) {
             getSymbol() >> "SOL"
             getSide() >> "BUY"
             getExecuted() >> BigDecimal.valueOf(50)
@@ -69,7 +69,7 @@ class ProcessFileV2Spec extends Specification {
         coinInformationService.getCoinInformationResponse("SOL", _) >> CoinInformationResponse.builder().coinName("SOL").build()
 
         when: "processFile is called"
-        def result = processFileV2.processFile(file, null, portfolioName)
+        def result = processFileV2.processFile(file, null, portfolioName, "BINANCE")
         
         then: "the result should contain processed information"
         result.portfolio == portfolioName
@@ -81,27 +81,27 @@ class ProcessFileV2Spec extends Specification {
     }
     
     def "getAdapter should use the transaction adapter factory to create an adapter"() {
-        given: "a row and a portfolio name"
+        given: "a row and a file type"
         def row = [Executed: "100FET", Price: "1.5", Amount: "150USDT", Fee: "0.1FET"]
-        def portfolioName = "test-portfolio"
+        def fileType = "MEXC"
         def mockAdapter = Mock(TransactionData)
         
         and: "the transaction adapter factory returns a mock adapter"
-        transactionAdapterFactory.createAdapter(row, portfolioName) >> mockAdapter
+        transactionAdapterFactory.createAdapter(row, fileType) >> mockAdapter
         
         when: "getAdapter is called"
-        def result = processFileV2.getAdapter(row, portfolioName)
+        def result = processFileV2.getAdapter(row, fileType)
         
         then: "the result should be the mock adapter"
         result == mockAdapter
     }
     
-    def "getAdapter should use 'Binance' as default portfolio name if null is provided"() {
-        given: "a row and a null portfolio name"
+    def "getAdapter should use 'Binance' as default file type if null is provided"() {
+        given: "a row and a null file type"
         def row = [Executed: "100FET", Price: "1.5", Amount: "150USDT", Fee: "0.1FET"]
         def mockAdapter = Mock(BinanceTransactionAdapter)
         
-        when: "getAdapter is called with null portfolio name"
+        when: "getAdapter is called with null file type"
         processFileV2.getAdapter(row, null)
         
         then: "the transaction adapter factory returns a mock adapter for 'Binance'"

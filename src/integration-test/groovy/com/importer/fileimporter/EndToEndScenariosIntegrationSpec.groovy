@@ -1,10 +1,12 @@
 package com.importer.fileimporter
 
 import com.importer.fileimporter.dto.TransactionDto
+import com.importer.fileimporter.dto.integration.CryptoCompareResponse
 import com.importer.fileimporter.facade.PortfolioDistributionFacade
 import com.importer.fileimporter.service.CryptoCompareProxy
 import com.importer.fileimporter.service.ProcessFileFactory
 import com.importer.fileimporter.service.TransactionFacade
+import com.importer.fileimporter.service.TransactionService
 import com.importer.fileimporter.utils.IntegrationTestHelper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
@@ -22,21 +24,6 @@ import static org.mockito.Mockito.when
 @Transactional
 @Rollback(false)
 class EndToEndScenariosIntegrationSpec extends BaseIntegrationSpec {
-
-    @Autowired
-    TransactionFacade transactionFacade
-
-    @Autowired
-    ProcessFileFactory processFileFactory
-
-    @Autowired
-    PortfolioDistributionFacade portfolioDistributionFacade
-
-    @MockBean
-    CryptoCompareProxy cryptoCompareProxy
-
-    @Autowired
-    com.importer.fileimporter.service.TransactionService transactionService
 
     def setup() {
         // Setup mock prices
@@ -74,11 +61,11 @@ class EndToEndScenariosIntegrationSpec extends BaseIntegrationSpec {
         when(cryptoCompareProxy.getData(anyList(), anyString())).thenReturn(allPrices)
     }
 
-    private com.importer.fileimporter.dto.integration.CryptoCompareResponse createMockCryptoCompareResponse(double price) {
-        def response = new com.importer.fileimporter.dto.integration.CryptoCompareResponse()
+    private static CryptoCompareResponse createMockCryptoCompareResponse(double price) {
+        def response = new CryptoCompareResponse()
         response.response = "Success"
-        def data = new com.importer.fileimporter.dto.integration.CryptoCompareResponse.Data()
-        def chartData = new com.importer.fileimporter.dto.integration.CryptoCompareResponse.ChartData()
+        def data = new CryptoCompareResponse.Data()
+        def chartData = new CryptoCompareResponse.ChartData()
         chartData.high = BigDecimal.valueOf(price)
         chartData.time = LocalDateTime.now() 
         data.chartDataList = [chartData]

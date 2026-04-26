@@ -1,11 +1,15 @@
 package com.importer.fileimporter
 
+import com.importer.fileimporter.facade.PortfolioDistributionFacade
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
 import com.importer.fileimporter.repository.TransactionRepository
+import com.importer.fileimporter.service.CryptoCompareProxy
 import com.importer.fileimporter.service.FileImporterService
 import com.importer.fileimporter.service.HoldingService
+import com.importer.fileimporter.service.ProcessFileFactory
+import com.importer.fileimporter.service.TransactionFacade
 import com.importer.fileimporter.service.TransactionService
 import org.junit.ClassRule
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEnti
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
@@ -56,6 +61,18 @@ abstract class BaseIntegrationSpec extends Specification {
 
     @Autowired
     HoldingService holdingService
+
+    @Autowired
+    TransactionFacade transactionFacade
+
+    @Autowired
+    ProcessFileFactory processFileFactory
+
+    @Autowired
+    PortfolioDistributionFacade portfolioDistributionFacade
+
+    @MockBean
+    CryptoCompareProxy cryptoCompareProxy
 
     @Shared
     User defaultUser

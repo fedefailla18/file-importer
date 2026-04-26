@@ -18,6 +18,13 @@ spring:
     drop-first: false
     contexts: integration-test
 
+crypto-compare:
+  api-key: ${CRYPTO_COMPARE_API_KEY:53bdd104b9bb83f976930c67a45bf29bf7f8d3f9808ab350aa742f45a505417d}
+
+jwt:
+  secret: 5ed583b57732d0308978b2c241ab25d01ec857347433396fb2da4286547fcae8
+  expiration: 86400000
+
 #logging:
 #  level:
 #    org:

@@ -159,4 +159,22 @@ task jacocoAllTestReport(type: JacocoReport) {
     }
 }
 
-check.dependsOn jacocoTestReport, jacocoIntegrationTestReport, jacocoAllTestReport
+task testAll {
+    dependsOn check
+    description = 'Runs all unit and integration tests and verifies coverage.'
+    group = 'verification'
+}
+
+jacocoTestCoverageVerification {
+	dependsOn jacocoAllTestReport
+	executionData fileTree(dir: "${project.buildDir}/jacoco", include: "*.exec")
+	violationRules {
+		rule {
+			limit {
+				minimum = 0.75
+			}
+		}
+	}
+}
+
+check.dependsOn jacocoTestReport, jacocoIntegrationTestReport, jacocoAllTestReport, jacocoTestCoverageVerification

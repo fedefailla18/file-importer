@@ -29,11 +29,7 @@ class HoldingServiceSpec extends Specification {
         def result = holdingService.saveSymbolHolding(symbol, portfolio, amount)
 
         then:
-        result.amount == amount
-        result.symbol == "BTC"
-
-        and:
-        1 * holdingRepository.findBySymbolAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.findByPortfolioAndSymbol(portfolio, "BTC") >> Optional.of(existingHolding)
         1 * holdingRepository.save(_) >> { Holding h ->
             assert h.amount == amount
             assert h.symbol == "BTC"
@@ -42,6 +38,8 @@ class HoldingServiceSpec extends Specification {
             assert h.modifiedBy == "Modifying holding"
             h
         }
+        result.amount == amount
+        result.symbol == "BTC"
     }
 
     def "test saveSymbolHolding - new holding"() {
@@ -54,11 +52,7 @@ class HoldingServiceSpec extends Specification {
         def result = holdingService.saveSymbolHolding(symbol, portfolio, amount)
 
         then:
-        result.amount == amount
-        result.symbol == "ETH"
-
-        and:
-        1 * holdingRepository.findBySymbolAndPortfolioName("ETH", "Test Portfolio") >> Optional.empty()
+        1 * holdingRepository.findByPortfolioAndSymbol(portfolio, "ETH") >> Optional.empty()
         1 * holdingRepository.save(_) >> { Holding h ->
             assert h.amount == amount
             assert h.symbol == "ETH"
@@ -69,6 +63,8 @@ class HoldingServiceSpec extends Specification {
             assert h.modifiedBy == "Adding holding"
             h
         }
+        result.amount == amount
+        result.symbol == "ETH"
     }
 
     def "test getBySymbolAndPortfolioName"() {
@@ -81,9 +77,7 @@ class HoldingServiceSpec extends Specification {
         def result = holdingService.getByPortfolioAndSymbol(portfolio, symbol)
 
         then:
-        1 * holdingRepository.findBySymbolAndPortfolioName(symbol, "Test Portfolio") >> holding
-
-        and:
+        1 * holdingRepository.findByPortfolioAndSymbol(portfolio, symbol) >> holding
         result == holding
     }
 
@@ -120,10 +114,9 @@ class HoldingServiceSpec extends Specification {
         def result = holdingService.updatePercentageHolding(holdingDto, portfolio)
 
         then:
-        1 * holdingRepository.findBySymbolAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.findByPortfolioAndSymbol(portfolio, "BTC") >> Optional.of(existingHolding)
         1 * holdingRepository.save(_) >> { Holding h -> h }
 
-        and:
         result.symbol == "BTC"
         result.percentage == new BigDecimal("50")
         result.priceInUsdt == new BigDecimal("30000")
@@ -155,7 +148,7 @@ class HoldingServiceSpec extends Specification {
 
         then:
         1 * holdingRepository.findByPortfolioAndSymbol(portfolio, symbol) >> Optional.empty()
-        1 * holdingRepository.findBySymbolAndPortfolioName(symbol, "Test Portfolio") >> Optional.empty()
+        1 * holdingRepository.save(_) >> { Holding h -> h }
         result != null
         result.symbol == symbol
         result.portfolio == portfolio
