@@ -17,9 +17,8 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, UUID> {
     @Override
     List<Portfolio> findAll();
 
-    @Query(value = "select p from Portfolio p " +
-            "where lower(p.name) like lower(concat('%', :name,'%'))")
-    Optional<Portfolio> findByName(@Param("name") String name);
+    @Query(value = "select p from Portfolio p where p.name = :name")
+    List<Portfolio> findAllByName(@Param("name") String name);
 
     List<Portfolio> findByUser(User user);
     Optional<Portfolio> findByNameAndUser(String name, User user);

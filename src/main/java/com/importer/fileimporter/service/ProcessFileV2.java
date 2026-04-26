@@ -41,26 +41,29 @@ public class ProcessFileV2 extends ProcessFile {
         this.transactionService = transactionService;
     }
 
-    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolioName) throws IOException {
+    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolioName, String fileType) throws IOException {
         List<Map<?, ?>> rows = getRows(file);
         Portfolio portfolio = portfolioService.findOrSave(portfolioName);
         log.info("Processing {} rows for portfolio: {}", rows.size(), portfolio.getName());
 
         Set<String> processedSymbols = new HashSet<>();
 
-        rows.forEach(row -> {
-            try {
-                TransactionData transactionData = getAdapter(row, portfolio.getName());
-                String symbol = transactionData.getSymbol();
-                if (symbol != null && !symbol.isEmpty()) {
-                    Transaction transaction = mapToTransaction(transactionData, portfolio);
-                    transactionProcessor.process(transaction);
-                    processedSymbols.add(symbol);
+        if (rows != null) {
+            rows.forEach(row -> {
+                try {
+                    TransactionData transactionData = getAdapter(row, fileType);
+                    String symbol = transactionData.getSymbol();
+                    if (symbol != null && !symbol.isEmpty()) {
+                        Transaction transaction = mapToTransaction(transactionData, portfolio);
+                        transaction.setFeeSymbol(transactionData.getFeeSymbol());
+                        transactionProcessor.process(transaction);
+                        processedSymbols.add(symbol);
+                    }
+                } catch (Exception e) {
+                    log.error("[ERROR_LOG] Error processing row: {}", e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                log.error("[ERROR_LOG] Error processing row: {}", e.getMessage(), e);
-            }
-        });
+            });
+        }
 
         List<CoinInformationResponse> coinInfos = processedSymbols.stream()
                 .map(symbol -> coinInformationService.getCoinInformationResponse(symbol, transactionService.findByPortfolioAndSymbol(portfolio, symbol)))

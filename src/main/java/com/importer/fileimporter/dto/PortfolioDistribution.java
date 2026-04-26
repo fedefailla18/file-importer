@@ -13,6 +13,8 @@ import java.util.Objects;
 public class PortfolioDistribution {
     private String portfolioName;
     private BigDecimal totalUsdt;
+    private BigDecimal totalBuySpentUsdt;
+    private BigDecimal totalSellEarnedUsdt;
 
     public int getTotalHoldings() {
         return holdings.size();

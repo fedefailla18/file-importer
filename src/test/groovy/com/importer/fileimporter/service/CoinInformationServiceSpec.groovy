@@ -15,19 +15,23 @@ class CoinInformationServiceSpec extends Specification {
     def coinInformationService = new CoinInformationService(pricingFacade, holdingService, transactionProcessor)
 
 
-    def "should return null if all transactions are already processed"() {
+    def "should return response even if all transactions are already processed"() {
         given:
         def symbol = "RLC"
         def portfolio = new Portfolio(name: "Test")
         def transactions = [
                 new Transaction(symbol: symbol, side: "BUY", executed: 1, paidWith: "USDT", paidAmount: 100, processed: true, portfolio: portfolio)
         ]
+        holdingService.getHolding(portfolio, symbol) >> new Holding(symbol: symbol, portfolio: portfolio, amount: 1, stableTotalCost: 100)
+        pricingFacade.getCurrentMarketPrice(symbol) >> 150
 
         when:
         def result = coinInformationService.getCoinInformationResponse(symbol, transactions)
 
         then:
-        result == null
+        result != null
+        result.coinName == symbol
+        result.amount == 1
     }
 
     def "should calculate cost in USDT when paidWith is non-stable"() {

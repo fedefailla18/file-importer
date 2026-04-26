@@ -24,9 +24,9 @@ public abstract class ProcessFile {
         return fileImporterService.getRows(file);
     }
 
-    protected TransactionData getAdapter(Map<?, ?> row, String portfolioName) {
-        final String name = portfolioName == null ? "Binance" : portfolioName;
-        return transactionAdapterFactory.createAdapter(row, name);
+    protected TransactionData getAdapter(Map<?, ?> row, String fileType) {
+        final String type = fileType == null ? "Binance" : fileType;
+        return transactionAdapterFactory.createAdapter(row, type);
     }
 
 }

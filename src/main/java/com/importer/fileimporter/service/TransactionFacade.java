@@ -113,6 +113,11 @@ public class TransactionFacade {
 
     public Transaction save(TransactionDto transactionDto) {
         Transaction transaction = TransactionConverter.Mapper.createTo(transactionDto);
+        
+        if (transaction.getPortfolio() == null && transactionDto.getPortfolioName() != null) {
+            transaction.setPortfolio(portfolioService.findOrSave(transactionDto.getPortfolioName()));
+        }
+
         if (transaction.getPrice() == null ||
                 Strings.isNullOrEmpty(transaction.getPaidWith()) ||
                 Strings.isNullOrEmpty(transaction.getPair())) {

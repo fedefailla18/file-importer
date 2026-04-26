@@ -2,6 +2,7 @@ package com.importer.fileimporter.controller;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
+import com.importer.fileimporter.dto.PortfolioProcessingResult;
 import com.importer.fileimporter.dto.TransactionDto;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
@@ -54,6 +55,7 @@ public class TransactionController {
     private final TransactionService transactionService;
     private final TransactionFacade transactionFacade;
     private final CoinInformationFacade coinInformationFacade;
+    private final com.importer.fileimporter.service.BinanceSyncService binanceSyncService;
 
     @Operation(summary = "Filter transactions", description = "Filter transactions by various criteria with pagination")
     @ApiResponses(value = {
@@ -90,7 +92,7 @@ public class TransactionController {
 
     @Tag(name = "/information/all/{portfolio}", description = "Calculates portfolio stats from transactions")
     @PostMapping("/information/all/{portfolio}")
-    public List<CoinInformationResponse> getInformation(@PathVariable String portfolio) {
+    public PortfolioProcessingResult getInformation(@PathVariable String portfolio) {
         return coinInformationFacade.getPortfolioTransactionsInformation(portfolio);
     }
 
@@ -124,11 +126,12 @@ public class TransactionController {
     public FileInformationResponse uploadTransactionsWithPortfolio(
             @Parameter(description = "Transaction file to upload", required = true) @RequestBody MultipartFile file,
             @Parameter(description = "List of symbols to filter by") @RequestParam(required = false) List<String> symbols,
-            @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolio) throws IOException {
+            @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolio,
+            @Parameter(description = "File type (BINANCE, MEXC)", required = false) @RequestParam(required = false, defaultValue = "Binance") String fileType) throws IOException {
         if (file.isEmpty()) {
             return null;
         }
-        return processFileFactory.processFile(file, symbols, portfolio);
+        return processFileFactory.processFile(file, symbols, portfolio, fileType);
     }
 
     @GetMapping(value = "/portfolio")
@@ -166,6 +169,15 @@ public class TransactionController {
     public Transaction addTransaction(
             @Parameter(description = "Transaction data", required = true) @RequestBody TransactionDto request) {
         return transactionFacade.save(request);
+    }
+
+    @Operation(summary = "Sync transactions from Binance", description = "Automatically fetch and sync transactions from Binance API")
+    @PostMapping("/sync/binance")
+    public ResponseEntity<?> syncBinance(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio) {
+        binanceSyncService.sync(user, portfolio);
+        return ResponseEntity.ok("Sync initiated successfully");
     }
 
 }

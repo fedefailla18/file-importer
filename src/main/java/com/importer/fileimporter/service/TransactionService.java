@@ -98,6 +98,10 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    public void flush() {
+        transactionRepository.flush();
+    }
+
     public void deleteTransactions() {
         transactionRepository.deleteAll();
     }

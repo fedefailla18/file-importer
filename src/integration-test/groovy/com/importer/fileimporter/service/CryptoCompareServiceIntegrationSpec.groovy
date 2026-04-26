@@ -4,6 +4,7 @@ import com.importer.fileimporter.config.integration.CryptoCompareConfig
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.reactive.function.client.WebClient
 
+@org.springframework.transaction.annotation.Transactional
 class CryptoCompareServiceIntegrationSpec extends BaseIntegrationSpec {
 
     @Autowired

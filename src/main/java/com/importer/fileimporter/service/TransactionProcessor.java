@@ -22,11 +22,13 @@ public class TransactionProcessor {
     private final TransactionService transactionService;
     private final HoldingService holdingService;
     private final PricingFacade pricingFacade;
+    private final PortfolioService portfolioService;
 
     @Transactional
     public Transaction process(Transaction transaction) {
-        log.info("Processing transaction: {} {} {} @ {}", 
-                transaction.getSide(), transaction.getExecuted(), transaction.getSymbol(), transaction.getPrice());
+        log.info("Processing transaction: {} {} {} @ {} for portfolio {}", 
+                transaction.getSide(), transaction.getExecuted(), transaction.getSymbol(), transaction.getPrice(),
+                transaction.getPortfolio() != null ? transaction.getPortfolio().getName() : "NULL");
         
         // 1. Save the transaction if not already saved
         if (transaction.getId() == null) {
@@ -38,6 +40,11 @@ public class TransactionProcessor {
             log.warn("Transaction has no portfolio, skipping holding updates.");
             return transaction;
         }
+        
+        // Ensure portfolio is attached to current persistence context
+        portfolio = portfolioService.findOrSave(portfolio.getName());
+
+        log.info("Processing symbol {} for portfolio {} (UUID: {})", transaction.getSymbol(), portfolio.getName(), portfolio.getId());
 
         // 2. Update Holding for the primary symbol
         updatePrimaryHolding(transaction, portfolio);
@@ -57,7 +64,7 @@ public class TransactionProcessor {
         BigDecimal executed = transaction.getExecuted();
         BigDecimal priceInUsdt = getPriceInUsdt(transaction);
 
-        Holding holding = holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol);
+        Holding holding = holdingService.getHolding(portfolio, symbol);
         
         BigDecimal oldAmount = holding.getAmount() != null ? holding.getAmount() : BigDecimal.ZERO;
         BigDecimal oldCostBasis = holding.getStableTotalCost() != null ? holding.getStableTotalCost() : BigDecimal.ZERO;
@@ -89,40 +96,35 @@ public class TransactionProcessor {
                 BigDecimal profit = saleValue.subtract(costOfSoldUnits);
                 
                 holding.setTotalRealizedProfitUsdt(safeAdd(holding.getTotalRealizedProfitUsdt(), profit));
-                holding.setStableTotalCost(oldCostBasis.subtract(costOfSoldUnits));
+                holding.setStableTotalCost(oldCostBasis.subtract(costOfSoldUnits).max(BigDecimal.ZERO));
             }
         }
         
         holding.setModified(LocalDateTime.now());
         holding.setModifiedBy("TransactionProcessor");
         holdingService.save(holding);
+        transactionService.flush(); 
     }
 
     private void updatePaidWithHolding(Transaction transaction, Portfolio portfolio) {
         String paidWith = transaction.getPaidWith();
         if (OperationUtils.isStable(paidWith)) {
-            return; // No need to track holdings for stable coins usually, or handle separately if needed
+            return; 
         }
 
         boolean isBuy = OperationUtils.isBuy(transaction.getSide());
         BigDecimal paidAmount = transaction.getPaidAmount();
         
-        // When we BUY BTC with ETH:
-        // BTC holding increases (handled in updatePrimaryHolding)
-        // ETH holding decreases (SELL ETH)
-        
-        // When we SELL BTC for ETH:
-        // BTC holding decreases (handled in updatePrimaryHolding)
-        // ETH holding increases (BUY ETH)
-        
-        Holding holding = holdingService.getOrCreateByPortfolioAndSymbol(portfolio, paidWith);
+        Holding holding = holdingService.getHolding(portfolio, paidWith);
         BigDecimal oldAmount = holding.getAmount() != null ? holding.getAmount() : BigDecimal.ZERO;
         BigDecimal oldCostBasis = holding.getStableTotalCost() != null ? holding.getStableTotalCost() : BigDecimal.ZERO;
 
-        // The "side" for the paidWith currency is the opposite of the transaction side
         if (isBuy) {
             // It's a SELL for the paidWith currency
             BigDecimal amountToSell = paidAmount.min(oldAmount);
+            if (paidAmount.compareTo(oldAmount) > 0) {
+                log.warn("Selling more than held amount for {}: {} > {}", paidWith, paidAmount, oldAmount);
+            }
             holding.setAmount(oldAmount.subtract(amountToSell));
             holding.setTotalAmountSold(safeAdd(holding.getTotalAmountSold(), paidAmount));
             
@@ -135,7 +137,7 @@ public class TransactionProcessor {
                 BigDecimal profit = saleValue.subtract(costOfSoldUnits);
                 
                 holding.setTotalRealizedProfitUsdt(safeAdd(holding.getTotalRealizedProfitUsdt(), profit));
-                holding.setStableTotalCost(oldCostBasis.subtract(costOfSoldUnits));
+                holding.setStableTotalCost(oldCostBasis.subtract(costOfSoldUnits).max(BigDecimal.ZERO));
             }
         } else {
             // It's a BUY for the paidWith currency
@@ -150,13 +152,18 @@ public class TransactionProcessor {
         holding.setModified(LocalDateTime.now());
         holding.setModifiedBy("TransactionProcessor (PaidWith)");
         holdingService.save(holding);
+        transactionService.flush();
     }
 
     private BigDecimal getPriceInUsdt(Transaction transaction) {
         if (OperationUtils.isStable(transaction.getPaidWith())) {
             return transaction.getPrice();
         }
-        return pricingFacade.getPriceInUsdt(transaction.getSymbol(), transaction.getDateUtc());
+        BigDecimal price = pricingFacade.getPriceInUsdt(transaction.getSymbol(), transaction.getDateUtc());
+        if (price == null || price.compareTo(BigDecimal.ZERO) == 0) {
+            return transaction.getPrice(); // Fallback to provided price if it's already in USDT or proxy fails
+        }
+        return price;
     }
 
     private BigDecimal safeAdd(BigDecimal current, BigDecimal toAdd) {

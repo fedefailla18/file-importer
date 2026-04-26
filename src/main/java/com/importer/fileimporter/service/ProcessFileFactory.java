@@ -18,14 +18,18 @@ public class ProcessFileFactory {
 
 
     public FileInformationResponse processFile(MultipartFile file) throws IOException {
-        return processFileV2.processFile(file, null, "Binance");
+        return processFileV2.processFile(file, null, "Binance", "Binance");
     }
 
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols) throws IOException {
-        return processFileV2.processFile(file, symbols, "Binance");
+        return processFileV2.processFile(file, symbols, "Binance", "Binance");
     }
 
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio) throws IOException {
-        return processFileV2.processFile(file, symbols, portfolio);
+        return processFileV2.processFile(file, symbols, portfolio, "Binance");
+    }
+
+    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio, String fileType) throws IOException {
+        return processFileV2.processFile(file, symbols, portfolio, fileType);
     }
 }
