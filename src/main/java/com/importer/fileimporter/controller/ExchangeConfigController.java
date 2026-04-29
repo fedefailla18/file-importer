@@ -31,6 +31,7 @@ public class ExchangeConfigController {
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
     private final BinanceSpotActivityService binanceSpotActivityService;
+    private final com.importer.fileimporter.service.PortfolioService portfolioService;
 
     @PostMapping("/config")
     @Operation(summary = "Save or update exchange API configuration")
@@ -47,6 +48,11 @@ public class ExchangeConfigController {
         config.setApiSecret(encryptionService.encrypt(request.getApiSecret()));
         
         userExchangeConfigRepository.save(config);
+
+        // Auto-create portfolio named after the exchange if it doesn't exist
+        String portfolioName = request.getExchangeName().name();
+        portfolioService.getByNameForUser(portfolioName, user)
+                .orElseGet(() -> portfolioService.findOrSave(portfolioName));
         
         return ResponseEntity.ok("Configuration saved successfully");
     }
