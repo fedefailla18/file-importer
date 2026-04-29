@@ -35,5 +35,8 @@
   <include file="classpath:/db/changelog/changes/2024-11-10-33-add-user-entities.sql"/>
   <include file="classpath:/db/changelog/changes/2026-04-24-034-increase-precision-portfolio-holding.sql"/>
   <include file="classpath:/db/changelog/changes/2026-04-25-035-add-exchange-config.sql"/>
+  <include file="classpath:/db/changelog/changes/2026-04-26-036-increase-pair-column-length.sql"/>
+  <include file="classpath:/db/changelog/changes/2026-04-27-037-add-external-api-log.sql"/>
+  <include file="classpath:/db/changelog/changes/2026-04-27-038-add-binance-sync-entities.sql"/>
 
 </databaseChangeLog>
