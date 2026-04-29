@@ -17,16 +17,8 @@ public class ProcessFileFactory {
     private final ProcessFileV2 processFileV2;
 
 
-    public FileInformationResponse processFile(MultipartFile file) throws IOException {
-        return processFileV2.processFile(file, null, "Binance", "Binance");
-    }
-
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols) throws IOException {
         return processFileV2.processFile(file, symbols, "Binance", "Binance");
-    }
-
-    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio) throws IOException {
-        return processFileV2.processFile(file, symbols, portfolio, "Binance");
     }
 
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio, String fileType) throws IOException {

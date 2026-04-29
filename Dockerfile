@@ -1,5 +1,5 @@
 # Use a JDK 11 base image
-FROM eclipse-temurin:11-jdk-alpine
+FROM autonationdocker.azurecr.io/ams-17-jdk:985045
 
 # Set a working directory inside the container
 WORKDIR /app

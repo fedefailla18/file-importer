@@ -35,10 +35,18 @@ curl -X POST http://localhost:9080/api/exchange/config \
 ```
 
 ## Step 3: Trigger Synchronization
-Once configured, you can sync your trades into a specific portfolio:
 
+### Quick Sync (New Trades Only)
+If you just want to fetch recent trades for symbols with active balances:
 ```bash
 curl -X POST "http://localhost:9080/transaction/sync/binance?portfolio=MyMainPortfolio" \
+  -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+```
+
+### Full Historical Sync (Recommended for First Time)
+To build your portfolio from scratch, including all historical trades, deposits, withdrawals, fiat orders, and conversions:
+```bash
+curl -X POST "http://localhost:9080/transaction/sync/binance/full?portfolio=MyMainPortfolio" \
   -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
 ```
 

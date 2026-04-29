@@ -85,18 +85,57 @@ Managed by **Liquibase**. Changelogs live in `src/main/resources/db/changelog/`.
 
 `src/main/resources/application.yml` — database, JWT settings, Swagger paths, CryptoCompare API key, and file upload limits (10MB/50MB). Credentials in this file and `docker/docker-compose.yml` are hardcoded for local dev and should be externalized via environment variables before any production deployment.
 
+## Financial Calculation Model
+
+**Cost basis method**: Average Cost (AVCO). Every BUY adds to `stableTotalCost`; every SELL removes a proportional slice using `avgCost = stableTotalCost / oldAmount`.
+
+**Stable coin list** (`OperationUtils.STABLE`): `USDT, DAI, BUSD, USD, USDC, TUSD, FDUSD`. UST/USTC is intentionally excluded — it depegged in May 2022 and must not be treated as $1.
+
+**Fee handling**: When `feeSymbol` is a stable (e.g. USDT fee on Binance), `feeAmount` is added to `stableTotalCost` on BUY transactions — increasing cost basis correctly. Non-stable fees (e.g. BNB) are stored on the `Transaction` entity for reference but do not affect `stableTotalCost`.
+
+**`HoldingDto` computed fields** (populated by `PortfolioDistributionFacade`):
+- `unrealizedProfitUsdt` = `currentPositionInUsdt - stableTotalCost` (paper P&L on open position)
+
+**`PortfolioDistribution` computed getters** (serialized into JSON by Jackson):
+- `netCapitalFromPocket` = `totalBuySpentUsdt - totalSellEarnedUsdt` (real cash needed from wallet)
+- `totalRealizedProfitUsdt` = sum of `holding.totalRealizedProfitUsdt` across all holdings
+- `totalUnrealizedProfitUsdt` = sum of `holding.unrealizedProfitUsdt` across all holdings
+
 ## Binance Integration
 
-The Binance sync feature is fully implemented. Key classes:
+Two sync modes are available:
 
+| Endpoint | Service | Scope |
+|----------|---------|-------|
+| `POST /transaction/sync/binance?portfolio=` | `BinanceSyncService` | Incremental — fetches only trades since `lastSyncTimestamp`. Only spot trades for currently-held assets. |
+| `POST /transaction/sync/binance/full?portfolio=&startDate=&endDate=` | `BinanceFullSyncService` | Full historical — spot trades, deposits, withdrawals, fiat orders, convert trades. `startDate`/`endDate` are epoch milliseconds (optional; defaults to 2017-01-01 → now). |
+
+Key classes:
 - **`ExchangeConfigController`** (`/api/exchange`) — `POST /config` saves/updates keys (secret AES-encrypted via `EncryptionService`); `GET /config` returns configs with masked secret (never returned).
-- **`BinanceSyncService`** — orchestrates the sync: decrypts secret, calls `BinanceApiService` for account info + exchange info + trades per symbol, adapts each trade via `BinanceApiTransactionAdapter`, and processes via `TransactionProcessor`. Updates `lastSyncTimestamp` on `UserExchangeConfig` after a successful run.
+- **`BinanceSyncService`** — incremental sync with 200ms rate-limit delay between candidate pairs.
+- **`BinanceFullSyncService`** — full historical sync with 200ms rate-limit delay per API window. Accepts optional `startDate`/`endDate` epoch-ms params.
 - **`BinanceApiService`** — Spring `WebClient`-based; signs requests with HMAC-SHA256.
 - **`UserExchangeConfig`** entity — keyed by `(user, exchangeName)`. `ExchangeName` is an enum; only `BINANCE` is currently used.
-- **Trigger**: `POST /transaction/sync/binance?portfolio=<name>` (in `TransactionController`).
 - **DB migration**: `db/changelog/changes/2026-04-25-035-add-exchange-config.sql`.
 
-If a user has no Binance config saved, `BinanceSyncService.sync` throws `IllegalArgumentException("Binance API keys not configured for user")` — the FE checks for this string in the error response.
+If a user has no Binance config saved, both sync services throw `IllegalArgumentException("Binance API keys not configured for user")` — the FE checks for this string in the error response.
+
+**Rate limiting**: `rateLimitDelayMs = 1000ms` between every API call. Windows: spot trades 180 days, deposits/withdrawals 90 days (Binance limit), fiat orders 90 days, convert trades 30 days (Binance limit). On `-1003` (Too Many Requests) the service sleeps 60 s before continuing.
+
+**Async full sync**: `POST /transaction/sync/binance/full` returns **202 Accepted** immediately. Work runs on `BinanceAsyncSyncService` (`@Async("syncTaskExecutor")`). On completion/failure a WebSocket STOMP message is pushed to `/user/queue/sync-status` via `SyncNotificationService`.
+
+**WebSocket** (`config/WebSocketConfig.java`): STOMP endpoint `/ws` (SockJS-wrapped). JWT authenticated via `ChannelInterceptor` on the STOMP CONNECT frame. `/ws/**` is permitted in `WebSecurityConfig`. `AsyncConfig` defines the `syncTaskExecutor` thread pool (core=2, max=4).
+
+**Known gaps in `BinanceFullSyncService`**:
+- No deduplication guard — running twice creates duplicate deposits/withdrawals (no DB unique constraint). Use "Clear All Transactions" + re-sync as a workaround.
+- `syncSpotTrades` only fetches trades for currently-held assets; fully-sold assets are skipped.
+- Deposits/withdrawals are saved with `price = BigDecimal.ZERO`; cost basis for deposited assets is 0.
+
+**Transaction delete**: `DELETE /transaction/{id}` — verifies the transaction belongs to the authenticated user's portfolio before deleting.
+
+**Clear portfolio transactions**: `DELETE /transaction/portfolio/{portfolioName}` — verifies portfolio ownership, deletes all transactions for that portfolio (204 No Content).
+
+**`transactions.pair` column**: `VARCHAR(32)` — increased from 12 to support EXTERNAL suffix deposits/withdrawals (migration `2026-04-26-036-increase-pair-column-length.sql`).
 
 ## API Documentation
 
