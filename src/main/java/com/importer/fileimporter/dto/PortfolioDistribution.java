@@ -36,6 +36,28 @@ public class PortfolioDistribution {
 
     List<HoldingDto> holdings;
 
+    public BigDecimal getNetCapitalFromPocket() {
+        BigDecimal buys = totalBuySpentUsdt != null ? totalBuySpentUsdt : BigDecimal.ZERO;
+        BigDecimal sells = totalSellEarnedUsdt != null ? totalSellEarnedUsdt : BigDecimal.ZERO;
+        return buys.subtract(sells);
+    }
+
+    public BigDecimal getTotalRealizedProfitUsdt() {
+        if (holdings == null) return BigDecimal.ZERO;
+        return holdings.stream()
+                .map(HoldingDto::getTotalRealizedProfitUsdt)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal getTotalUnrealizedProfitUsdt() {
+        if (holdings == null) return BigDecimal.ZERO;
+        return holdings.stream()
+                .map(HoldingDto::getUnrealizedProfitUsdt)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     public void calculateHoldingPercent() {
         BigDecimal totalUsdt = this.getTotalInUsdt();
         if (totalUsdt == null) {

@@ -21,4 +21,5 @@ public class HoldingDto {
     private BigDecimal stableTotalCost;
     private BigDecimal currentPositionInUsdt;
     private BigDecimal totalRealizedProfitUsdt;
+    private BigDecimal unrealizedProfitUsdt;
 }

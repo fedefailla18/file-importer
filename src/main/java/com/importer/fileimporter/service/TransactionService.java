@@ -106,11 +106,24 @@ public class TransactionService {
         transactionRepository.deleteAll();
     }
 
+    public void deleteById(Long id) {
+        transactionRepository.deleteById(id);
+    }
+
+    public java.util.Optional<Transaction> findById(Long id) {
+        return transactionRepository.findById(id);
+    }
+
     public List<Transaction> findByPortfolio(Portfolio portfolio) {
         return transactionRepository.findAllByPortfolio(portfolio);
     }
 
     public List<Transaction> findByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
         return transactionRepository.findAllByPortfolioAndSymbol(portfolio, symbol);
+    }
+
+    @javax.transaction.Transactional
+    public void deleteByPortfolio(Portfolio portfolio) {
+        transactionRepository.deleteAllByPortfolio(portfolio);
     }
 }

@@ -37,7 +37,7 @@ public class Transaction {
     @Column(name = "side", nullable = false, length = 12)
     private String side;
 
-    @Column(name = "pair", nullable = false, length = 12)
+    @Column(name = "pair", nullable = false, length = 32)
     private String pair;
 
     @Column(name = "price", nullable = false, precision = 13, scale = 13)

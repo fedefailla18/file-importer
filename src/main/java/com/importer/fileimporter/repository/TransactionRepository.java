@@ -39,4 +39,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     List<Transaction> findByPortfolioIn(List<Portfolio> portfolios);
     Page<Transaction> findByPortfolioIn(List<Portfolio> portfolios, Pageable pageable);
 
+    void deleteAllByPortfolio(Portfolio portfolio);
 }

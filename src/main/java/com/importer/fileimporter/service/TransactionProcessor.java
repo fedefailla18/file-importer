@@ -60,7 +60,10 @@ public class TransactionProcessor {
 
     private void updatePrimaryHolding(Transaction transaction, Portfolio portfolio) {
         String symbol = transaction.getSymbol();
-        boolean isBuy = OperationUtils.isBuy(transaction.getSide());
+        String side = transaction.getSide();
+        boolean isIncrease = OperationUtils.isBuy(side) || OperationUtils.isDeposit(side);
+        boolean isDecrease = OperationUtils.isSell(side) || OperationUtils.isWithdraw(side);
+        
         BigDecimal executed = transaction.getExecuted();
         BigDecimal priceInUsdt = getPriceInUsdt(transaction);
 
@@ -69,34 +72,35 @@ public class TransactionProcessor {
         BigDecimal oldAmount = holding.getAmount() != null ? holding.getAmount() : BigDecimal.ZERO;
         BigDecimal oldCostBasis = holding.getStableTotalCost() != null ? holding.getStableTotalCost() : BigDecimal.ZERO;
 
-        if (isBuy) {
-            // BUY: Increase amount and cost basis
+        if (isIncrease) {
+            // BUY or DEPOSIT: Increase amount and cost basis
             holding.setAmount(oldAmount.add(executed));
             holding.setTotalAmountBought(safeAdd(holding.getTotalAmountBought(), executed));
-            
+
             BigDecimal costInUsdt = executed.multiply(priceInUsdt);
-            holding.setStableTotalCost(oldCostBasis.add(costInUsdt));
-        } else {
-            // SELL: Decrease amount and cost basis proportionally, calculate realized profit
-            BigDecimal amountToSell = executed.min(oldAmount);
+            BigDecimal stableFee = getStableFeeAmount(transaction);
+            holding.setStableTotalCost(oldCostBasis.add(costInUsdt).add(stableFee));
+        } else if (isDecrease) {
+            // SELL or WITHDRAW: Decrease amount and cost basis proportionally, calculate realized profit
+            BigDecimal amountToRemove = executed.min(oldAmount);
             if (executed.compareTo(oldAmount) > 0) {
-                log.warn("Selling more than held amount for {}: {} > {}", symbol, executed, oldAmount);
+                log.warn("{} more than held amount for {}: {} > {}", side, symbol, executed, oldAmount);
             }
 
-            holding.setAmount(oldAmount.subtract(amountToSell));
+            holding.setAmount(oldAmount.subtract(amountToRemove));
             holding.setTotalAmountSold(safeAdd(holding.getTotalAmountSold(), executed));
 
             if (oldAmount.compareTo(BigDecimal.ZERO) > 0) {
                 // Average cost per unit
                 BigDecimal avgCost = oldCostBasis.divide(oldAmount, 10, RoundingMode.HALF_UP);
-                BigDecimal costOfSoldUnits = avgCost.multiply(amountToSell);
+                BigDecimal costOfRemovedUnits = avgCost.multiply(amountToRemove);
                 
-                // Realized Profit = (Sale Price - Avg Cost) * amount
-                BigDecimal saleValue = amountToSell.multiply(priceInUsdt);
-                BigDecimal profit = saleValue.subtract(costOfSoldUnits);
+                // Realized Profit = (Current Price - Avg Cost) * amount
+                BigDecimal exitValue = amountToRemove.multiply(priceInUsdt);
+                BigDecimal profit = exitValue.subtract(costOfRemovedUnits);
                 
                 holding.setTotalRealizedProfitUsdt(safeAdd(holding.getTotalRealizedProfitUsdt(), profit));
-                holding.setStableTotalCost(oldCostBasis.subtract(costOfSoldUnits).max(BigDecimal.ZERO));
+                holding.setStableTotalCost(oldCostBasis.subtract(costOfRemovedUnits).max(BigDecimal.ZERO));
             }
         }
         
@@ -164,6 +168,16 @@ public class TransactionProcessor {
             return transaction.getPrice(); // Fallback to provided price if it's already in USDT or proxy fails
         }
         return price;
+    }
+
+    private BigDecimal getStableFeeAmount(Transaction transaction) {
+        BigDecimal feeAmount = transaction.getFeeAmount();
+        String feeSymbol = transaction.getFeeSymbol();
+        if (feeAmount != null && feeAmount.compareTo(BigDecimal.ZERO) > 0
+                && OperationUtils.isStable(feeSymbol)) {
+            return feeAmount;
+        }
+        return BigDecimal.ZERO;
     }
 
     private BigDecimal safeAdd(BigDecimal current, BigDecimal toAdd) {
