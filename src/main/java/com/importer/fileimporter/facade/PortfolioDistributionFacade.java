@@ -89,6 +89,10 @@ public class PortfolioDistributionFacade {
                                             .orElse(BigDecimal.ZERO);
                                     BigDecimal amount = Optional.ofNullable(holding.getAmount()).orElse(BigDecimal.ZERO);
 
+                                    BigDecimal currentPos = usdtPrice.multiply(amount);
+                                    BigDecimal holdingCost = holding.getStableTotalCost() != null
+                                            ? holding.getStableTotalCost() : BigDecimal.ZERO;
+
                                     return HoldingDto.builder()
                                             .symbol(holding.getSymbol())
                                             .portfolioName(p.getName())
@@ -101,8 +105,9 @@ public class PortfolioDistributionFacade {
                                             .totalAmountBought(holding.getTotalAmountBought())
                                             .totalAmountSold(holding.getTotalAmountSold())
                                             .stableTotalCost(holding.getStableTotalCost())
-                                            .currentPositionInUsdt(usdtPrice.multiply(amount))
+                                            .currentPositionInUsdt(currentPos)
                                             .totalRealizedProfitUsdt(holding.getTotalRealizedProfitUsdt())
+                                            .unrealizedProfitUsdt(currentPos.subtract(holdingCost))
                                             .build();
                                 }))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
@@ -207,6 +212,8 @@ public class PortfolioDistributionFacade {
                     BigDecimal usdtprice =
                             Optional.ofNullable(price.get(USDT)).map(BigDecimal::valueOf).orElse(BigDecimal.ZERO);
                     BigDecimal currentPositionInUsdt = usdtprice.multiply(e.getAmount());
+                    BigDecimal costBasis = e.getStableTotalCost() != null ? e.getStableTotalCost() : BigDecimal.ZERO;
+                    BigDecimal unrealizedProfitUsdt = currentPositionInUsdt.subtract(costBasis);
 
                     // TODO: use converter to create this HoldingDto.
                     portfolioDistribution.getHoldings().add(HoldingDto.builder()
@@ -223,6 +230,7 @@ public class PortfolioDistributionFacade {
                             .totalRealizedProfitUsdt(e.getTotalRealizedProfitUsdt())
                             .stableTotalCost(e.getStableTotalCost())
                             .currentPositionInUsdt(currentPositionInUsdt)
+                            .unrealizedProfitUsdt(unrealizedProfitUsdt)
                             .build());
                 }
         );
