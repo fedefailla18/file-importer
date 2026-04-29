@@ -13,14 +13,20 @@ import java.util.function.Predicate;
 public class OperationUtils {
 
     public static final List<String> GRAND_SYMBOLS = List.of("BTC", "ETH");
-    public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "UST", "USD", "USDC");
+    public static final List<String> STABLE = List.of("USDT", "DAI", "BUSD", "USD", "USDC", "TUSD", "FDUSD");
 
     public static final String BUY_STRING = "BUY";
-    public static final Predicate<String> IS_BUY;
     public static final String SELL_STRING = "SELL";
+    public static final String DEPOSIT_STRING = "DEPOSIT";
+    public static final String WITHDRAW_STRING = "WITHDRAW";
+    public static final Predicate<String> IS_BUY;
+    public static final Predicate<String> IS_DEPOSIT;
+    public static final Predicate<String> IS_WITHDRAW;
 
     static {
-        IS_BUY = BUY_STRING::equals;
+        IS_BUY = BUY_STRING::equalsIgnoreCase;
+        IS_DEPOSIT = DEPOSIT_STRING::equalsIgnoreCase;
+        IS_WITHDRAW = WITHDRAW_STRING::equalsIgnoreCase;
     }
 
     public static final String USDT = "USDT";
@@ -32,11 +38,23 @@ public class OperationUtils {
 
     public boolean isBuy(TransactionData transactionData) {
         String side = transactionData.getSide();
-        return IS_BUY.test(side);
+        return isBuy(side);
     }
 
     public boolean isBuy(String side) {
         return IS_BUY.test(side);
+    }
+
+    public boolean isSell(String side) {
+        return SELL_STRING.equalsIgnoreCase(side);
+    }
+
+    public boolean isDeposit(String side) {
+        return IS_DEPOSIT.test(side);
+    }
+
+    public boolean isWithdraw(String side) {
+        return IS_WITHDRAW.test(side);
     }
 
     public BigDecimal sumAmount(AtomicReference<BigDecimal> amountSpent, BigDecimal payedAmount, String side) {
