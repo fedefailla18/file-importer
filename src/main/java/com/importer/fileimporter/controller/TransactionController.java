@@ -62,6 +62,7 @@ public class TransactionController {
     private final BinanceSyncService binanceSyncService;
     private final BinanceFullSyncService binanceFullSyncService;
     private final BinanceAsyncSyncService binanceAsyncSyncService;
+    private final MexcAsyncSyncService mexcAsyncSyncService;
     private final PortfolioService portfolioService;
 
     @Operation(summary = "Filter transactions", description = "Filter transactions by various criteria with pagination")
@@ -222,6 +223,19 @@ public class TransactionController {
             @Parameter(description = "Sync end date as epoch millis (optional, defaults to now)") @RequestParam(required = false) Long endDate) {
         binanceAsyncSyncService.syncFullHistoryAsync(user, portfolio, startDate, endDate);
         return ResponseEntity.accepted().body("Full historical sync started. You will be notified upon completion.");
+    }
+
+    @Operation(summary = "Full historical sync from MexC (async)",
+            description = "Enqueues a background full-history sync of all trades, deposits and withdrawals. " +
+                    "Returns 202 immediately; a WebSocket message is sent to /user/queue/sync-status on completion.")
+    @PostMapping("/sync/mexc/full")
+    public ResponseEntity<?> syncMexcFull(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio,
+            @Parameter(description = "Sync start date as epoch millis (optional, defaults to 2017-01-01)") @RequestParam(required = false) Long startDate,
+            @Parameter(description = "Sync end date as epoch millis (optional, defaults to now)") @RequestParam(required = false) Long endDate) {
+        mexcAsyncSyncService.syncFullHistoryAsync(user, portfolio, startDate, endDate);
+        return ResponseEntity.accepted().body("Full historical MexC sync started. You will be notified upon completion.");
     }
 
     @Operation(summary = "Clear all transactions for a portfolio",

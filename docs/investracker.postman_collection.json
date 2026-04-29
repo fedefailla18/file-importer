@@ -124,7 +124,77 @@
 			]
 		},
 		{
-			"name": "3. Holdings & Portfolios",
+			"name": "3. MexC Integration",
+			"item": [
+				{
+					"name": "Save API Config",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"exchangeName\": \"MEXC\",\n    \"apiKey\": \"YOUR_KEY\",\n    \"apiSecret\": \"YOUR_SECRET\"\n}"
+						},
+						"url": "{{baseUrl}}/api/exchange/config"
+					}
+				},
+				{
+					"name": "Full Historical Sync",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/transaction/sync/mexc/full?portfolio=MyMexC"
+					}
+				},
+				{
+					"name": "Trigger Exhaustive Orders Sync (Async)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/sync-all"
+					}
+				},
+				{
+					"name": "Check Exhaustive Sync Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/sync-status"
+					}
+				},
+				{
+					"name": "Get Synced Raw Orders (DB)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/raw-orders?symbol=BTCUSDT"
+					}
+				},
+				{
+					"name": "Direct Orders Query (GET /allOrders)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/orders?symbol=BTCUSDT"
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Holdings & Portfolios",
 			"item": [
 				{
 					"name": "Get All Holdings",

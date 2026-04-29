@@ -57,13 +57,37 @@ curl -X GET "{{baseUrl}}/api/integration/binance/orders?symbol=BTCUSDT" \
 Pull all historical trades, deposits, and withdrawals into a portfolio.
 
 ```bash
-curl -X POST "{{baseUrl}}/api/transaction/sync/binance/full?portfolio=MainBinance" \
+curl -X POST "{{baseUrl}}/transaction/sync/binance/full?portfolio=MainBinance" \
      -H "Authorization: Bearer {{jwt_token}}"
 ```
 
 ---
 
-## 4. Portfolio & Accounting Analysis
+## 4. MexC Integration Endpoints
+
+Similar to Binance, but for the MEXC exchange.
+
+### Step 6: Configure MexC Credentials
+```bash
+curl -X POST "{{baseUrl}}/api/exchange/config" \
+     -H "Authorization: Bearer {{jwt_token}}" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "exchangeName": "MEXC",
+       "apiKey": "YOUR_API_KEY",
+       "apiSecret": "YOUR_SECRET_KEY"
+     }'
+```
+
+### Step 7: Full Portfolio Sync (MexC)
+```bash
+curl -X POST "{{baseUrl}}/transaction/sync/mexc/full?portfolio=MainMexC" \
+     -H "Authorization: Bearer {{jwt_token}}"
+```
+
+---
+
+## 5. Portfolio & Accounting Analysis
 
 ### View Holdings
 Check your calculated cost-basis and balances after sync.
