@@ -17,8 +17,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "binance_raw_order")
-public class BinanceRawOrder implements RawOrder {
+@Table(name = "mexc_raw_order")
+public class MexcRawOrder implements RawOrder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
