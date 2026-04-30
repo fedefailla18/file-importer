@@ -280,7 +280,37 @@
 			]
 		},
 		{
-			"name": "4. Holdings & Portfolios",
+			"name": "4. IOL Integration",
+			"item": [
+				{
+					"name": "Save API Config (Username/Password)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"exchangeName\": \"IOL\",\n    \"apiKey\": \"YOUR_USERNAME\",\n    \"apiSecret\": \"YOUR_PASSWORD\"\n}"
+						},
+						"url": "{{baseUrl}}/api/exchange/config"
+					}
+				},
+				{
+					"name": "Login to IOL",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/exchange/iol/login"
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Holdings & Portfolios",
 			"item": [
 				{
 					"name": "Get All Holdings",

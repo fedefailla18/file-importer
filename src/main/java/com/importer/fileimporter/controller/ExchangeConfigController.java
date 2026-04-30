@@ -35,6 +35,7 @@ public class ExchangeConfigController {
     private final BinanceSpotActivityService binanceSpotActivityService;
     private final MexcSpotActivityService mexcSpotActivityService;
     private final com.importer.fileimporter.service.PortfolioService portfolioService;
+    private final com.importer.fileimporter.service.IolApiService iolApiService;
 
     @PostMapping("/config")
     @Operation(summary = "Save or update exchange API configuration")
@@ -88,5 +89,12 @@ public class ExchangeConfigController {
     public ResponseEntity<MexcSpotActivityResponse> getMexcSpotActivity() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(mexcSpotActivityService.getSpotActivity(user));
+    }
+
+    @PostMapping("/iol/login")
+    @Operation(summary = "Authenticate with IOL and get a bearer token")
+    public ResponseEntity<com.importer.fileimporter.dto.integration.iol.IolTokenResponse> loginIol() {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return ResponseEntity.ok(iolApiService.loginForUser(user));
     }
 }
