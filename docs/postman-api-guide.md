@@ -114,7 +114,7 @@ curl -X POST "{{baseUrl}}/api/exchange/config" \
      }'
 ```
 
-### Step 10: Full Portfolio Sync (MexC)
+### Step 7: Full Portfolio Sync (MexC)
 ```bash
 curl -X POST "{{baseUrl}}/transaction/sync/mexc/full?portfolio=MainMexC" \
      -H "Authorization: Bearer {{jwt_token}}"
@@ -122,7 +122,33 @@ curl -X POST "{{baseUrl}}/transaction/sync/mexc/full?portfolio=MainMexC" \
 
 ---
 
-## 5. Portfolio & Accounting Analysis
+## 5. IOL Account & Portfolio Management
+
+Fetch real-time account data directly from InvertirOnline.
+
+### Step 8: Get Balances (Estado de Cuenta)
+```bash
+curl -X GET "{{baseUrl}}/api/integration/iol/account-statement" \
+     -H "Authorization: Bearer {{jwt_token}}"
+```
+
+### Step 9: Get Active Assets (Portfolio)
+Country can be `argentina` or `estados_unidos`.
+```bash
+curl -X GET "{{baseUrl}}/api/integration/iol/portfolio/argentina" \
+     -H "Authorization: Bearer {{jwt_token}}"
+```
+
+### Step 10: View Operations
+```bash
+curl -X GET "{{baseUrl}}/api/integration/iol/operations" \
+     -H "Authorization: Bearer {{jwt_token}}"
+```
+
+---
+
+## 6. Portfolio & Accounting Analysis
+
 
 ### View Holdings
 Check your calculated cost-basis and balances after sync.

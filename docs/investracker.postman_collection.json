@@ -306,6 +306,56 @@
 						],
 						"url": "{{baseUrl}}/api/exchange/iol/login"
 					}
+				},
+				{
+					"name": "Get Account Statement (Balances)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/account-statement"
+					}
+				},
+				{
+					"name": "Get Portfolio (Argentina)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/portfolio/argentina"
+					}
+				},
+				{
+					"name": "Get Portfolio (USA)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/portfolio/estados_unidos"
+					}
+				},
+				{
+					"name": "Get List of Operations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/operations"
+					}
+				},
+				{
+					"name": "Get Profile Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/profile"
+					}
 				}
 			]
 		},
