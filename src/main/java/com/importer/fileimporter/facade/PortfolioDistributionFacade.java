@@ -144,6 +144,7 @@ public class PortfolioDistributionFacade {
         if (holdings == null || holdings.isEmpty()) {
             return PortfolioDistribution.builder()
                     .portfolioName(portfolio.getName())
+                    .exchangeName(portfolio.getExchangeName())
                     .holdings(new ArrayList<>())
                     .totalUsdt(BigDecimal.ZERO)
                     .build();
@@ -175,6 +176,7 @@ public class PortfolioDistributionFacade {
     public PortfolioDistribution calculatePortfolioInBtcAndUsdt(Portfolio portfolio) {
         PortfolioDistribution portfolioDistribution = PortfolioDistribution.builder()
                 .portfolioName(portfolio.getName())
+                .exchangeName(portfolio.getExchangeName())
                 .holdings(new ArrayList<>())
                 .totalBuySpentUsdt(BigDecimal.ZERO)
                 .totalSellEarnedUsdt(BigDecimal.ZERO)
@@ -275,9 +277,8 @@ public class PortfolioDistributionFacade {
 
     private Predicate<Holding> excludeWhenAmountIsAlmostZero() {
         return holding -> {
-            BigDecimal amount = (holding.getTotalAmountBought() != null ? holding.getTotalAmountBought() : BigDecimal.ZERO)
-                    .subtract(holding.getTotalAmountSold() != null ? holding.getTotalAmountSold() : BigDecimal.ZERO);
-            return new BigDecimal("0.00000001").compareTo(amount) < 0;
+            BigDecimal amount = Optional.ofNullable(holding.getAmount()).orElse(BigDecimal.ZERO);
+            return amount.abs().compareTo(new BigDecimal("0.00000001")) > 0;
         };
     }
 

@@ -2,11 +2,13 @@ package com.importer.fileimporter.controller;
 
 import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.payload.response.BinanceSpotActivityResponse;
+import com.importer.fileimporter.payload.response.MexcSpotActivityResponse;
 import com.importer.fileimporter.entity.UserExchangeConfig;
 import com.importer.fileimporter.payload.request.ExchangeConfigRequest;
 import com.importer.fileimporter.payload.response.ExchangeConfigResponse;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
 import com.importer.fileimporter.service.BinanceSpotActivityService;
+import com.importer.fileimporter.service.MexcSpotActivityService;
 import com.importer.fileimporter.service.EncryptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +33,7 @@ public class ExchangeConfigController {
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
     private final BinanceSpotActivityService binanceSpotActivityService;
+    private final MexcSpotActivityService mexcSpotActivityService;
     private final com.importer.fileimporter.service.PortfolioService portfolioService;
 
     @PostMapping("/config")
@@ -52,7 +55,7 @@ public class ExchangeConfigController {
         // Auto-create portfolio named after the exchange if it doesn't exist
         String portfolioName = request.getExchangeName().name();
         portfolioService.getByNameForUser(portfolioName, user)
-                .orElseGet(() -> portfolioService.findOrSave(portfolioName));
+                .orElseGet(() -> portfolioService.findOrSave(portfolioName, request.getExchangeName()));
         
         return ResponseEntity.ok("Configuration saved successfully");
     }
@@ -78,5 +81,12 @@ public class ExchangeConfigController {
     public ResponseEntity<BinanceSpotActivityResponse> getBinanceSpotActivity() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(binanceSpotActivityService.getSpotActivity(user));
+    }
+
+    @GetMapping("/mexc/spot-activity")
+    @Operation(summary = "Get fresh MexC spot balances and trade activity")
+    public ResponseEntity<MexcSpotActivityResponse> getMexcSpotActivity() {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return ResponseEntity.ok(mexcSpotActivityService.getSpotActivity(user));
     }
 }

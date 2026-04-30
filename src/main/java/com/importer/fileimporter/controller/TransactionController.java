@@ -11,6 +11,8 @@ import com.importer.fileimporter.facade.CoinInformationFacade;
 import com.importer.fileimporter.service.BinanceAsyncSyncService;
 import com.importer.fileimporter.service.BinanceFullSyncService;
 import com.importer.fileimporter.service.BinanceSyncService;
+import com.importer.fileimporter.service.MexcAsyncSyncService;
+import com.importer.fileimporter.service.MexcSyncService;
 import com.importer.fileimporter.service.PortfolioService;
 import com.importer.fileimporter.service.ProcessFileFactory;
 import com.importer.fileimporter.service.TransactionFacade;
@@ -60,6 +62,7 @@ public class TransactionController {
     private final TransactionFacade transactionFacade;
     private final CoinInformationFacade coinInformationFacade;
     private final BinanceSyncService binanceSyncService;
+    private final MexcSyncService mexcSyncService;
     private final BinanceFullSyncService binanceFullSyncService;
     private final BinanceAsyncSyncService binanceAsyncSyncService;
     private final MexcAsyncSyncService mexcAsyncSyncService;
@@ -208,6 +211,15 @@ public class TransactionController {
             @AuthenticationPrincipal User user,
             @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio) {
         binanceSyncService.sync(user, portfolio);
+        return ResponseEntity.ok("Sync initiated successfully");
+    }
+
+    @Operation(summary = "Sync transactions from MexC", description = "Automatically fetch and sync transactions from MexC API")
+    @PostMapping("/sync/mexc")
+    public ResponseEntity<?> syncMexc(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio) {
+        mexcSyncService.sync(user, portfolio);
         return ResponseEntity.ok("Sync initiated successfully");
     }
 

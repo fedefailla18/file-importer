@@ -5,6 +5,7 @@ import com.importer.fileimporter.dto.integration.binance.BinanceAccountResponse;
 import com.importer.fileimporter.dto.integration.binance.BinanceExchangeInfoResponse;
 import com.importer.fileimporter.entity.*;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
+import com.importer.fileimporter.utils.DateUtils;
 import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.fasterxml.jackson.databind.type.LogicalType.DateTime;
+import static org.apache.poi.ss.usermodel.DateUtil.toLocalDateTime;
 
 @Service
 @Slf4j
@@ -46,7 +50,7 @@ public class MexcFullSyncService {
 
         String apiKey = config.getApiKey();
         String secretKey = encryptionService.decrypt(config.getApiSecret());
-        Portfolio portfolio = portfolioService.findOrSave(portfolioName);
+        Portfolio portfolio = portfolioService.findOrSave(portfolioName, ExchangeName.MEXC);
 
         long now = System.currentTimeMillis();
         long startTime = startDateEpochMs != null ? startDateEpochMs : START_TIME_2017;
@@ -74,7 +78,7 @@ public class MexcFullSyncService {
                 if (deposits != null) {
                     for (MexcDepositResponse d : deposits) {
                         Transaction tx = Transaction.builder()
-                                .dateUtc(toLocalDateTime(d.getInsertTime()))
+                                .dateUtc(DateUtils.toLocalDateTime(d.getInsertTime()))
                                 .side(OperationUtils.DEPOSIT_STRING)
                                 .symbol(d.getCoin())
                                 .executed(d.getAmount())
@@ -155,7 +159,7 @@ public class MexcFullSyncService {
                         log.info("Processing {} MexC trades for {}", trades.size(), sInfo.getSymbol());
                         for (MexcTradeResponse tr : trades) {
                             Transaction tx = Transaction.builder()
-                                    .dateUtc(toLocalDateTime(tr.getTime()))
+                                    .dateUtc(tr.getTimeAsLocalDateTime())
                                     .pair(sInfo.getSymbol())
                                     .executed(tr.getQty())
                                     .side(tr.getIsBuyer() ? OperationUtils.BUY_STRING : OperationUtils.SELL_STRING)
@@ -181,10 +185,6 @@ public class MexcFullSyncService {
                 sleep(200);
             }
         }
-    }
-
-    private LocalDateTime toLocalDateTime(long timestamp) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"));
     }
 
     private LocalDateTime parseDateTime(String dateTimeStr) {

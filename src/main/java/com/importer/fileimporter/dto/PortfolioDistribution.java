@@ -1,5 +1,6 @@
 package com.importer.fileimporter.dto;
 
+import com.importer.fileimporter.entity.ExchangeName;
 import lombok.Builder;
 import lombok.Data;
 
@@ -12,6 +13,7 @@ import java.util.Objects;
 @Builder
 public class PortfolioDistribution {
     private String portfolioName;
+    private ExchangeName exchangeName;
     private BigDecimal totalUsdt;
     private BigDecimal totalBuySpentUsdt;
     private BigDecimal totalSellEarnedUsdt;

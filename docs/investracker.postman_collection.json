@@ -118,7 +118,93 @@
 						"header": [
 							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
 						],
-						"url": "{{baseUrl}}/api/integration/binance/orders?symbol=BTCUSDT"
+ 					"url": "{{baseUrl}}/api/integration/binance/orders?symbol=BTCUSDT"
+					}
+				},
+				{
+					"name": "Direct Trades Query (GET /myTrades)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/my-trades?symbol=BTCUSDT"
+					}
+				},
+				{
+					"name": "Direct Deposits Query (GET /deposits)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/deposits"
+					}
+				},
+				{
+					"name": "Direct Withdrawals Query (GET /withdrawals)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/withdrawals"
+					}
+				},
+				{
+					"name": "Direct Fiat Orders Query (GET /fiat-orders)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/integration/binance/fiat-orders?transactionType=0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"integration",
+								"binance",
+								"fiat-orders"
+							],
+							"query": [
+								{
+									"key": "transactionType",
+									"value": "0",
+									"description": "0: deposit, 1: withdraw"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Direct Fiat Payments Query (GET /fiat-payments)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/integration/binance/fiat-payments?transactionType=0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"integration",
+								"binance",
+								"fiat-payments"
+							],
+							"query": [
+								{
+									"key": "transactionType",
+									"value": "0",
+									"description": "0: buy, 1: sell"
+								}
+							]
+						}
 					}
 				}
 			]

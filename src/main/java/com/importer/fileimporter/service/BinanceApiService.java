@@ -29,6 +29,7 @@ public class BinanceApiService {
     private static final String DEPOSIT_HISTORY_ENDPOINT = "/sapi/v1/capital/deposit/hisrec";
     private static final String WITHDRAW_HISTORY_ENDPOINT = "/sapi/v1/capital/withdraw/history";
     private static final String FIAT_ORDERS_ENDPOINT = "/sapi/v1/fiat/orders";
+    private static final String FIAT_PAYMENTS_ENDPOINT = "/sapi/v1/fiat/payments";
     private static final String CONVERT_TRADE_ENDPOINT = "/sapi/v1/convert/tradeFlow";
     
     private static final int DEFAULT_TRADES_LIMIT = 1000;
@@ -239,6 +240,18 @@ public class BinanceApiService {
         String qsWithSig = qs.toString() + "&signature=" + signature;
 
         return executeRequest(FIAT_ORDERS_ENDPOINT, "GET", qsWithSig, apiKey, new ParameterizedTypeReference<BinanceFiatOrderResponse>() {});
+    }
+
+    public BinanceFiatOrderResponse getFiatPayments(String apiKey, String secretKey, int transactionType, Long startTime, Long endTime) {
+        long timestamp = System.currentTimeMillis();
+        StringBuilder qs = new StringBuilder("transactionType=" + transactionType + "&timestamp=" + timestamp + "&recvWindow=60000");
+        if (startTime != null) qs.append("&beginTime=").append(startTime);
+        if (endTime != null) qs.append("&endTime=").append(endTime);
+        
+        String signature = hmacSha256(qs.toString(), secretKey);
+        String qsWithSig = qs.toString() + "&signature=" + signature;
+
+        return executeRequest(FIAT_PAYMENTS_ENDPOINT, "GET", qsWithSig, apiKey, new ParameterizedTypeReference<BinanceFiatOrderResponse>() {});
     }
 
     public BinanceConvertTradeResponse getConvertTradeHistory(String apiKey, String secretKey, Long startTime, Long endTime) {

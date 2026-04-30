@@ -47,13 +47,48 @@ curl -X POST "{{baseUrl}}/api/exchange/config" \
 
 ### Step 4: Direct Query (Exhaustive Orders)
 Fetch all historical orders for a specific symbol directly from Binance.
+This endpoint automatically batches requests every 6 months starting from 2020-01-01.
 
 ```bash
 curl -X GET "{{baseUrl}}/api/integration/binance/orders?symbol=BTCUSDT" \
      -H "Authorization: Bearer {{jwt_token}}"
 ```
 
-### Step 5: Full Portfolio Sync
+### Step 5: Direct Query (Exhaustive Trades)
+Fetch all filled trades for a specific symbol directly from Binance.
+
+```bash
+curl -X GET "{{baseUrl}}/api/integration/binance/my-trades?symbol=BTCUSDT" \
+     -H "Authorization: Bearer {{jwt_token}}"
+```
+
+### Step 6: Crypto Movement History
+Fetch crypto deposits and withdrawals.
+
+```bash
+# Deposits
+curl -X GET "{{baseUrl}}/api/integration/binance/deposits" \
+     -H "Authorization: Bearer {{jwt_token}}"
+
+# Withdrawals
+curl -X GET "{{baseUrl}}/api/integration/binance/withdrawals" \
+     -H "Authorization: Bearer {{jwt_token}}"
+```
+
+### Step 7: Fiat History
+Fetch fiat deposits/withdrawals and payments.
+
+```bash
+# Fiat Orders (0: deposit, 1: withdraw)
+curl -X GET "{{baseUrl}}/api/integration/binance/fiat-orders?transactionType=0" \
+     -H "Authorization: Bearer {{jwt_token}}"
+
+# Fiat Payments (0: buy, 1: sell)
+curl -X GET "{{baseUrl}}/api/integration/binance/fiat-payments?transactionType=0" \
+     -H "Authorization: Bearer {{jwt_token}}"
+```
+
+### Step 8: Full Portfolio Sync
 Pull all historical trades, deposits, and withdrawals into a portfolio.
 
 ```bash
@@ -67,7 +102,7 @@ curl -X POST "{{baseUrl}}/transaction/sync/binance/full?portfolio=MainBinance" \
 
 Similar to Binance, but for the MEXC exchange.
 
-### Step 6: Configure MexC Credentials
+### Step 9: Configure MexC Credentials
 ```bash
 curl -X POST "{{baseUrl}}/api/exchange/config" \
      -H "Authorization: Bearer {{jwt_token}}" \
@@ -79,7 +114,7 @@ curl -X POST "{{baseUrl}}/api/exchange/config" \
      }'
 ```
 
-### Step 7: Full Portfolio Sync (MexC)
+### Step 10: Full Portfolio Sync (MexC)
 ```bash
 curl -X POST "{{baseUrl}}/transaction/sync/mexc/full?portfolio=MainMexC" \
      -H "Authorization: Bearer {{jwt_token}}"

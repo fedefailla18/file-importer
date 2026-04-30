@@ -2,6 +2,7 @@ package com.importer.fileimporter.controller;
 
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.dto.PortfolioDistribution;
+import com.importer.fileimporter.entity.ExchangeName;
 import com.importer.fileimporter.facade.PortfolioDistributionFacade;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.service.PortfolioService;
@@ -47,9 +48,10 @@ public class PortfolioController {
     @PostMapping("/{name}")
     @ResponseStatus(HttpStatus.CREATED)
     public Portfolio createPortfolio(
-            @Parameter(description = "Portfolio name", required = true) @PathVariable String name) {
+            @Parameter(description = "Portfolio name", required = true) @PathVariable String name,
+            @Parameter(description = "Optional exchange source (BINANCE, MEXC)") @RequestParam(required = false) ExchangeName exchangeName) {
         log.info("REST request to create portfolio: {}", name);
-        return portfolioService.findOrSave(name);
+        return portfolioService.findOrSave(name, exchangeName);
     }
 
     @GetMapping()

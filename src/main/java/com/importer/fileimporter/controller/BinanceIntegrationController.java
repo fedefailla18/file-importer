@@ -1,6 +1,10 @@
 package com.importer.fileimporter.controller;
 
+import com.importer.fileimporter.dto.integration.binance.BinanceDepositResponse;
+import com.importer.fileimporter.dto.integration.binance.BinanceFiatOrderResponse;
 import com.importer.fileimporter.dto.integration.binance.BinanceOrderResponse;
+import com.importer.fileimporter.dto.integration.binance.BinanceTradeResponse;
+import com.importer.fileimporter.dto.integration.binance.BinanceWithdrawResponse;
 import com.importer.fileimporter.entity.BinanceRawOrder;
 import com.importer.fileimporter.entity.BinanceSyncProgress;
 import com.importer.fileimporter.entity.ExchangeName;
@@ -27,6 +31,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -47,17 +54,183 @@ public class BinanceIntegrationController {
     public ResponseEntity<List<BinanceOrderResponse>> getAllOrdersProxy(
             @AuthenticationPrincipal User user,
             @Parameter(description = "Trading symbol (e.g., BTCUSDT)", required = true) @RequestParam String symbol,
-            @Parameter(description = "Start time in epoch ms") @RequestParam(required = false) Long startTime,
-            @Parameter(description = "End time in epoch ms") @RequestParam(required = false) Long endTime,
-            @Parameter(description = "Order ID to fetch from") @RequestParam(required = false) Long orderId) {
+            @Parameter(description = "Start date (yyyy-MM-dd), defaults to 2020-01-01") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End time in epoch ms") @RequestParam(required = false) Long endTime) {
 
         UserExchangeConfig config = getBinanceConfig(user);
         String apiKey = config.getApiKey();
         String secretKey = encryptionService.decrypt(config.getApiSecret());
 
-        List<BinanceOrderResponse> orders = binanceApiService.getAllOrders(apiKey, secretKey, symbol, startTime, endTime, orderId);
+        long startMillis = parseStartDate(startDate);
+        long endMillis = endTime != null ? endTime : System.currentTimeMillis();
 
-        return ResponseEntity.ok(orders);
+        List<BinanceOrderResponse> allOrders = new ArrayList<>();
+        long currentStart = startMillis;
+
+        while (currentStart < endMillis) {
+            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            List<BinanceOrderResponse> orders = binanceApiService.getAllOrders(apiKey, secretKey, symbol, currentStart, currentEnd, null);
+            if (orders != null) {
+                allOrders.addAll(orders);
+            }
+            currentStart = currentEnd;
+        }
+
+        return ResponseEntity.ok(allOrders);
+    }
+
+    @GetMapping("/my-trades")
+    @Operation(summary = "Get all trades for a symbol directly from Binance (Proxied)")
+    public ResponseEntity<List<BinanceTradeResponse>> getMyTradesProxy(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Trading symbol (e.g., BTCUSDT)", required = true) @RequestParam String symbol,
+            @Parameter(description = "Start date (yyyy-MM-dd), defaults to 2020-01-01") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End time in epoch ms") @RequestParam(required = false) Long endTime) {
+
+        UserExchangeConfig config = getBinanceConfig(user);
+        String apiKey = config.getApiKey();
+        String secretKey = encryptionService.decrypt(config.getApiSecret());
+
+        long startMillis = parseStartDate(startDate);
+        long endMillis = endTime != null ? endTime : System.currentTimeMillis();
+
+        List<BinanceTradeResponse> allTrades = new ArrayList<>();
+        long currentStart = startMillis;
+
+        while (currentStart < endMillis) {
+            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            List<BinanceTradeResponse> trades = binanceApiService.getMyTrades(apiKey, secretKey, symbol, currentStart, currentEnd, null);
+            if (trades != null) {
+                allTrades.addAll(trades);
+            }
+            currentStart = currentEnd;
+        }
+
+        return ResponseEntity.ok(allTrades);
+    }
+
+    @GetMapping("/deposits")
+    @Operation(summary = "Get crypto deposit history (Proxied)")
+    public ResponseEntity<List<BinanceDepositResponse>> getDepositHistoryProxy(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Start date (yyyy-MM-dd), defaults to 2020-01-01") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End time in epoch ms") @RequestParam(required = false) Long endTime) {
+
+        UserExchangeConfig config = getBinanceConfig(user);
+        String apiKey = config.getApiKey();
+        String secretKey = encryptionService.decrypt(config.getApiSecret());
+
+        long startMillis = parseStartDate(startDate);
+        long endMillis = endTime != null ? endTime : System.currentTimeMillis();
+
+        List<BinanceDepositResponse> allDeposits = new ArrayList<>();
+        long currentStart = startMillis;
+
+        while (currentStart < endMillis) {
+            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            List<BinanceDepositResponse> deposits = binanceApiService.getDepositHistory(apiKey, secretKey, currentStart, currentEnd);
+            if (deposits != null) {
+                allDeposits.addAll(deposits);
+            }
+            currentStart = currentEnd;
+        }
+
+        return ResponseEntity.ok(allDeposits);
+    }
+
+    @GetMapping("/withdrawals")
+    @Operation(summary = "Get crypto withdrawal history (Proxied)")
+    public ResponseEntity<List<BinanceWithdrawResponse>> getWithdrawHistoryProxy(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Start date (yyyy-MM-dd), defaults to 2020-01-01") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End time in epoch ms") @RequestParam(required = false) Long endTime) {
+
+        UserExchangeConfig config = getBinanceConfig(user);
+        String apiKey = config.getApiKey();
+        String secretKey = encryptionService.decrypt(config.getApiSecret());
+
+        long startMillis = parseStartDate(startDate);
+        long endMillis = endTime != null ? endTime : System.currentTimeMillis();
+
+        List<BinanceWithdrawResponse> allWithdrawals = new ArrayList<>();
+        long currentStart = startMillis;
+
+        while (currentStart < endMillis) {
+            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            List<BinanceWithdrawResponse> withdrawals = binanceApiService.getWithdrawHistory(apiKey, secretKey, currentStart, currentEnd);
+            if (withdrawals != null) {
+                allWithdrawals.addAll(withdrawals);
+            }
+            currentStart = currentEnd;
+        }
+
+        return ResponseEntity.ok(allWithdrawals);
+    }
+
+    @GetMapping("/fiat-orders")
+    @Operation(summary = "Get fiat deposit/withdraw history (Proxied)")
+    public ResponseEntity<BinanceFiatOrderResponse> getFiatOrdersProxy(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Transaction type (0: deposit, 1: withdraw)", required = true) @RequestParam int transactionType,
+            @Parameter(description = "Start date (yyyy-MM-dd), defaults to 2020-01-01") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End time in epoch ms") @RequestParam(required = false) Long endTime) {
+
+        UserExchangeConfig config = getBinanceConfig(user);
+        String apiKey = config.getApiKey();
+        String secretKey = encryptionService.decrypt(config.getApiSecret());
+
+        long startMillis = parseStartDate(startDate);
+        long endMillis = endTime != null ? endTime : System.currentTimeMillis();
+
+        BinanceFiatOrderResponse finalResponse = new BinanceFiatOrderResponse();
+        finalResponse.setData(new ArrayList<>());
+        finalResponse.setSuccess(true);
+        long currentStart = startMillis;
+
+        while (currentStart < endMillis) {
+            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            BinanceFiatOrderResponse resp = binanceApiService.getFiatOrders(apiKey, secretKey, transactionType, currentStart, currentEnd);
+            if (resp != null && resp.getData() != null) {
+                finalResponse.getData().addAll(resp.getData());
+            }
+            currentStart = currentEnd;
+        }
+        finalResponse.setTotal(finalResponse.getData().size());
+
+        return ResponseEntity.ok(finalResponse);
+    }
+
+    @GetMapping("/fiat-payments")
+    @Operation(summary = "Get fiat payment history (Proxied)")
+    public ResponseEntity<BinanceFiatOrderResponse> getFiatPaymentsProxy(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Transaction type (0: buy, 1: sell)", required = true) @RequestParam int transactionType,
+            @Parameter(description = "Start date (yyyy-MM-dd), defaults to 2020-01-01") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End time in epoch ms") @RequestParam(required = false) Long endTime) {
+
+        UserExchangeConfig config = getBinanceConfig(user);
+        String apiKey = config.getApiKey();
+        String secretKey = encryptionService.decrypt(config.getApiSecret());
+
+        long startMillis = parseStartDate(startDate);
+        long endMillis = endTime != null ? endTime : System.currentTimeMillis();
+
+        BinanceFiatOrderResponse finalResponse = new BinanceFiatOrderResponse();
+        finalResponse.setData(new ArrayList<>());
+        finalResponse.setSuccess(true);
+        long currentStart = startMillis;
+
+        while (currentStart < endMillis) {
+            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            BinanceFiatOrderResponse resp = binanceApiService.getFiatPayments(apiKey, secretKey, transactionType, currentStart, currentEnd);
+            if (resp != null && resp.getData() != null) {
+                finalResponse.getData().addAll(resp.getData());
+            }
+            currentStart = currentEnd;
+        }
+        finalResponse.setTotal(finalResponse.getData().size());
+
+        return ResponseEntity.ok(finalResponse);
     }
 
     @PostMapping("/sync-all")
@@ -88,5 +261,15 @@ public class BinanceIntegrationController {
     private UserExchangeConfig getBinanceConfig(User user) {
         return userExchangeConfigRepository.findByUserAndExchangeName(user, ExchangeName.BINANCE)
                 .orElseThrow(() -> new IllegalArgumentException("Binance API keys not configured for user"));
+    }
+
+    private static final long SIX_MONTHS_MS = 180L * 24 * 60 * 60 * 1000;
+    private static final String DEFAULT_START_DATE = "2020-01-01";
+
+    private long parseStartDate(String startDateStr) {
+        if (startDateStr == null || startDateStr.isEmpty()) {
+            startDateStr = DEFAULT_START_DATE;
+        }
+        return LocalDate.parse(startDateStr).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
     }
 }

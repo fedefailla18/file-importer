@@ -101,24 +101,29 @@ Managed by **Liquibase**. Changelogs live in `src/main/resources/db/changelog/`.
 - `totalRealizedProfitUsdt` = sum of `holding.totalRealizedProfitUsdt` across all holdings
 - `totalUnrealizedProfitUsdt` = sum of `holding.unrealizedProfitUsdt` across all holdings
 
-## Binance Integration
+## Exchange Integrations
 
-Two sync modes are available:
+Binance and MexC both support incremental and full-history sync:
 
 | Endpoint | Service | Scope |
 |----------|---------|-------|
 | `POST /transaction/sync/binance?portfolio=` | `BinanceSyncService` | Incremental — fetches only trades since `lastSyncTimestamp`. Only spot trades for currently-held assets. |
+| `POST /transaction/sync/mexc?portfolio=` | `MexcSyncService` | Incremental — fetches only MexC spot trades since `lastSyncTimestamp` for relevant account assets. |
 | `POST /transaction/sync/binance/full?portfolio=&startDate=&endDate=` | `BinanceFullSyncService` | Full historical — spot trades, deposits, withdrawals, fiat orders, convert trades. `startDate`/`endDate` are epoch milliseconds (optional; defaults to 2017-01-01 → now). |
+| `POST /transaction/sync/mexc/full?portfolio=&startDate=&endDate=` | `MexcFullSyncService` | Full historical — spot trades, deposits, withdrawals. `startDate`/`endDate` are epoch milliseconds (optional; defaults to 2017-01-01 → now). |
 
 Key classes:
 - **`ExchangeConfigController`** (`/api/exchange`) — `POST /config` saves/updates keys (secret AES-encrypted via `EncryptionService`); `GET /config` returns configs with masked secret (never returned).
 - **`BinanceSyncService`** — incremental sync with 200ms rate-limit delay between candidate pairs.
+- **`MexcSyncService`** — incremental MexC spot-trade sync using account balances + exchange symbols and `lastSyncTimestamp`.
 - **`BinanceFullSyncService`** — full historical sync with 200ms rate-limit delay per API window. Accepts optional `startDate`/`endDate` epoch-ms params.
+- **`MexcFullSyncService`** — full historical MexC sync for deposits, withdrawals, and spot trades.
 - **`BinanceApiService`** — Spring `WebClient`-based; signs requests with HMAC-SHA256.
-- **`UserExchangeConfig`** entity — keyed by `(user, exchangeName)`. `ExchangeName` is an enum; only `BINANCE` is currently used.
+- **`MexcApiService`** — Spring `WebClient`-based MexC integration; signs requests with HMAC-SHA256.
+- **`UserExchangeConfig`** entity — keyed by `(user, exchangeName)`. `ExchangeName` currently supports `BINANCE` and `MEXC`.
 - **DB migration**: `db/changelog/changes/2026-04-25-035-add-exchange-config.sql`.
 
-If a user has no Binance config saved, both sync services throw `IllegalArgumentException("Binance API keys not configured for user")` — the FE checks for this string in the error response.
+If a user has no exchange config saved, sync services throw `IllegalArgumentException("<Exchange> API keys not configured for user")` — the FE checks for `"not configured"` in error responses.
 
 **Rate limiting**: `rateLimitDelayMs = 1000ms` between every API call. Windows: spot trades 180 days, deposits/withdrawals 90 days (Binance limit), fiat orders 90 days, convert trades 30 days (Binance limit). On `-1003` (Too Many Requests) the service sleeps 60 s before continuing.
 
