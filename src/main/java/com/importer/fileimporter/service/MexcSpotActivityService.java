@@ -1,9 +1,9 @@
 package com.importer.fileimporter.service;
 
-import com.importer.fileimporter.dto.integration.binance.BinanceExchangeInfoResponse;
 import com.importer.fileimporter.dto.integration.mexc.MexcAccountResponse;
-import com.importer.fileimporter.dto.integration.mexc.MexcTradeResponse;
 import com.importer.fileimporter.entity.ExchangeName;
+import com.importer.fileimporter.entity.Portfolio;
+import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.entity.UserExchangeConfig;
 import com.importer.fileimporter.payload.response.MexcAssetBalanceResponse;
@@ -13,17 +13,11 @@ import com.importer.fileimporter.payload.response.MexcSpotTradeRowResponse;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,17 +25,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MexcSpotActivityService {
 
-    private static final Set<String> QUOTE_CURRENCIES = Set.of(
-            "USDT", "USDC", "BTC", "ETH", "BNB"
-    );
-    private static final List<String> QUOTE_CURRENCIES_ORDERED = List.of(
-            "USDT", "BTC", "ETH", "BNB"
-    );
-    private static final int CONSECUTIVE_FAILURE_THRESHOLD = 3;
-
     private final MexcApiService mexcApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
+    private final TransactionService transactionService;
+    private final PortfolioService portfolioService;
 
     public MexcSpotActivityResponse getSpotActivity(User user) {
         UserExchangeConfig config = userExchangeConfigRepository.findByUserAndExchangeName(user, ExchangeName.MEXC)
@@ -50,67 +38,22 @@ public class MexcSpotActivityService {
         String apiKey = config.getApiKey();
         String secretKey = encryptionService.decrypt(config.getApiSecret());
 
+        // 1. Get real-time balances from API
         MexcAccountResponse accountInfo = mexcApiService.getAccountInfo(apiKey, secretKey);
         List<MexcAssetBalanceResponse> balances = mapNonZeroBalances(accountInfo);
-        Set<String> investmentAssets = balances.stream()
-                .map(MexcAssetBalanceResponse::getAsset)
-                .filter(asset -> !QUOTE_CURRENCIES.contains(asset))
-                .collect(Collectors.toSet());
 
-        // Pre-fetch exchange info to avoid guessing pairs and getting 400s
-        Set<String> validSymbols = mexcApiService.getExchangeInfo().getSymbols().stream()
-                .map(BinanceExchangeInfoResponse.SymbolInfo::getSymbol)
-                .collect(Collectors.toSet());
+        // 2. Fetch processed trades from local database
+        Portfolio portfolio = portfolioService.getByNameForUser(ExchangeName.MEXC.name(), user)
+                .orElse(null);
 
-        List<String[]> candidatePairs = buildCandidatePairs(investmentAssets, validSymbols);
-        Map<String, MexcSpotTradeRowResponse> uniqueTrades = new LinkedHashMap<>();
+        List<Transaction> dbTransactions = portfolio != null 
+                ? transactionService.findByPortfolio(portfolio)
+                : List.of();
 
-        int consecutiveFailures = 0;
-
-        for (String[] pair : candidatePairs) {
-            String symbol = pair[0];
-            String baseAsset = pair[1];
-            String quoteAsset = pair[2];
-
-            try {
-                List<MexcTradeResponse> trades = mexcApiService.getMyTrades(apiKey, secretKey, symbol, null, null, null);
-                for (MexcTradeResponse trade : trades) {
-                    MexcSpotTradeRowResponse row = MexcSpotTradeRowResponse.builder()
-                            .symbol(trade.getSymbol())
-                            .baseAsset(baseAsset)
-                            .quoteAsset(quoteAsset)
-                            .side(Boolean.TRUE.equals(trade.getIsBuyer()) ? "BUY" : "SELL")
-                            .tradeId(trade.getId())
-                            .orderId(trade.getOrderId())
-                            .price(trade.getPrice())
-                            .qty(trade.getQty())
-                            .quoteQty(trade.getQuoteQty())
-                            .commission(trade.getCommission())
-                            .commissionAsset(trade.getCommissionAsset())
-                            .time(trade.getTime())
-                            .buyer(trade.getIsBuyer())
-                            .maker(trade.getIsMaker())
-                            .build();
-
-                    uniqueTrades.put(buildTradeKey(row), row);
-                }
-                consecutiveFailures = 0; // Reset on success
-            } catch (Exception e) {
-                consecutiveFailures++;
-                log.error("Error loading MexC spot activity for {} (Failure {}/{}): {}", 
-                        symbol, consecutiveFailures, CONSECUTIVE_FAILURE_THRESHOLD, e.getMessage());
-                
-                if (consecutiveFailures >= CONSECUTIVE_FAILURE_THRESHOLD) {
-                    log.error("MexC Sync aborted: Too many consecutive failures. Symbols might be incorrect or API keys restricted.");
-                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, 
-                        "MexC synchronization failed multiple times. Please verify your API keys and permissions, or contact support if the issue persists.");
-                }
-            }
-        }
-
-        List<MexcSpotTradeRowResponse> trades = uniqueTrades.values().stream()
-                .sorted(Comparator.comparing(MexcSpotTradeRowResponse::getTime, Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(MexcSpotTradeRowResponse::getTradeId, Comparator.nullsLast(Comparator.reverseOrder())))
+        List<MexcSpotTradeRowResponse> trades = dbTransactions.stream()
+                .filter(t -> t.getExchangeName() == ExchangeName.MEXC)
+                .map(this::mapToTradeRow)
+                .sorted(Comparator.comparing(MexcSpotTradeRowResponse::getTime, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
         BigDecimal grossBuyQuoteQty = trades.stream()
@@ -127,7 +70,6 @@ public class MexcSpotActivityService {
 
         MexcSpotActivitySummaryResponse summary = MexcSpotActivitySummaryResponse.builder()
                 .activeAssetCount(balances.size())
-                .candidatePairCount(candidatePairs.size())
                 .symbolCountWithTrades((int) trades.stream().map(MexcSpotTradeRowResponse::getSymbol).distinct().count())
                 .totalTradeCount(trades.size())
                 .buyTradeCount((int) trades.stream().filter(trade -> "BUY".equals(trade.getSide())).count())
@@ -162,30 +104,20 @@ public class MexcSpotActivityService {
                 .collect(Collectors.toList());
     }
 
-    private List<String[]> buildCandidatePairs(Set<String> investmentAssets, Set<String> validSymbols) {
-        List<String[]> candidates = new ArrayList<>();
-        for (String asset : investmentAssets) {
-            for (String quote : QUOTE_CURRENCIES_ORDERED) {
-                if (!asset.equals(quote)) {
-                    String symbol = asset + quote;
-                    if (validSymbols.contains(symbol)) {
-                        candidates.add(new String[]{symbol, asset, quote});
-                    }
-                }
-            }
-        }
-        return candidates;
-    }
-
-    private String buildTradeKey(MexcSpotTradeRowResponse trade) {
-        return String.join(":",
-                safeString(trade.getSymbol()),
-                safeString(trade.getTradeId()),
-                safeString(trade.getOrderId()),
-                safeString(trade.getTime()));
-    }
-
-    private String safeString(Object value) {
-        return value == null ? "" : String.valueOf(value);
+    private MexcSpotTradeRowResponse mapToTradeRow(Transaction t) {
+        return MexcSpotTradeRowResponse.builder()
+                .symbol(t.getPair())
+                .baseAsset(t.getSymbol())
+                .quoteAsset(t.getPaidWith())
+                .side(t.getSide())
+                .tradeId(t.getExternalId() != null ? Long.parseLong(t.getExternalId()) : null)
+                .price(t.getPrice())
+                .qty(t.getExecuted())
+                .quoteQty(t.getPaidAmount())
+                .commission(t.getFeeAmount())
+                .commissionAsset(t.getFeeSymbol())
+                .time(t.getDateUtc().atZone(java.time.ZoneId.of("UTC")).toInstant().toEpochMilli())
+                .buyer("BUY".equals(t.getSide()))
+                .build();
     }
 }

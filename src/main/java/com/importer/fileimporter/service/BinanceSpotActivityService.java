@@ -1,9 +1,9 @@
 package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.integration.binance.BinanceAccountResponse;
-import com.importer.fileimporter.dto.integration.binance.BinanceExchangeInfoResponse;
-import com.importer.fileimporter.dto.integration.binance.BinanceTradeResponse;
 import com.importer.fileimporter.entity.ExchangeName;
+import com.importer.fileimporter.entity.Portfolio;
+import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.entity.UserExchangeConfig;
 import com.importer.fileimporter.payload.response.BinanceAssetBalanceResponse;
@@ -13,16 +13,11 @@ import com.importer.fileimporter.payload.response.BinanceSpotTradeRowResponse;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -34,15 +29,12 @@ public class BinanceSpotActivityService {
     private static final Set<String> QUOTE_CURRENCIES = Set.of(
             "USDT", "BUSD", "USDC", "BTC", "ETH", "BNB", "FDUSD", "USDS", "DAI", "TUSD", "EUR", "TRY"
     );
-    private static final List<String> QUOTE_CURRENCIES_ORDERED = List.of(
-            "USDT", "BTC", "ETH", "BNB", "BUSD", "USDC", "FDUSD"
-    );
-    private static final int BINANCE_MAX_PAGE_SIZE = 1000;
-    private static final int CONSECUTIVE_FAILURE_THRESHOLD = 3;
 
     private final BinanceApiService binanceApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
+    private final TransactionService transactionService;
+    private final PortfolioService portfolioService;
 
     public BinanceSpotActivityResponse getSpotActivity(User user) {
         UserExchangeConfig config = userExchangeConfigRepository.findByUserAndExchangeName(user, ExchangeName.BINANCE)
@@ -51,69 +43,22 @@ public class BinanceSpotActivityService {
         String apiKey = config.getApiKey();
         String secretKey = encryptionService.decrypt(config.getApiSecret());
 
+        // 1. Get real-time balances from API
         BinanceAccountResponse accountInfo = binanceApiService.getAccountInfo(apiKey, secretKey);
         List<BinanceAssetBalanceResponse> balances = mapNonZeroBalances(accountInfo);
-        Set<String> investmentAssets = balances.stream()
-                .map(BinanceAssetBalanceResponse::getAsset)
-                .filter(asset -> !QUOTE_CURRENCIES.contains(asset))
-                .collect(Collectors.toSet());
 
-        // Pre-fetch exchange info to avoid guessing pairs and getting 400s
-        Set<String> validSymbols = binanceApiService.getExchangeInfo().getSymbols().stream()
-                .map(BinanceExchangeInfoResponse.SymbolInfo::getSymbol)
-                .collect(Collectors.toSet());
+        // 2. Fetch processed trades from local database instead of API crawl
+        Portfolio portfolio = portfolioService.getByNameForUser(ExchangeName.BINANCE.name(), user)
+                .orElse(null);
 
-        List<String[]> candidatePairs = buildCandidatePairs(investmentAssets, validSymbols);
-        Map<String, BinanceSpotTradeRowResponse> uniqueTrades = new LinkedHashMap<>();
+        List<Transaction> dbTransactions = portfolio != null 
+                ? transactionService.findByPortfolio(portfolio)
+                : List.of();
 
-        int consecutiveFailures = 0;
-
-        for (String[] pair : candidatePairs) {
-            String symbol = pair[0];
-            String baseAsset = pair[1];
-            String quoteAsset = pair[2];
-
-            try {
-                List<BinanceTradeResponse> trades = binanceApiService.getAllMyTrades(apiKey, secretKey, symbol);
-                for (BinanceTradeResponse trade : trades) {
-                    BinanceSpotTradeRowResponse row = BinanceSpotTradeRowResponse.builder()
-                            .symbol(trade.getSymbol())
-                            .baseAsset(baseAsset)
-                            .quoteAsset(quoteAsset)
-                            .side(Boolean.TRUE.equals(trade.getIsBuyer()) ? "BUY" : "SELL")
-                            .tradeId(trade.getId())
-                            .orderId(trade.getOrderId())
-                            .orderListId(trade.getOrderListId())
-                            .price(trade.getPrice())
-                            .qty(trade.getQty())
-                            .quoteQty(trade.getQuoteQty())
-                            .commission(trade.getCommission())
-                            .commissionAsset(trade.getCommissionAsset())
-                            .time(trade.getTime())
-                            .buyer(trade.getIsBuyer())
-                            .maker(trade.getIsMaker())
-                            .bestMatch(trade.getIsBestMatch())
-                            .build();
-
-                    uniqueTrades.put(buildTradeKey(row), row);
-                }
-                consecutiveFailures = 0; // Reset on success
-            } catch (Exception e) {
-                consecutiveFailures++;
-                log.error("Error loading Binance spot activity for {} (Failure {}/{}): {}", 
-                        symbol, consecutiveFailures, CONSECUTIVE_FAILURE_THRESHOLD, e.getMessage());
-                
-                if (consecutiveFailures >= CONSECUTIVE_FAILURE_THRESHOLD) {
-                    log.error("Binance Sync aborted: Too many consecutive failures.");
-                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, 
-                        "Binance synchronization failed multiple times. Please verify your API keys and permissions, or contact support if the issue persists.");
-                }
-            }
-        }
-
-        List<BinanceSpotTradeRowResponse> trades = uniqueTrades.values().stream()
-                .sorted(Comparator.comparing(BinanceSpotTradeRowResponse::getTime, Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(BinanceSpotTradeRowResponse::getTradeId, Comparator.nullsLast(Comparator.reverseOrder())))
+        List<BinanceSpotTradeRowResponse> trades = dbTransactions.stream()
+                .filter(t -> t.getExchangeName() == ExchangeName.BINANCE)
+                .map(this::mapToTradeRow)
+                .sorted(Comparator.comparing(BinanceSpotTradeRowResponse::getTime, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
         BigDecimal grossBuyQuoteQty = trades.stream()
@@ -130,7 +75,6 @@ public class BinanceSpotActivityService {
 
         BinanceSpotActivitySummaryResponse summary = BinanceSpotActivitySummaryResponse.builder()
                 .activeAssetCount(balances.size())
-                .candidatePairCount(candidatePairs.size())
                 .symbolCountWithTrades((int) trades.stream().map(BinanceSpotTradeRowResponse::getSymbol).distinct().count())
                 .totalTradeCount(trades.size())
                 .buyTradeCount((int) trades.stream().filter(trade -> "BUY".equals(trade.getSide())).count())
@@ -165,30 +109,20 @@ public class BinanceSpotActivityService {
                 .collect(Collectors.toList());
     }
 
-    private List<String[]> buildCandidatePairs(Set<String> investmentAssets, Set<String> validSymbols) {
-        List<String[]> candidates = new ArrayList<>();
-        for (String asset : investmentAssets) {
-            for (String quote : QUOTE_CURRENCIES_ORDERED) {
-                if (!asset.equals(quote)) {
-                    String symbol = asset + quote;
-                    if (validSymbols.contains(symbol)) {
-                        candidates.add(new String[]{symbol, asset, quote});
-                    }
-                }
-            }
-        }
-        return candidates;
-    }
-
-    private String buildTradeKey(BinanceSpotTradeRowResponse trade) {
-        return String.join(":",
-                safeString(trade.getSymbol()),
-                safeString(trade.getTradeId()),
-                safeString(trade.getOrderId()),
-                safeString(trade.getTime()));
-    }
-
-    private String safeString(Object value) {
-        return value == null ? "" : String.valueOf(value);
+    private BinanceSpotTradeRowResponse mapToTradeRow(Transaction t) {
+        return BinanceSpotTradeRowResponse.builder()
+                .symbol(t.getPair())
+                .baseAsset(t.getSymbol())
+                .quoteAsset(t.getPaidWith())
+                .side(t.getSide())
+                .tradeId(t.getExternalId() != null ? Long.parseLong(t.getExternalId()) : null)
+                .price(t.getPrice())
+                .qty(t.getExecuted())
+                .quoteQty(t.getPaidAmount())
+                .commission(t.getFeeAmount())
+                .commissionAsset(t.getFeeSymbol())
+                .time(t.getDateUtc().atZone(java.time.ZoneId.of("UTC")).toInstant().toEpochMilli())
+                .buyer("BUY".equals(t.getSide()))
+                .build();
     }
 }
