@@ -76,6 +76,7 @@ dependencies {
 	// OpenAPI/Swagger documentation
 	implementation 'org.springdoc:springdoc-openapi-ui:1.6.15'
 	implementation 'org.springdoc:springdoc-openapi-security:1.6.15'
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
 	//open api code generation
 	swaggerCodegen 'org.openapitools:openapi-generator-cli:7.3.0'
@@ -175,6 +176,12 @@ jacocoTestCoverageVerification {
 				minimum = 0.75
 			}
 		}
+	}
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:2021.0.8"
 	}
 }
 
