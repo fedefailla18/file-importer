@@ -80,6 +80,13 @@ public class Transaction {
     @JoinColumn(name = "portfolio_id")
     private Portfolio portfolio;
 
+    @Column(name = "external_id", length = 100)
+    private String externalId;
+
+    @Enumerated(javax.persistence.EnumType.STRING)
+    @Column(name = "exchange_name", length = 20)
+    private ExchangeName exchangeName;
+
     private boolean processed = false;
 
     private LocalDateTime lastProcessedAt;
