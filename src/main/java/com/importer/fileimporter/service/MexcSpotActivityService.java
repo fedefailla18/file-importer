@@ -1,5 +1,6 @@
 package com.importer.fileimporter.service;
 
+import com.importer.fileimporter.dto.integration.binance.BinanceExchangeInfoResponse;
 import com.importer.fileimporter.dto.integration.mexc.MexcAccountResponse;
 import com.importer.fileimporter.dto.integration.mexc.MexcTradeResponse;
 import com.importer.fileimporter.entity.ExchangeName;
@@ -12,7 +13,9 @@ import com.importer.fileimporter.payload.response.MexcSpotTradeRowResponse;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -34,6 +37,7 @@ public class MexcSpotActivityService {
     private static final List<String> QUOTE_CURRENCIES_ORDERED = List.of(
             "USDT", "BTC", "ETH", "BNB"
     );
+    private static final int CONSECUTIVE_FAILURE_THRESHOLD = 3;
 
     private final MexcApiService mexcApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
@@ -53,8 +57,15 @@ public class MexcSpotActivityService {
                 .filter(asset -> !QUOTE_CURRENCIES.contains(asset))
                 .collect(Collectors.toSet());
 
-        List<String[]> candidatePairs = buildCandidatePairs(investmentAssets);
+        // Pre-fetch exchange info to avoid guessing pairs and getting 400s
+        Set<String> validSymbols = mexcApiService.getExchangeInfo().getSymbols().stream()
+                .map(BinanceExchangeInfoResponse.SymbolInfo::getSymbol)
+                .collect(Collectors.toSet());
+
+        List<String[]> candidatePairs = buildCandidatePairs(investmentAssets, validSymbols);
         Map<String, MexcSpotTradeRowResponse> uniqueTrades = new LinkedHashMap<>();
+
+        int consecutiveFailures = 0;
 
         for (String[] pair : candidatePairs) {
             String symbol = pair[0];
@@ -83,8 +94,17 @@ public class MexcSpotActivityService {
 
                     uniqueTrades.put(buildTradeKey(row), row);
                 }
+                consecutiveFailures = 0; // Reset on success
             } catch (Exception e) {
-                log.error("Error loading MexC spot activity for {}: {}", symbol, e.getMessage());
+                consecutiveFailures++;
+                log.error("Error loading MexC spot activity for {} (Failure {}/{}): {}", 
+                        symbol, consecutiveFailures, CONSECUTIVE_FAILURE_THRESHOLD, e.getMessage());
+                
+                if (consecutiveFailures >= CONSECUTIVE_FAILURE_THRESHOLD) {
+                    log.error("MexC Sync aborted: Too many consecutive failures. Symbols might be incorrect or API keys restricted.");
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, 
+                        "MexC synchronization failed multiple times. Please verify your API keys and permissions, or contact support if the issue persists.");
+                }
             }
         }
 
@@ -142,12 +162,15 @@ public class MexcSpotActivityService {
                 .collect(Collectors.toList());
     }
 
-    private List<String[]> buildCandidatePairs(Set<String> investmentAssets) {
+    private List<String[]> buildCandidatePairs(Set<String> investmentAssets, Set<String> validSymbols) {
         List<String[]> candidates = new ArrayList<>();
         for (String asset : investmentAssets) {
             for (String quote : QUOTE_CURRENCIES_ORDERED) {
                 if (!asset.equals(quote)) {
-                    candidates.add(new String[]{asset + quote, asset, quote});
+                    String symbol = asset + quote;
+                    if (validSymbols.contains(symbol)) {
+                        candidates.add(new String[]{symbol, asset, quote});
+                    }
                 }
             }
         }

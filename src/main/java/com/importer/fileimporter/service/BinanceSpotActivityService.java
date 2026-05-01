@@ -1,6 +1,7 @@
 package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.integration.binance.BinanceAccountResponse;
+import com.importer.fileimporter.dto.integration.binance.BinanceExchangeInfoResponse;
 import com.importer.fileimporter.dto.integration.binance.BinanceTradeResponse;
 import com.importer.fileimporter.entity.ExchangeName;
 import com.importer.fileimporter.entity.User;
@@ -12,7 +13,9 @@ import com.importer.fileimporter.payload.response.BinanceSpotTradeRowResponse;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -35,6 +38,7 @@ public class BinanceSpotActivityService {
             "USDT", "BTC", "ETH", "BNB", "BUSD", "USDC", "FDUSD"
     );
     private static final int BINANCE_MAX_PAGE_SIZE = 1000;
+    private static final int CONSECUTIVE_FAILURE_THRESHOLD = 3;
 
     private final BinanceApiService binanceApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
@@ -54,8 +58,15 @@ public class BinanceSpotActivityService {
                 .filter(asset -> !QUOTE_CURRENCIES.contains(asset))
                 .collect(Collectors.toSet());
 
-        List<String[]> candidatePairs = buildCandidatePairs(investmentAssets);
+        // Pre-fetch exchange info to avoid guessing pairs and getting 400s
+        Set<String> validSymbols = binanceApiService.getExchangeInfo().getSymbols().stream()
+                .map(BinanceExchangeInfoResponse.SymbolInfo::getSymbol)
+                .collect(Collectors.toSet());
+
+        List<String[]> candidatePairs = buildCandidatePairs(investmentAssets, validSymbols);
         Map<String, BinanceSpotTradeRowResponse> uniqueTrades = new LinkedHashMap<>();
+
+        int consecutiveFailures = 0;
 
         for (String[] pair : candidatePairs) {
             String symbol = pair[0];
@@ -86,11 +97,16 @@ public class BinanceSpotActivityService {
 
                     uniqueTrades.put(buildTradeKey(row), row);
                 }
+                consecutiveFailures = 0; // Reset on success
             } catch (Exception e) {
-                if (e.getMessage() != null && e.getMessage().contains("-1121")) {
-                    log.debug("Symbol {} does not exist on Binance, skipping", symbol);
-                } else {
-                    log.error("Error loading Binance spot activity for {}: {}", symbol, e.getMessage());
+                consecutiveFailures++;
+                log.error("Error loading Binance spot activity for {} (Failure {}/{}): {}", 
+                        symbol, consecutiveFailures, CONSECUTIVE_FAILURE_THRESHOLD, e.getMessage());
+                
+                if (consecutiveFailures >= CONSECUTIVE_FAILURE_THRESHOLD) {
+                    log.error("Binance Sync aborted: Too many consecutive failures.");
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, 
+                        "Binance synchronization failed multiple times. Please verify your API keys and permissions, or contact support if the issue persists.");
                 }
             }
         }
@@ -149,12 +165,15 @@ public class BinanceSpotActivityService {
                 .collect(Collectors.toList());
     }
 
-    private List<String[]> buildCandidatePairs(Set<String> investmentAssets) {
+    private List<String[]> buildCandidatePairs(Set<String> investmentAssets, Set<String> validSymbols) {
         List<String[]> candidates = new ArrayList<>();
         for (String asset : investmentAssets) {
             for (String quote : QUOTE_CURRENCIES_ORDERED) {
                 if (!asset.equals(quote)) {
-                    candidates.add(new String[]{asset + quote, asset, quote});
+                    String symbol = asset + quote;
+                    if (validSymbols.contains(symbol)) {
+                        candidates.add(new String[]{symbol, asset, quote});
+                    }
                 }
             }
         }
