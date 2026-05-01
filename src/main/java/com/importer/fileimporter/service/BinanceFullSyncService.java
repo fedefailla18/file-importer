@@ -12,9 +12,7 @@ import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +27,7 @@ public class BinanceFullSyncService {
     private final EncryptionService encryptionService;
     private final TransactionProcessor transactionProcessor;
     private final PortfolioService portfolioService;
+    private final RawResponseService rawResponseService;
 
     private static final long WINDOW_90_DAYS = 90L * 24 * 60 * 60 * 1000;
     private static final long WINDOW_30_DAYS = 30L * 24 * 60 * 60 * 1000;
@@ -64,7 +63,7 @@ public class BinanceFullSyncService {
         // 4. Sync Convert Trades
         syncConvertTrades(apiKey, secretKey, portfolio, startTime, endTime);
 
-        // 5. Sync Spot Trades (using fromId paging)
+        // 5. Sync Spot Trades
         syncSpotTrades(apiKey, secretKey, portfolio, startTime, endTime);
 
         config.setLastSyncTimestamp(now);
@@ -77,15 +76,18 @@ public class BinanceFullSyncService {
             long e = Math.min(t + WINDOW_90_DAYS, end);
             try {
                 List<BinanceDepositResponse> deposits = binanceApiService.getDepositHistory(apiKey, secretKey, t, e);
-                if (deposits != null) {
+                if (deposits != null && !deposits.isEmpty()) {
+                    rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.BINANCE, "DEPOSIT", null, deposits);
                     for (BinanceDepositResponse d : deposits) {
                         Transaction tx = Transaction.builder()
-                                .dateUtc(toLocalDateTime(d.getInsertTime()))
+                                .dateUtc(DateUtils.toLocalDateTime(d.getInsertTime()))
                                 .side(OperationUtils.DEPOSIT_STRING)
                                 .symbol(d.getCoin())
                                 .executed(d.getAmount())
                                 .price(BigDecimal.ZERO)
                                 .pair(d.getCoin() + "EXTERNAL")
+                                .externalId(d.getTxId())
+                                .exchangeName(ExchangeName.BINANCE)
                                 .created(LocalDateTime.now())
                                 .createdBy("BinanceFullSync-Deposit")
                                 .portfolio(portfolio)
@@ -106,10 +108,11 @@ public class BinanceFullSyncService {
             long e = Math.min(t + WINDOW_90_DAYS, end);
             try {
                 List<BinanceWithdrawResponse> withdrawals = binanceApiService.getWithdrawHistory(apiKey, secretKey, t, e);
-                if (withdrawals != null) {
+                if (withdrawals != null && !withdrawals.isEmpty()) {
+                    rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.BINANCE, "WITHDRAW", null, withdrawals);
                     for (BinanceWithdrawResponse w : withdrawals) {
                         Transaction tx = Transaction.builder()
-                                .dateUtc(parseDateTime(w.getApplyTime()))
+                                .dateUtc(DateUtils.getLocalDateTime(w.getApplyTime()))
                                 .side(OperationUtils.WITHDRAW_STRING)
                                 .symbol(w.getCoin())
                                 .executed(w.getAmount())
@@ -117,6 +120,8 @@ public class BinanceFullSyncService {
                                 .pair(w.getCoin() + "EXTERNAL")
                                 .feeAmount(w.getTransactionFee())
                                 .feeSymbol(w.getCoin())
+                                .externalId(w.getTxId() != null ? w.getTxId() : w.getId())
+                                .exchangeName(ExchangeName.BINANCE)
                                 .created(LocalDateTime.now())
                                 .createdBy("BinanceFullSync-Withdraw")
                                 .portfolio(portfolio)
@@ -138,12 +143,13 @@ public class BinanceFullSyncService {
                 long e = Math.min(t + WINDOW_90_DAYS, end);
                 try {
                     BinanceFiatOrderResponse resp = binanceApiService.getFiatOrders(apiKey, secretKey, type, t, e);
-                    if (resp != null && resp.getData() != null) {
+                    if (resp != null && resp.getData() != null && !resp.getData().isEmpty()) {
+                        rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.BINANCE, "FIAT_ORDER_" + type, null, resp);
                         for (BinanceFiatOrderResponse.FiatOrder o : resp.getData()) {
                             if (!"Completed".equalsIgnoreCase(o.getStatus())) continue;
                             
                             Transaction tx = Transaction.builder()
-                                    .dateUtc(toLocalDateTime(o.getCreateTime()))
+                                    .dateUtc(DateUtils.toLocalDateTime(o.getCreateTime()))
                                     .side(type == 0 ? OperationUtils.DEPOSIT_STRING : OperationUtils.WITHDRAW_STRING)
                                     .symbol(o.getCryptoCurrency())
                                     .executed(new BigDecimal(o.getObtainAmount()))
@@ -153,6 +159,8 @@ public class BinanceFullSyncService {
                                     .pair(o.getCryptoCurrency() + o.getFiatCurrency())
                                     .feeAmount(o.getTotalFee())
                                     .feeSymbol(o.getFiatCurrency())
+                                    .externalId(o.getOrderNo())
+                                    .exchangeName(ExchangeName.BINANCE)
                                     .created(LocalDateTime.now())
                                     .createdBy("BinanceFullSync-FiatOrder")
                                     .portfolio(portfolio)
@@ -174,12 +182,13 @@ public class BinanceFullSyncService {
             long e = Math.min(t + WINDOW_30_DAYS, end);
             try {
                 BinanceConvertTradeResponse resp = binanceApiService.getConvertTradeHistory(apiKey, secretKey, t, e);
-                if (resp != null && resp.getList() != null) {
+                if (resp != null && resp.getList() != null && !resp.getList().isEmpty()) {
+                    rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.BINANCE, "CONVERT_TRADE", null, resp);
                     for (BinanceConvertTradeResponse.ConvertTrade c : resp.getList()) {
                         if (!"SUCCESS".equalsIgnoreCase(c.getOrderStatus())) continue;
 
                         Transaction tx = Transaction.builder()
-                                .dateUtc(toLocalDateTime(c.getCreateTime()))
+                                .dateUtc(DateUtils.toLocalDateTime(c.getCreateTime()))
                                 .side(OperationUtils.BUY_STRING)
                                 .symbol(c.getToAsset())
                                 .executed(c.getToAmount())
@@ -187,6 +196,8 @@ public class BinanceFullSyncService {
                                 .paidWith(c.getFromAsset())
                                 .paidAmount(c.getFromAmount())
                                 .pair(c.getToAsset() + c.getFromAsset())
+                                .externalId(c.getOrderId())
+                                .exchangeName(ExchangeName.BINANCE)
                                 .created(LocalDateTime.now())
                                 .createdBy("BinanceFullSync-Convert")
                                 .portfolio(portfolio)
@@ -205,6 +216,8 @@ public class BinanceFullSyncService {
         log.info("Syncing Binance Spot Trades...");
         
         BinanceAccountResponse account = binanceApiService.getAccountInfo(apiKey, secretKey);
+        rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.BINANCE, "ACCOUNT_SNAPSHOT", null, account);
+
         Set<String> assets = account.getBalances().stream()
                 .filter(b -> b.getFree().add(b.getLocked()).compareTo(BigDecimal.ZERO) > 0)
                 .map(BinanceAccountResponse.AssetBalance::getAsset)
@@ -234,6 +247,7 @@ public class BinanceFullSyncService {
                         hasMore = false;
                     } else {
                         log.info("Processing {} trades for {}", trades.size(), sInfo.getSymbol());
+                        rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.BINANCE, "TRADES_" + sInfo.getSymbol(), null, trades);
                         for (BinanceTradeResponse tr : trades) {
                             BinanceApiTransactionAdapter adapter = new BinanceApiTransactionAdapter(tr, sInfo.getBaseAsset(), sInfo.getQuoteAsset());
                             Transaction tx = Transaction.builder()
@@ -247,6 +261,8 @@ public class BinanceFullSyncService {
                                     .paidAmount(adapter.getAmount())
                                     .feeAmount(adapter.getFee())
                                     .feeSymbol(adapter.getFeeSymbol())
+                                    .externalId(tr.getId().toString())
+                                    .exchangeName(ExchangeName.BINANCE)
                                     .created(LocalDateTime.now())
                                     .createdBy("BinanceFullSync-Spot")
                                     .portfolio(portfolio)
@@ -267,15 +283,6 @@ public class BinanceFullSyncService {
                 sleep(200);
             }
         }
-    }
-
-    private LocalDateTime toLocalDateTime(long timestamp) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"));
-    }
-
-    private LocalDateTime parseDateTime(String dateTimeStr) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        return LocalDateTime.parse(dateTimeStr, formatter);
     }
 
     private void sleep(long ms) {

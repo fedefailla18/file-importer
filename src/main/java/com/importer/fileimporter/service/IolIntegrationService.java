@@ -14,16 +14,17 @@ import java.util.List;
 public class IolIntegrationService {
 
     private final IolApiService iolApiService;
+    private final RawResponseService rawResponseService;
 
     public IolAccountStatementResponse getProcessedAccountStatement(User user) {
         IolAccountStatementResponse raw = iolApiService.getAccountStatement(user);
-        // Here we can apply business logic or transformations (e.g. initial USD conversion logic)
+        rawResponseService.saveResponse(user, com.importer.fileimporter.entity.ExchangeName.IOL, "ACCOUNT_STATEMENT", null, raw);
         return raw;
     }
 
     public IolPortfolioResponse getProcessedPortfolio(User user, String country) {
         IolPortfolioResponse raw = iolApiService.getPortfolio(user, country);
-        // Transform IOL raw data to our internal representation if needed
+        rawResponseService.saveResponse(user, com.importer.fileimporter.entity.ExchangeName.IOL, "PORTFOLIO_" + country, null, raw);
         return raw;
     }
 

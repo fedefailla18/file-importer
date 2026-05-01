@@ -1,7 +1,6 @@
 package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.integration.mexc.*;
-import com.importer.fileimporter.dto.integration.binance.BinanceAccountResponse;
 import com.importer.fileimporter.dto.integration.binance.BinanceExchangeInfoResponse;
 import com.importer.fileimporter.entity.*;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
@@ -13,16 +12,11 @@ import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static com.fasterxml.jackson.databind.type.LogicalType.DateTime;
-import static org.apache.poi.ss.usermodel.DateUtil.toLocalDateTime;
 
 @Service
 @Slf4j
@@ -34,6 +28,7 @@ public class MexcFullSyncService {
     private final EncryptionService encryptionService;
     private final TransactionProcessor transactionProcessor;
     private final PortfolioService portfolioService;
+    private final RawResponseService rawResponseService;
 
     private static final long WINDOW_90_DAYS = 90L * 24 * 60 * 60 * 1000;
     private static final long START_TIME_2017 = 1483228800000L;
@@ -75,7 +70,8 @@ public class MexcFullSyncService {
             long e = Math.min(t + WINDOW_90_DAYS, end);
             try {
                 List<MexcDepositResponse> deposits = mexcApiService.getDepositHistory(apiKey, secretKey, t, e);
-                if (deposits != null) {
+                if (deposits != null && !deposits.isEmpty()) {
+                    rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.MEXC, "DEPOSIT", null, deposits);
                     for (MexcDepositResponse d : deposits) {
                         Transaction tx = Transaction.builder()
                                 .dateUtc(DateUtils.toLocalDateTime(d.getInsertTime()))
@@ -84,6 +80,8 @@ public class MexcFullSyncService {
                                 .executed(d.getAmount())
                                 .price(BigDecimal.ZERO)
                                 .pair(d.getCoin() + "EXTERNAL")
+                                .externalId(d.getTxId())
+                                .exchangeName(ExchangeName.MEXC)
                                 .created(LocalDateTime.now())
                                 .createdBy("MexcFullSync-Deposit")
                                 .portfolio(portfolio)
@@ -104,7 +102,8 @@ public class MexcFullSyncService {
             long e = Math.min(t + WINDOW_90_DAYS, end);
             try {
                 List<MexcWithdrawResponse> withdrawals = mexcApiService.getWithdrawHistory(apiKey, secretKey, t, e);
-                if (withdrawals != null) {
+                if (withdrawals != null && !withdrawals.isEmpty()) {
+                    rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.MEXC, "WITHDRAW", null, withdrawals);
                     for (MexcWithdrawResponse w : withdrawals) {
                         Transaction tx = Transaction.builder()
                                 .dateUtc(parseDateTime(w.getApplyTime()))
@@ -115,6 +114,8 @@ public class MexcFullSyncService {
                                 .pair(w.getCoin() + "EXTERNAL")
                                 .feeAmount(w.getTransactionFee())
                                 .feeSymbol(w.getCoin())
+                                .externalId(w.getTxId() != null ? w.getTxId() : w.getId())
+                                .exchangeName(ExchangeName.MEXC)
                                 .created(LocalDateTime.now())
                                 .createdBy("MexcFullSync-Withdraw")
                                 .portfolio(portfolio)
@@ -133,6 +134,8 @@ public class MexcFullSyncService {
         log.info("Syncing MexC Spot Trades...");
         
         MexcAccountResponse account = mexcApiService.getAccountInfo(apiKey, secretKey);
+        rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.MEXC, "ACCOUNT_SNAPSHOT", null, account);
+
         Set<String> assets = account.getBalances().stream()
                 .filter(b -> b.getFree().add(b.getLocked()).compareTo(BigDecimal.ZERO) > 0)
                 .map(MexcAccountResponse.AssetBalance::getAsset)
@@ -157,6 +160,7 @@ public class MexcFullSyncService {
                         hasMore = false;
                     } else {
                         log.info("Processing {} MexC trades for {}", trades.size(), sInfo.getSymbol());
+                        rawResponseService.saveResponse(portfolio.getUser(), ExchangeName.MEXC, "TRADES_" + sInfo.getSymbol(), null, trades);
                         for (MexcTradeResponse tr : trades) {
                             Transaction tx = Transaction.builder()
                                     .dateUtc(tr.getTimeAsLocalDateTime())
@@ -169,6 +173,8 @@ public class MexcFullSyncService {
                                     .paidAmount(tr.getQuoteQty())
                                     .feeAmount(tr.getCommission())
                                     .feeSymbol(tr.getCommissionAsset())
+                                    .externalId(tr.getId().toString())
+                                    .exchangeName(ExchangeName.MEXC)
                                     .created(LocalDateTime.now())
                                     .createdBy("MexcFullSync-Spot")
                                     .portfolio(portfolio)
