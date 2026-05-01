@@ -1,5 +1,6 @@
 package com.importer.fileimporter.repository;
 
+import com.importer.fileimporter.entity.ExchangeName;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -40,4 +42,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     Page<Transaction> findByPortfolioIn(List<Portfolio> portfolios, Pageable pageable);
 
     void deleteAllByPortfolio(Portfolio portfolio);
+
+    Optional<Transaction> findByPortfolioAndExchangeNameAndExternalId(Portfolio portfolio, ExchangeName exchangeName, String externalId);
 }

@@ -30,9 +30,14 @@ public class TransactionProcessor {
                 transaction.getSide(), transaction.getExecuted(), transaction.getSymbol(), transaction.getPrice(),
                 transaction.getPortfolio() != null ? transaction.getPortfolio().getName() : "NULL");
         
-        // 1. Save the transaction if not already saved
+        // 1. Save the transaction if not already saved (idempotent)
         if (transaction.getId() == null) {
-            transaction = transactionService.save(transaction);
+            java.util.Optional<Transaction> saved = transactionService.saveIfAbsent(transaction);
+            if (saved.isEmpty()) {
+                log.info("Transaction already exists, skipping processing.");
+                return null; 
+            }
+            transaction = saved.get();
         }
 
         Portfolio portfolio = transaction.getPortfolio();
