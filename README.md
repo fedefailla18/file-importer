@@ -6,7 +6,7 @@ It was born from the need to accurately account for historical transactions, esp
 ## Core Features
 
 - **Historical Ingestion**: Support for importing large volumes of transaction data from exchanges (Binance, MEXC) via CSV/Excel.
-- **Binance API Integration**: Automatically sync your spot trading history directly from Binance. [See Setup Guide](docs/binance-setup-guide.md).
+- **Multi-Exchange Sync**: Automatically sync your trading history directly from Binance, MEXC, and IOL. [See Integrations Guide](docs/exchange-integrations-guide.md).
 - **Accurate Accounting**: Precise cost basis tracking (Average Cost) and Realized Profit/Loss calculation.
 - **Portfolio Valuation**: Real-time (cached) market value tracking in USDT.
 - **DIP Analytics**: Track your "buying the dip" efficiency by monitoring your average entry prices.
