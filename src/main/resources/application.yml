@@ -29,6 +29,10 @@ spring:
         default_batch_fetch_size: 25
         batch_fetch_style: PADDED
         order_inserts: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
   servlet:
     multipart:
       max-file-size: 10MB

@@ -14,17 +14,22 @@ class ProcessFileV2Spec extends Specification {
     TransactionAdapterFactory transactionAdapterFactory = Mock()
     CoinInformationService coinInformationService = Mock()
     TransactionService transactionService = Mock()
+    HistoricalPriceCacheService historicalPriceCacheService = Mock()
+    PriceHistoryService priceHistoryService = Mock()
 
     ProcessFileV2 processFileV2
-    
+
     def setup() {
+        priceHistoryService.findAllForWarmup(_, _, _) >> [:]
         processFileV2 = new ProcessFileV2(
                                     portfolioService,
                                     fileImporterService,
                                     transactionAdapterFactory,
                                     transactionProcessor,
                                     coinInformationService,
-                                    transactionService
+                                    transactionService,
+                                    historicalPriceCacheService,
+                                    priceHistoryService
                                 )
     }
     

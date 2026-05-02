@@ -44,10 +44,11 @@ curl -H "Authorization: Bearer <TOKEN>" http://localhost:9080/api/holdings
 ## Local Dev with Docker
 
 ```bash
-cd docker && ./start-db.sh   # Spins up PostgreSQL 13.1 on port 5435
+cd docker && docker-compose up -d   # Spins up PostgreSQL 13.1 (port 5435) + Redis 7 (port 6379)
+cd docker && ./start-db.sh          # Alternative: PostgreSQL only
 ```
 
-The script tears down existing containers, cleans the data volume, and rebuilds. Database: `importer_database`, schema: `file_importer_schema`.
+The script tears down existing containers, cleans the data volume, and rebuilds. Database: `importer_database`, schema: `file_importer_schema`. Redis is used as the historical price cache (no TTL — entries persist forever).
 
 ## Architecture
 
@@ -64,6 +65,7 @@ Controller → Facade → Service → Repository → Entity (JPA)
   - `CoinInformationService` — aggregates per-coin stats
   - `FileImporterService` — parses CSV/Excel uploads
   - `CryptoCompareProxy` — external pricing API integration
+  - `HistoricalPriceCacheService` — Redis-backed `@Cacheable` AOP proxy; see Pricing Cache section below
 - **Repositories** (`/repository`): Spring Data JPA
 - **Adapters** (`/dto/adapter`): Exchange-specific transaction parsers (`BinanceTransactionAdapter`, `MexcTransactionAdapter`)
 
@@ -76,6 +78,29 @@ Tests are written in **Groovy + Spock** (not JUnit directly):
 - Integration tests: `src/integration-test/groovy/` — extend `BaseIntegrationSpec`, which starts a real PostgreSQL container via TestContainers
 
 Coverage targets: 80% line, 70% branch. Config/DTO packages are excluded from JaCoCo.
+
+## Pricing Cache Architecture
+
+Historical crypto prices (fetched from CryptoCompare) are immutable — the price of BTC at 14:00 on a given date never changes. The caching stack is:
+
+```
+PricingFacade.getPrice()
+  → HistoricalPriceCacheService.lookup()   ← @Cacheable AOP proxy (Spring)
+      → Redis "historicalPrice" cache        ← persistent, no TTL, key: hp:{symbol}:{pair}:{YYYY-MM-DDTHH}
+      → DB (price_history table)             ← indexed on (symbol, symbolpair, DATE_TRUNC('hour', time))
+      → CryptoCompareProxy                   ← only hit on cold DB miss
+```
+
+**Key components:**
+- `config/CacheConfig.java` — `@EnableCaching` + `RedisCacheManager`; `historicalPrice` cache uses `Duration.ZERO` (no TTL)
+- `service/HistoricalPriceCacheService.java` — `@Cacheable` / `@CachePut` annotations; Spring AOP intercepts `lookup()` — no cache code in the method body
+- `facade/PricingFacade.java` — delegates all historical lookups to `HistoricalPriceCacheService`; still holds Caffeine caches for current spot prices (1-min TTL)
+- `repository/PriceHistoryRepository.java` — `findBySymbolAndPairAndHoursIn()` for batch warmup
+- `service/PriceHistoryService.java` — `findAllForWarmup()` aggregates bulk results into a cache-key map
+
+**Batch pre-warming** (`ProcessFileV2.warmPriceCache()`): Before processing a CSV batch, all unique (symbol, symbolpair, hour) tuples are collected, bulk-loaded from DB in one query per symbol, and written to Redis via `@CachePut`. This means the first transaction in a batch hits DB once; all subsequent transactions with the same symbol+date are Redis hits.
+
+**DB indexes** (migration 041): `uidx_price_history_symbol_pair_hour` (unique, prevents duplicates) + `idx_price_history_lookup` (covering index on `high`).
 
 ## Database Migrations
 
@@ -120,7 +145,7 @@ Key classes:
 - **`MexcFullSyncService`** — full historical MexC sync for deposits, withdrawals, and spot trades.
 - **`BinanceApiService`** — Spring `WebClient`-based; signs requests with HMAC-SHA256.
 - **`MexcApiService`** — Spring `WebClient`-based MexC integration; signs requests with HMAC-SHA256.
-- **`UserExchangeConfig`** entity — keyed by `(user, exchangeName)`. `ExchangeName` currently supports `BINANCE` and `MEXC`.
+- **`UserExchangeConfig`** entity — keyed by `(user, exchangeName)`. `ExchangeName` supports `BINANCE`, `MEXC`, and `IOL`. For IOL the `apiKey` field stores the username and `apiSecret` stores the AES-encrypted password.
 - **DB migration**: `db/changelog/changes/2026-04-25-035-add-exchange-config.sql`.
 
 If a user has no exchange config saved, sync services throw `IllegalArgumentException("<Exchange> API keys not configured for user")` — the FE checks for `"not configured"` in error responses.
@@ -141,6 +166,28 @@ If a user has no exchange config saved, sync services throw `IllegalArgumentExce
 **Clear portfolio transactions**: `DELETE /transaction/portfolio/{portfolioName}` — verifies portfolio ownership, deletes all transactions for that portfolio (204 No Content).
 
 **`transactions.pair` column**: `VARCHAR(32)` — increased from 12 to support EXTERNAL suffix deposits/withdrawals (migration `2026-04-26-036-increase-pair-column-length.sql`).
+
+## IOL (InvertirOnline) Integration
+
+Read-only integration with the Argentine broker InvertirOnline. The BE authenticates with IOL using an OAuth2 password-flow token retrieved from the user's stored credentials, then proxies portfolio, account, and operations data.
+
+**Controller**: `IolIntegrationController` — base path `/api/integration/iol`
+
+| Method | Path | Returns |
+|--------|------|---------|
+| GET | `/profile` | `IolProfileResponse` — user identity, investor profile, comitente account |
+| GET | `/account-statement` | `IolAccountStatementResponse` — ARS/USD cuentas with totals |
+| GET | `/portfolio/{country}` | `IolPortfolioResponse` — activos list (`country`: `argentina` \| `estados_unidos`) |
+| GET | `/operations` | `List<IolOperationResponse>` — full operations history |
+| GET | `/operations/{number}` | `IolOperationResponse` — single operation detail (filtered client-side from operations list) |
+
+**Service**: `IolIntegrationService` — orchestrates calls to `IolApiService` and maps raw IOL API responses into FE-ready DTOs (applies USD exchange rates where applicable).
+
+**API client**: `IolApiService` — `WebClient`-based; obtains a bearer token via `POST https://api.invertironline.com/token` with the user's credentials before every request chain.
+
+**DTOs** (`dto/integration/iol/`): `IolProfileResponse`, `IolAccountStatementResponse`, `IolPortfolioResponse`, `IolOperationResponse` — all classes expose `exchangeRate` and USD-converted amounts alongside the original ARS values.
+
+**Credential flow**: `IolIntegrationService` fetches the user's `UserExchangeConfig(exchangeName=IOL)`, decrypts the password via `EncryptionService`, and passes username + password to `IolApiService`. If no config exists, an `IllegalArgumentException` is thrown.
 
 ## API Documentation
 
