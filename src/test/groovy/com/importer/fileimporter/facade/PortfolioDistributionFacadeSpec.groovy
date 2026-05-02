@@ -51,6 +51,7 @@ class PortfolioDistributionFacadeSpec extends Specification {
     def "excludeWhenAmountIsAlmostZero should not exclude valid holdings"() {
         given: "A holding with a small but valid amount"
         def holding = new Holding(
+                amount: new BigDecimal("0.4"),
                 totalAmountBought: new BigDecimal("0.5"),
                 totalAmountSold: new BigDecimal("0.1")
         )

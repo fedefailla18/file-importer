@@ -40,11 +40,12 @@ class TransactionProcessorSpec extends Specification {
         transactionProcessor.process(transaction)
 
         then:
+        1 * transactionService.saveIfAbsent(_) >> Optional.of(transaction)
         1 * portfolioService.findOrSave("TestPortfolio") >> portfolio
-        (1..2) * transactionService.save(_) >> transaction
+        (0..2) * transactionService.save(_) >> transaction
         1 * holdingService.getHolding(portfolio, "BTC") >> holding
-        1 * holdingService.save({ Holding h -> 
-            h.amount == new BigDecimal("0.5") && 
+        1 * holdingService.save({ Holding h ->
+            h.amount == new BigDecimal("0.5") &&
             h.stableTotalCost == new BigDecimal("10000.00") // 0.5 * 20000
         })
     }
@@ -77,10 +78,11 @@ class TransactionProcessorSpec extends Specification {
         transactionProcessor.process(transaction)
 
         then:
+        1 * transactionService.saveIfAbsent(_) >> Optional.of(transaction)
         1 * portfolioService.findOrSave("TestPortfolio") >> portfolio
-        (1..2) * transactionService.save(_) >> transaction
+        (0..2) * transactionService.save(_) >> transaction
         1 * holdingService.getHolding(portfolio, "BTC") >> holding
-        1 * holdingService.save({ Holding h -> 
+        1 * holdingService.save({ Holding h ->
             h.amount == new BigDecimal("0.6") && // 1.0 - 0.4
             h.stableTotalCost == new BigDecimal("12000.0000000000") && // 0.6 * 20000 (avg cost)
             h.totalRealizedProfitUsdt == new BigDecimal("8000.0000000000") // (40000 - 20000) * 0.4
@@ -122,9 +124,10 @@ class TransactionProcessorSpec extends Specification {
         transactionProcessor.process(transaction)
 
         then:
+        1 * transactionService.saveIfAbsent(_) >> Optional.of(transaction)
         1 * portfolioService.findOrSave("TestPortfolio") >> portfolio
-        (1..2) * transactionService.save(_) >> transaction
-        
+        (0..2) * transactionService.save(_) >> transaction
+
         // Update ETH holding (Primary)
         1 * holdingService.getHolding(portfolio, "ETH") >> ethHolding
         1 * pricingFacade.getPriceInUsdt("ETH", _) >> new BigDecimal("1000") // $1000 per ETH

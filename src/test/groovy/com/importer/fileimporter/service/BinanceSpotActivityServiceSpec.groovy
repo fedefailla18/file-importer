@@ -1,25 +1,31 @@
 package com.importer.fileimporter.service
 
 import com.importer.fileimporter.dto.integration.binance.BinanceAccountResponse
-import com.importer.fileimporter.dto.integration.binance.BinanceTradeResponse
 import com.importer.fileimporter.entity.ExchangeName
+import com.importer.fileimporter.entity.Portfolio
+import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.entity.User
 import com.importer.fileimporter.entity.UserExchangeConfig
 import com.importer.fileimporter.repository.UserExchangeConfigRepository
 import spock.lang.Specification
 
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 class BinanceSpotActivityServiceSpec extends Specification {
 
     def binanceApiService = Mock(BinanceApiService)
     def userExchangeConfigRepository = Mock(UserExchangeConfigRepository)
     def encryptionService = Mock(EncryptionService)
+    def transactionService = Mock(TransactionService)
+    def portfolioService = Mock(PortfolioService)
 
     def service = new BinanceSpotActivityService(
             binanceApiService,
             userExchangeConfigRepository,
-            encryptionService
+            encryptionService,
+            transactionService,
+            portfolioService
     )
 
     def user = Mock(User)
@@ -40,31 +46,6 @@ class BinanceSpotActivityServiceSpec extends Specification {
         }
     }
 
-    private BinanceTradeResponse trade(
-            String symbol,
-            long id,
-            boolean buyer,
-            String qty,
-            String quoteQty,
-            long time
-    ) {
-        Stub(BinanceTradeResponse) {
-            getSymbol() >> symbol
-            getId() >> id
-            getOrderId() >> (1000L + id)
-            getOrderListId() >> -1L
-            getPrice() >> new BigDecimal('2.5')
-            getQty() >> new BigDecimal(qty)
-            getQuoteQty() >> new BigDecimal(quoteQty)
-            getCommission() >> new BigDecimal('0.01')
-            getCommissionAsset() >> 'BNB'
-            getTime() >> time
-            getIsBuyer() >> buyer
-            getIsMaker() >> false
-            getIsBestMatch() >> true
-        }
-    }
-
     def "should return fresh balances and raw spot trade summary"() {
         given:
         userExchangeConfigRepository.findByUserAndExchangeName(user, ExchangeName.BINANCE) >> Optional.of(configWith())
@@ -77,16 +58,39 @@ class BinanceSpotActivityServiceSpec extends Specification {
             ]
         }
         binanceApiService.getAccountInfo('api-key', 'plain-secret') >> accountInfo
-        binanceApiService.getAllMyTrades('api-key', 'plain-secret', 'FETUSDT') >> [
-                trade('FETUSDT', 1L, true, '10', '25', 1_700_000_000_000L),
-                trade('FETUSDT', 2L, false, '2', '6', 1_700_000_100_000L)
-        ]
-        binanceApiService.getAllMyTrades('api-key', 'plain-secret', 'FETBTC') >> []
-        binanceApiService.getAllMyTrades('api-key', 'plain-secret', 'FETETH') >> []
-        binanceApiService.getAllMyTrades('api-key', 'plain-secret', 'FETBNB') >> []
-        binanceApiService.getAllMyTrades('api-key', 'plain-secret', 'FETBUSD') >> []
-        binanceApiService.getAllMyTrades('api-key', 'plain-secret', 'FETUSDC') >> []
-        binanceApiService.getAllMyTrades('api-key', 'plain-secret', 'FETFDUSD') >> []
+
+        def portfolio = Mock(Portfolio)
+        portfolioService.getByNameForUser(ExchangeName.BINANCE.name(), user) >> Optional.of(portfolio)
+
+        def buyTx = Transaction.builder()
+                .side('BUY')
+                .pair('FETUSDT')
+                .symbol('FET')
+                .paidWith('USDT')
+                .externalId('1')
+                .executed(new BigDecimal('10'))
+                .paidAmount(new BigDecimal('25'))
+                .feeAmount(new BigDecimal('0.01'))
+                .feeSymbol('BNB')
+                .price(new BigDecimal('2.5'))
+                .dateUtc(LocalDateTime.of(2023, 11, 14, 22, 13, 20))
+                .exchangeName(ExchangeName.BINANCE)
+                .build()
+        def sellTx = Transaction.builder()
+                .side('SELL')
+                .pair('FETUSDT')
+                .symbol('FET')
+                .paidWith('USDT')
+                .externalId('2')
+                .executed(new BigDecimal('2'))
+                .paidAmount(new BigDecimal('6'))
+                .feeAmount(new BigDecimal('0.01'))
+                .feeSymbol('BNB')
+                .price(new BigDecimal('2.5'))
+                .dateUtc(LocalDateTime.of(2023, 11, 14, 22, 15, 0))
+                .exchangeName(ExchangeName.BINANCE)
+                .build()
+        transactionService.findByPortfolio(portfolio) >> [buyTx, sellTx]
 
         when:
         def response = service.getSpotActivity(user)
