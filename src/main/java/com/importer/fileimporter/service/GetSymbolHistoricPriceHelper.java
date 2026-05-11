@@ -89,13 +89,16 @@ public class GetSymbolHistoricPriceHelper {
     }
 
     private CryptoCompareResponse.ChartData getExactTimeExecuted(LocalDateTime dateTime, CryptoCompareResponse cryptoCompareResponse) {
-        return cryptoCompareResponse.getResponse().equals("Error") ? null : cryptoCompareResponse.getData().getChartDataList().stream()
+        if (cryptoCompareResponse == null || "Error".equals(cryptoCompareResponse.getResponse()) || cryptoCompareResponse.getData() == null || cryptoCompareResponse.getData().getChartDataList() == null) {
+            return null;
+        }
+        return cryptoCompareResponse.getData().getChartDataList().stream()
                 .filter(e -> e.getTime() != null && e.getTime().getHour() == dateTime.getHour())
                 .findFirst()
                 .orElseGet(() -> cryptoCompareResponse.getData()
                         .getChartDataList().stream()
                         .findAny()
-                        .get());
+                        .orElse(null));
     }
 
     public Map<String, Double> getPrice(List<String> symbol) {

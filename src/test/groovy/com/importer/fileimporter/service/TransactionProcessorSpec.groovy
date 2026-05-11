@@ -13,7 +13,8 @@ class TransactionProcessorSpec extends Specification {
     def transactionService = Mock(TransactionService)
     def holdingService = Mock(HoldingService)
     def pricingFacade = Mock(PricingFacade)
-    TransactionProcessor transactionProcessor = new TransactionProcessor(transactionService, holdingService, pricingFacade)
+    def portfolioService = Mock(PortfolioService)
+    TransactionProcessor transactionProcessor = new TransactionProcessor(transactionService, holdingService, pricingFacade, portfolioService)
 
     def "should process BUY transaction and update cost basis"() {
         given:
@@ -39,10 +40,12 @@ class TransactionProcessorSpec extends Specification {
         transactionProcessor.process(transaction)
 
         then:
-        (1..2) * transactionService.save(_) >> transaction
-        1 * holdingService.getOrCreateByPortfolioAndSymbol(portfolio, "BTC") >> holding
-        1 * holdingService.save({ Holding h -> 
-            h.amount == new BigDecimal("0.5") && 
+        1 * transactionService.saveIfAbsent(_) >> Optional.of(transaction)
+        1 * portfolioService.findOrSave("TestPortfolio") >> portfolio
+        (0..2) * transactionService.save(_) >> transaction
+        1 * holdingService.getHolding(portfolio, "BTC") >> holding
+        1 * holdingService.save({ Holding h ->
+            h.amount == new BigDecimal("0.5") &&
             h.stableTotalCost == new BigDecimal("10000.00") // 0.5 * 20000
         })
     }
@@ -75,9 +78,11 @@ class TransactionProcessorSpec extends Specification {
         transactionProcessor.process(transaction)
 
         then:
-        (1..2) * transactionService.save(_) >> transaction
-        1 * holdingService.getOrCreateByPortfolioAndSymbol(portfolio, "BTC") >> holding
-        1 * holdingService.save({ Holding h -> 
+        1 * transactionService.saveIfAbsent(_) >> Optional.of(transaction)
+        1 * portfolioService.findOrSave("TestPortfolio") >> portfolio
+        (0..2) * transactionService.save(_) >> transaction
+        1 * holdingService.getHolding(portfolio, "BTC") >> holding
+        1 * holdingService.save({ Holding h ->
             h.amount == new BigDecimal("0.6") && // 1.0 - 0.4
             h.stableTotalCost == new BigDecimal("12000.0000000000") && // 0.6 * 20000 (avg cost)
             h.totalRealizedProfitUsdt == new BigDecimal("8000.0000000000") // (40000 - 20000) * 0.4
@@ -119,15 +124,17 @@ class TransactionProcessorSpec extends Specification {
         transactionProcessor.process(transaction)
 
         then:
-        (1..2) * transactionService.save(_) >> transaction
-        
+        1 * transactionService.saveIfAbsent(_) >> Optional.of(transaction)
+        1 * portfolioService.findOrSave("TestPortfolio") >> portfolio
+        (0..2) * transactionService.save(_) >> transaction
+
         // Update ETH holding (Primary)
-        1 * holdingService.getOrCreateByPortfolioAndSymbol(portfolio, "ETH") >> ethHolding
+        1 * holdingService.getHolding(portfolio, "ETH") >> ethHolding
         1 * pricingFacade.getPriceInUsdt("ETH", _) >> new BigDecimal("1000") // $1000 per ETH
         1 * holdingService.save({ Holding h -> h.symbol == "ETH" && h.amount == new BigDecimal("10") })
         
         // Update BTC holding (PaidWith - SELL)
-        1 * holdingService.getOrCreateByPortfolioAndSymbol(portfolio, "BTC") >> btcHolding
+        1 * holdingService.getHolding(portfolio, "BTC") >> btcHolding
         1 * pricingFacade.getPriceInUsdt("BTC", _) >> new BigDecimal("20000")
         1 * holdingService.save({ Holding h -> 
             h.symbol == "BTC" && 

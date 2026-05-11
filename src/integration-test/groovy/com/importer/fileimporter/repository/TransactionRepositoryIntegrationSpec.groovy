@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+@org.springframework.transaction.annotation.Transactional
 class TransactionRepositoryIntegrationSpec extends BaseIntegrationSpec {
 
     def "find transactions by symbol and portfolio in date range"() {

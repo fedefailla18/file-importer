@@ -202,9 +202,9 @@ class CoinInformationFacadeSpec extends Specification {
         def result = coinInformationFacade.getPortfolioTransactionsInformation(portfolioName)
 
         then: "The result should not contain null responses"
-        result.size() == 2
-        result.every { it != null }
-        result.collect { it.coinName }.sort() == ["ETH", "LTC"]
+        result.coinInformation.size() == 2
+        result.coinInformation.every { it != null }
+        result.coinInformation.collect { it.coinName }.sort() == ["ETH", "LTC"]
     }
 
     def "getTransactionsInformation should filter out null responses"() {

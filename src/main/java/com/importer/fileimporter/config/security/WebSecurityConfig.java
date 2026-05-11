@@ -41,6 +41,7 @@ public class WebSecurityConfig {
                     .antMatchers("/swagger-ui.html/**").permitAll()
                     .antMatchers("/swagger/index.html/**").permitAll()
                     .antMatchers("/swagger-ui/index.html/**").permitAll()
+                    .antMatchers("/ws/**").permitAll()
                     .anyRequest().authenticated()
                 .and()
                     .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)

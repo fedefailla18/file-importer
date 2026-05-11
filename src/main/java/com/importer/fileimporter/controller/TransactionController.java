@@ -2,11 +2,18 @@ package com.importer.fileimporter.controller;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
 import com.importer.fileimporter.dto.FileInformationResponse;
+import com.importer.fileimporter.dto.PortfolioProcessingResult;
 import com.importer.fileimporter.dto.TransactionDto;
 import com.importer.fileimporter.dto.TransactionHoldingDto;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.facade.CoinInformationFacade;
+import com.importer.fileimporter.service.BinanceAsyncSyncService;
+import com.importer.fileimporter.service.BinanceFullSyncService;
+import com.importer.fileimporter.service.BinanceSyncService;
+import com.importer.fileimporter.service.MexcAsyncSyncService;
+import com.importer.fileimporter.service.MexcSyncService;
+import com.importer.fileimporter.service.PortfolioService;
 import com.importer.fileimporter.service.ProcessFileFactory;
 import com.importer.fileimporter.service.TransactionFacade;
 import com.importer.fileimporter.service.TransactionService;
@@ -54,6 +61,12 @@ public class TransactionController {
     private final TransactionService transactionService;
     private final TransactionFacade transactionFacade;
     private final CoinInformationFacade coinInformationFacade;
+    private final BinanceSyncService binanceSyncService;
+    private final MexcSyncService mexcSyncService;
+    private final BinanceFullSyncService binanceFullSyncService;
+    private final BinanceAsyncSyncService binanceAsyncSyncService;
+    private final MexcAsyncSyncService mexcAsyncSyncService;
+    private final PortfolioService portfolioService;
 
     @Operation(summary = "Filter transactions", description = "Filter transactions by various criteria with pagination")
     @ApiResponses(value = {
@@ -90,7 +103,7 @@ public class TransactionController {
 
     @Tag(name = "/information/all/{portfolio}", description = "Calculates portfolio stats from transactions")
     @PostMapping("/information/all/{portfolio}")
-    public List<CoinInformationResponse> getInformation(@PathVariable String portfolio) {
+    public PortfolioProcessingResult getInformation(@PathVariable String portfolio) {
         return coinInformationFacade.getPortfolioTransactionsInformation(portfolio);
     }
 
@@ -124,11 +137,12 @@ public class TransactionController {
     public FileInformationResponse uploadTransactionsWithPortfolio(
             @Parameter(description = "Transaction file to upload", required = true) @RequestBody MultipartFile file,
             @Parameter(description = "List of symbols to filter by") @RequestParam(required = false) List<String> symbols,
-            @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolio) throws IOException {
+            @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolio,
+            @Parameter(description = "File type (BINANCE, MEXC)") @RequestParam(required = false, defaultValue = "Binance") String fileType) throws IOException {
         if (file.isEmpty()) {
             return null;
         }
-        return processFileFactory.processFile(file, symbols, portfolio);
+        return processFileFactory.processFile(file, symbols, portfolio, fileType);
     }
 
     @GetMapping(value = "/portfolio")
@@ -145,6 +159,29 @@ public class TransactionController {
     public ResponseEntity.BodyBuilder deleteTransactions() {
         transactionFacade.deleteTransactions();
         return ResponseEntity.accepted();
+    }
+
+    @Operation(summary = "Delete a transaction by ID", description = "Deletes a single transaction. Only deletes if it belongs to the authenticated user's portfolios.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Transaction deleted", content = @Content),
+        @ApiResponse(responseCode = "403", description = "Transaction does not belong to this user", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content)
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTransaction(
+            @Parameter(description = "Transaction ID", required = true) @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        transactionService.findById(id).ifPresentOrElse(tx -> {
+            if (tx.getPortfolio() == null || !tx.getPortfolio().getUser().getId().equals(user.getId())) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "Transaction does not belong to this user");
+            }
+            transactionService.deleteById(id);
+        }, () -> {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "Transaction not found");
+        });
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
@@ -166,6 +203,69 @@ public class TransactionController {
     public Transaction addTransaction(
             @Parameter(description = "Transaction data", required = true) @RequestBody TransactionDto request) {
         return transactionFacade.save(request);
+    }
+
+    @Operation(summary = "Sync transactions from Binance", description = "Automatically fetch and sync transactions from Binance API")
+    @PostMapping("/sync/binance")
+    public ResponseEntity<?> syncBinance(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio) {
+        binanceSyncService.sync(user, portfolio);
+        return ResponseEntity.ok("Sync initiated successfully");
+    }
+
+    @Operation(summary = "Sync transactions from MexC", description = "Automatically fetch and sync transactions from MexC API")
+    @PostMapping("/sync/mexc")
+    public ResponseEntity<?> syncMexc(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio) {
+        mexcSyncService.sync(user, portfolio);
+        return ResponseEntity.ok("Sync initiated successfully");
+    }
+
+    @Operation(summary = "Full historical sync from Binance (async)",
+            description = "Enqueues a background full-history sync of all trades, deposits, withdrawals and fiat orders. " +
+                    "Returns 202 immediately; a WebSocket message is sent to /user/queue/sync-status on completion. " +
+                    "startDate and endDate are epoch milliseconds (optional — defaults to 2017-01-01 to now).")
+    @PostMapping("/sync/binance/full")
+    public ResponseEntity<?> syncBinanceFull(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio,
+            @Parameter(description = "Sync start date as epoch millis (optional, defaults to 2017-01-01)") @RequestParam(required = false) Long startDate,
+            @Parameter(description = "Sync end date as epoch millis (optional, defaults to now)") @RequestParam(required = false) Long endDate) {
+        binanceAsyncSyncService.syncFullHistoryAsync(user, portfolio, startDate, endDate);
+        return ResponseEntity.accepted().body("Full historical sync started. You will be notified upon completion.");
+    }
+
+    @Operation(summary = "Full historical sync from MexC (async)",
+            description = "Enqueues a background full-history sync of all trades, deposits and withdrawals. " +
+                    "Returns 202 immediately; a WebSocket message is sent to /user/queue/sync-status on completion.")
+    @PostMapping("/sync/mexc/full")
+    public ResponseEntity<?> syncMexcFull(
+            @AuthenticationPrincipal User user,
+            @Parameter(description = "Portfolio name", required = true) @RequestParam String portfolio,
+            @Parameter(description = "Sync start date as epoch millis (optional, defaults to 2017-01-01)") @RequestParam(required = false) Long startDate,
+            @Parameter(description = "Sync end date as epoch millis (optional, defaults to now)") @RequestParam(required = false) Long endDate) {
+        mexcAsyncSyncService.syncFullHistoryAsync(user, portfolio, startDate, endDate);
+        return ResponseEntity.accepted().body("Full historical MexC sync started. You will be notified upon completion.");
+    }
+
+    @Operation(summary = "Clear all transactions for a portfolio",
+            description = "Permanently deletes all transactions belonging to the authenticated user's named portfolio.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "All transactions cleared", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Portfolio not found or not owned by user", content = @Content)
+    })
+    @DeleteMapping("/portfolio/{portfolioName}")
+    public ResponseEntity<Void> clearPortfolioTransactions(
+            @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolioName,
+            @AuthenticationPrincipal User user) {
+        com.importer.fileimporter.entity.Portfolio portfolio =
+                portfolioService.getByNameForUser(portfolioName, user)
+                        .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "Portfolio not found"));
+        transactionService.deleteByPortfolio(portfolio);
+        return ResponseEntity.noContent().build();
     }
 
 }

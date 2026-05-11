@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -37,7 +38,7 @@ public class Transaction {
     @Column(name = "side", nullable = false, length = 12)
     private String side;
 
-    @Column(name = "pair", nullable = false, length = 12)
+    @Column(name = "pair", nullable = false, length = 32)
     private String pair;
 
     @Column(name = "price", nullable = false, precision = 13, scale = 13)
@@ -79,6 +80,13 @@ public class Transaction {
     @ManyToOne
     @JoinColumn(name = "portfolio_id")
     private Portfolio portfolio;
+
+    @Column(name = "external_id", length = 100)
+    private String externalId;
+
+    @Enumerated(javax.persistence.EnumType.STRING)
+    @Column(name = "exchange_name", length = 20)
+    private ExchangeName exchangeName;
 
     private boolean processed = false;
 

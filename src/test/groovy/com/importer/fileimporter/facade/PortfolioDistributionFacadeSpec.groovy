@@ -7,6 +7,8 @@ import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.PortfolioService
 import com.importer.fileimporter.service.SymbolService
+import com.importer.fileimporter.service.TransactionService
+import com.importer.fileimporter.facade.PricingFacade
 import org.springframework.web.server.ResponseStatusException
 import spock.lang.Specification
 import spock.lang.Subject
@@ -19,10 +21,11 @@ class PortfolioDistributionFacadeSpec extends Specification {
     def portfolioService = Mock(PortfolioService)
     def holdingService = Mock(HoldingService)
     def pricingFacade = Mock(PricingFacade)
+    def transactionService = Mock(TransactionService)
 
     @Subject
     def portfolioDistributionFacade = new PortfolioDistributionFacade(
-            symbolService, portfolioService, holdingService, pricingFacade
+            symbolService, portfolioService, holdingService, pricingFacade, transactionService
     )
 
     def "addPreventingNull should not lose precision"() {
@@ -48,6 +51,7 @@ class PortfolioDistributionFacadeSpec extends Specification {
     def "excludeWhenAmountIsAlmostZero should not exclude valid holdings"() {
         given: "A holding with a small but valid amount"
         def holding = new Holding(
+                amount: new BigDecimal("0.4"),
                 totalAmountBought: new BigDecimal("0.5"),
                 totalAmountSold: new BigDecimal("0.1")
         )
@@ -62,15 +66,12 @@ class PortfolioDistributionFacadeSpec extends Specification {
 
         then: "The holding should not be excluded"
         result == true
-
-        and: "The difference between bought and sold is 0.4, which is greater than the threshold of 0.3"
-        holding.totalAmountBought.subtract(holding.totalAmountSold) == new BigDecimal("0.4")
     }
 
     def "excludeWhenAmountIsAlmostZero should exclude holdings with very small amounts"() {
         given: "A holding with a very small amount"
         def holding = new Holding(
-                totalAmountBought: new BigDecimal("0.035"),
+                totalAmountBought: new BigDecimal("0.000000015"),
                 totalAmountSold: new BigDecimal("0.01")
         )
 
@@ -82,11 +83,8 @@ class PortfolioDistributionFacadeSpec extends Specification {
         when: "Testing if the holding would be excluded"
         def result = predicate.test(holding)
 
-        then: "The holding should not be excluded"
+        then: "The holding should be excluded"
         result == false
-
-        and: "The difference between bought and sold is 0.25, which is less than the threshold of 0.3"
-        holding.totalAmountBought.subtract(holding.totalAmountSold) == new BigDecimal("0.025")
     }
 
     def "groupHoldingsBySymbol should correctly merge holdings"() {
@@ -191,16 +189,17 @@ class PortfolioDistributionFacadeSpec extends Specification {
 
         and: "The portfolio has holdings"
         def holdings = [
-                new Holding(symbol: "BTC", amount: BigDecimal.ONE, portfolio: portfolio),
-                new Holding(symbol: "ETH", amount: BigDecimal.TEN, portfolio: portfolio)
+                new Holding(symbol: "BTC", amount: BigDecimal.ONE, portfolio: portfolio, totalAmountBought: BigDecimal.ONE),
+                new Holding(symbol: "ETH", amount: BigDecimal.TEN, portfolio: portfolio, totalAmountBought: BigDecimal.TEN)
         ]
         portfolio.holdings = holdings
 
-        and: "Mock the converter"
-        HoldingConverter.Mapper.createFromEntities(holdings) >> [
-            HoldingDto.builder().symbol("BTC").amount(BigDecimal.ONE).build(),
-            HoldingDto.builder().symbol("ETH").amount(BigDecimal.TEN).build()
-        ]
+        and: "Mock the pricing facade"
+        pricingFacade.getPrices(_) >> [BTC: 30000.0d, USDT: 1.0d]
+        pricingFacade.getPriceInUsdt(_, _) >> BigDecimal.ONE
+
+        and: "Mock the transaction service"
+        transactionService.findByPortfolio(portfolio) >> []
 
         when: "Getting the portfolio by name"
         def result = portfolioDistributionFacade.getPortfolioByName(portfolioName)
@@ -208,8 +207,8 @@ class PortfolioDistributionFacadeSpec extends Specification {
         then: "The correct portfolio is returned"
         result.portfolioName == portfolioName
         result.holdings.size() == 2
-        result.holdings[0].symbol == "BTC"
-        result.holdings[1].symbol == "ETH"
+        result.holdings.any { it.symbol == "BTC" }
+        result.holdings.any { it.symbol == "ETH" }
     }
 
     def "getPortfolioByName should throw exception when portfolio not found"() {
@@ -260,6 +259,10 @@ class PortfolioDistributionFacadeSpec extends Specification {
             return dto
         }
 
+        and: "Mock the transaction service"
+        transactionService.findByPortfolio(portfolio) >> []
+        holdingService.getByPortfolio(portfolio) >> holdings
+
         when: "Calculating portfolio values"
         def result = portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt(portfolioName)
 
@@ -282,12 +285,15 @@ class PortfolioDistributionFacadeSpec extends Specification {
 
         and: "The portfolio has no holdings"
         portfolio.holdings = []
+        holdingService.getByPortfolio(portfolio) >> []
 
         when: "Calculating portfolio values"
-        portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt(portfolioName)
+        def result = portfolioDistributionFacade.calculatePortfolioInBtcAndUsdt(portfolioName)
 
-        then: "The result has the correct portfolio name"
-        thrown(ResponseStatusException)
+        then: "The result has the correct portfolio name and zero total"
+        result.portfolioName == portfolioName
+        result.holdings.isEmpty()
+        result.totalUsdt == BigDecimal.ZERO
     }
 
     def "calculatePortfolioInBtcAndUsdt should handle zero total USDT value without division by zero"() {

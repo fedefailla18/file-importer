@@ -9,6 +9,8 @@ import lombok.Setter;
 import org.hibernate.annotations.Type;
 
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -46,6 +48,9 @@ public class Portfolio {
     private LocalDateTime modified;
 
     private String modifiedBy;
+
+    @Enumerated(EnumType.STRING)
+    private ExchangeName exchangeName;
 
     @OneToMany(mappedBy = "portfolio", fetch = FetchType.LAZY)
     @JsonIgnore

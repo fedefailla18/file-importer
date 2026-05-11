@@ -34,11 +34,11 @@ public class HoldingService {
     }
 
     public Optional<Holding> getByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return getBySymbolAndPortfolioName(portfolio, symbol);
+        return holdingRepository.findByPortfolioAndSymbol(portfolio, symbol);
     }
 
     public Holding getOrCreateByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        Optional<Holding> bySymbolAndPortfolioName = getBySymbolAndPortfolioName(portfolio, symbol);
+        Optional<Holding> bySymbolAndPortfolioName = getByPortfolioAndSymbol(portfolio, symbol);
         log.info("getting holding for: {}", bySymbolAndPortfolioName
                 .map(e -> e.getSymbol() + " - amount: " + e.getAmount())
                 .orElse(symbol + ". New Holding!"));
@@ -54,6 +54,7 @@ public class HoldingService {
     }
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
+        if (portfolio == null) return java.util.Collections.emptyList();
         return holdingRepository.findAllByPortfolio(portfolio);
     }
 
@@ -66,6 +67,9 @@ public class HoldingService {
         holding.setPriceInBtc(e.getPriceInBtc());
         holding.setAmountInBtc(e.getAmountInBtc());
         holding.setAmountInUsdt(e.getAmountInUsdt());
+        holding.setCurrentPositionInUsdt(e.getCurrentPositionInUsdt() != null
+                ? e.getCurrentPositionInUsdt()
+                : e.getAmountInUsdt());
         holding.setModified(LocalDateTime.now());
         holding.setModifiedBy("Updating percentage-updatePercentageHolding");
         Holding saved = holdingRepository.save(holding);
@@ -101,7 +105,19 @@ public class HoldingService {
 
     public Holding getHolding(Portfolio portfolio, String symbol) {
         return holdingRepository.findByPortfolioAndSymbol(portfolio, symbol)
-                .orElseGet(() -> getOrCreateByPortfolioAndSymbol(portfolio, symbol));
+                .orElseGet(() -> {
+                    Holding newHolding = Holding.builder()
+                            .portfolio(portfolio)
+                            .symbol(symbol)
+                            .amount(BigDecimal.ZERO)
+                            .amountInUsdt(BigDecimal.ZERO)
+                            .totalAmountSold(BigDecimal.ZERO)
+                            .totalAmountBought(BigDecimal.ZERO)
+                            .created(LocalDateTime.now())
+                            .createdBy("System")
+                            .build();
+                    return holdingRepository.save(newHolding);
+                });
     }
 
     public Holding save(Holding holding) {
@@ -121,6 +137,9 @@ public class HoldingService {
     }
 
     private Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
+        if (portfolio == null || portfolio.getName() == null) {
+            return Optional.empty();
+        }
         return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
     }
 }

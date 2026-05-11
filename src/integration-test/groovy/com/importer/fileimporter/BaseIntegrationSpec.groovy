@@ -1,22 +1,23 @@
 package com.importer.fileimporter
 
+import com.importer.fileimporter.facade.PortfolioDistributionFacade
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
 import com.importer.fileimporter.repository.TransactionRepository
+import com.importer.fileimporter.service.CryptoCompareProxy
 import com.importer.fileimporter.service.FileImporterService
 import com.importer.fileimporter.service.HoldingService
+import com.importer.fileimporter.service.ProcessFileFactory
+import com.importer.fileimporter.service.TransactionFacade
 import com.importer.fileimporter.service.TransactionService
 import org.junit.ClassRule
-import org.postgresql.Driver
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.core.io.ClassPathResource
-import org.springframework.jdbc.datasource.SimpleDriverDataSource
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
+import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
@@ -61,6 +62,18 @@ abstract class BaseIntegrationSpec extends Specification {
     @Autowired
     HoldingService holdingService
 
+    @Autowired
+    TransactionFacade transactionFacade
+
+    @Autowired
+    ProcessFileFactory processFileFactory
+
+    @Autowired
+    PortfolioDistributionFacade portfolioDistributionFacade
+
+    @MockBean
+    CryptoCompareProxy cryptoCompareProxy
+
     @Shared
     User defaultUser
 
@@ -85,34 +98,28 @@ abstract class BaseIntegrationSpec extends Specification {
 
     // Define a PostgreSQL container
     @ClassRule
+    @Shared
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.1")
             .withDatabaseName("file_importer_schema")
             .withUsername("root")
             .withPassword("password")
-            .withExposedPorts(60366)
+            .withExposedPorts(5432)
 
     static  {
-        postgres.setPortBindings(["60366:5432"])
         postgres.start()
-        // Execute schema.sql to create the schema
-        String jdbcUrl = postgres.getJdbcUrl()
-        String username = postgres.getUsername()
-        String password = postgres.getPassword()
+        // Set system properties for Spring Boot to use the dynamic ports from TestContainers
+        System.setProperty("DB_URL", postgres.getJdbcUrl())
+        System.setProperty("DB_USERNAME", postgres.getUsername())
+        System.setProperty("DB_PASSWORD", postgres.getPassword())
+        
+        System.out.println("[DEBUG_LOG] TestContainers JDBC URL: " + postgres.getJdbcUrl())
 
-        // Set system properties for Spring Boot
-        System.setProperty("DB_URL", jdbcUrl)
-        System.setProperty("DB_USERNAME", username)
-        System.setProperty("DB_PASSWORD", password)
-
-        def dataSource = new SimpleDriverDataSource(
-                new Driver(),
-                jdbcUrl,
-                username,
-                password
-        )
-
-        ResourceDatabasePopulator populator = new ResourceDatabasePopulator()
-        populator.addScript(new ClassPathResource("schema.sql"))
-        populator.execute(dataSource)
+        // Ensure Hibernate and Liquibase use the same database connection properties
+        System.setProperty("spring.datasource.url", postgres.getJdbcUrl())
+        System.setProperty("spring.datasource.username", postgres.getUsername())
+        System.setProperty("spring.datasource.password", postgres.getPassword())
+        System.setProperty("spring.liquibase.url", postgres.getJdbcUrl())
+        System.setProperty("spring.liquibase.user", postgres.getUsername())
+        System.setProperty("spring.liquibase.password", postgres.getPassword())
     }
 }

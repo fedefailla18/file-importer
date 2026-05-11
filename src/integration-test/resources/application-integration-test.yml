@@ -1,18 +1,29 @@
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/file_importer_schema}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        default_schema: public
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
-    default-schema: file_importer_schema
+    default-schema: public
+    liquibase-schema: public
     enabled: true
-    drop-first: true  # Drop all existing tables first, useful for testing
-    url: ${DB_URL}
-    user: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    drop-first: true
     contexts: integration-test
+
+crypto-compare:
+  api-key: ${CRYPTO_COMPARE_API_KEY:53bdd104b9bb83f976930c67a45bf29bf7f8d3f9808ab350aa742f45a505417d}
+
+jwt:
+  secret: 5ed583b57732d0308978b2c241ab25d01ec857347433396fb2da4286547fcae8
+  expiration: 86400000
 
 #logging:
 #  level:

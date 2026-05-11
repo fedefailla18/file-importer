@@ -1,6 +1,7 @@
 package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.config.security.services.CurrentUserProvider;
+import com.importer.fileimporter.entity.ExchangeName;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.repository.PortfolioRepository;
@@ -21,21 +22,36 @@ public class PortfolioService {
     private final CurrentUserProvider currentUserProvider;
 
     public Portfolio findOrSave(String name) {
+        return findOrSave(name, null);
+    }
+
+    public Portfolio findOrSave(String name, ExchangeName exchangeName) {
+        log.info("Finding or saving portfolio: " + name);
         User currentUser = currentUserProvider.getCurrentUser();
         Optional<Portfolio> byName;
-
+        
         if (currentUser != null) {
             byName = getByNameForUser(name, currentUser);
         } else {
             byName = getByName(name);
-            log.warn("No authenticated user found when finding portfolio: " + name);
         }
-
-        return byName.orElseGet(() -> saveBasicEntity(name));
+        
+        Portfolio result = byName.orElseGet(() -> saveBasicEntity(name, exchangeName));
+        if (exchangeName != null && result.getExchangeName() == null) {
+            result.setExchangeName(exchangeName);
+            result = portfolioRepository.save(result);
+        }
+        log.info("findOrSave result for {}: {}", name, result.getId());
+        return result;
     }
 
     public Optional<Portfolio> getByName(String name) {
-        return portfolioRepository.findByName(name);
+        List<Portfolio> allByName = portfolioRepository.findAllByName(name);
+        if (allByName.size() > 1) {
+            log.warn("Multiple portfolios found with name: {}. IDs: {}", name, 
+                    allByName.stream().map(p -> p.getId().toString()).collect(java.util.stream.Collectors.joining(", ")));
+        }
+        return allByName.isEmpty() ? Optional.empty() : Optional.of(allByName.get(0));
     }
 
     public List<Portfolio> getAll() {
@@ -50,12 +66,13 @@ public class PortfolioService {
         return portfolioRepository.findByNameAndUser(name, user);
     }
 
-    private Portfolio saveBasicEntity(String name) {
+    private Portfolio saveBasicEntity(String name, ExchangeName exchangeName) {
         log.info("New portfolio detected: " + name);
         User currentUser = currentUserProvider.getCurrentUser();
 
         Portfolio portfolio = Portfolio.builder()
                 .name(name)
+                .exchangeName(exchangeName)
                 .creationDate(LocalDateTime.now())
                 .user(currentUser)
                 .build();

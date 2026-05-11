@@ -2,8 +2,8 @@ package com.importer.fileimporter.facade;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.importer.fileimporter.entity.PriceHistory;
 import com.importer.fileimporter.service.GetSymbolHistoricPriceHelper;
+import com.importer.fileimporter.service.HistoricalPriceCacheService;
 import com.importer.fileimporter.service.PriceHistoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +26,7 @@ public class PricingFacade {
 
     private final PriceHistoryService priceHistoryService;
     private final GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper;
+    private final HistoricalPriceCacheService historicalPriceCacheService;
 
     private final Cache<String, Map<String, Double>> priceCache = Caffeine.newBuilder()
             .expireAfterWrite(1, TimeUnit.MINUTES)
@@ -37,14 +38,18 @@ public class PricingFacade {
             .maximumSize(1000)
             .build();
 
-    public PricingFacade(PriceHistoryService priceHistoryService, GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper) {
+    public PricingFacade(PriceHistoryService priceHistoryService,
+                         GetSymbolHistoricPriceHelper getSymbolHistoricPriceHelper,
+                         HistoricalPriceCacheService historicalPriceCacheService) {
         this.priceHistoryService = priceHistoryService;
         this.getSymbolHistoricPriceHelper = getSymbolHistoricPriceHelper;
+        this.historicalPriceCacheService = historicalPriceCacheService;
     }
 
     public BigDecimal getPriceInUsdt(String symbol, LocalDateTime dateTime) {
         return getPrice(symbol, USDT, dateTime);
     }
+
     public BigDecimal getPriceInBTC(String symbol, LocalDateTime dateTime) {
         return getPrice(symbol, BTC, dateTime);
     }
@@ -63,14 +68,8 @@ public class PricingFacade {
         if (dateTime == null) {
             dateTime = LocalDateTime.now();
         }
-        String finalSymbol = symbol.toUpperCase();
-        String finalSymbolPair = symbolPair.toUpperCase();
-        LocalDateTime finalDateTime = dateTime;
-        return priceHistoryService.findData(symbolPair, symbol, dateTime)
-                .map(PriceHistory::getHigh)
-                .orElseGet(() ->
-                    getSymbolHistoricPriceHelper.getPricesAtDate(finalSymbol, finalSymbolPair,
-                            finalDateTime.minusMinutes(1L)));
+        return historicalPriceCacheService.lookup(
+                symbol.toUpperCase(), symbolPair.toUpperCase(), dateTime);
     }
 
     public Map<String, Double> getPrices(String symbol) {

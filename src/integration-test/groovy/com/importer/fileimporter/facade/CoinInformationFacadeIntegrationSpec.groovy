@@ -8,6 +8,7 @@ import spock.lang.Subject
 
 import java.time.LocalDateTime
 
+@org.springframework.transaction.annotation.Transactional
 class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
 
     @Autowired

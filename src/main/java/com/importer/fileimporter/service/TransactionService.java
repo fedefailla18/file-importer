@@ -98,8 +98,33 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    public java.util.Optional<Transaction> saveIfAbsent(Transaction transaction) {
+        if (transaction.getExternalId() != null && transaction.getPortfolio() != null) {
+            java.util.Optional<Transaction> existing = transactionRepository.findByPortfolioAndExchangeNameAndExternalId(
+                    transaction.getPortfolio(), transaction.getExchangeName(), transaction.getExternalId());
+            if (existing.isPresent()) {
+                log.debug("Skipping duplicate transaction: {} {} (External ID: {})", 
+                        transaction.getExchangeName(), transaction.getSymbol(), transaction.getExternalId());
+                return java.util.Optional.empty();
+            }
+        }
+        return java.util.Optional.of(transactionRepository.save(transaction));
+    }
+
+    public void flush() {
+        transactionRepository.flush();
+    }
+
     public void deleteTransactions() {
         transactionRepository.deleteAll();
+    }
+
+    public void deleteById(Long id) {
+        transactionRepository.deleteById(id);
+    }
+
+    public java.util.Optional<Transaction> findById(Long id) {
+        return transactionRepository.findById(id);
     }
 
     public List<Transaction> findByPortfolio(Portfolio portfolio) {
@@ -108,5 +133,10 @@ public class TransactionService {
 
     public List<Transaction> findByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
         return transactionRepository.findAllByPortfolioAndSymbol(portfolio, symbol);
+    }
+
+    @javax.transaction.Transactional
+    public void deleteByPortfolio(Portfolio portfolio) {
+        transactionRepository.deleteAllByPortfolio(portfolio);
     }
 }

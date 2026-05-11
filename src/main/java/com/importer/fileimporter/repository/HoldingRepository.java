@@ -14,10 +14,7 @@ import java.util.UUID;
 @Repository
 public interface HoldingRepository extends JpaRepository<Holding, UUID> {
 
-    @Query("select holding " +
-            "from Holding holding " +
-            "where holding.symbol = :symbol " +
-            "and holding.portfolio.name = :portfolio")
+    @Query("select h from Holding h where h.symbol = :symbol and h.portfolio.name = :portfolio")
     Optional<Holding> findBySymbolAndPortfolioName(@Param("symbol") String symbol,
                                                    @Param("portfolio") String portfolio);
 

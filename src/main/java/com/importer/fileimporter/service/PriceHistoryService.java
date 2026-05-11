@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -72,6 +74,18 @@ public class PriceHistoryService {
     public Optional<BigDecimal> findHighPrice(String symbolPair, String pair, LocalDateTime dateTime) {
         LocalDateTime localDateTime = dateTime.withMinute(0).truncatedTo(ChronoUnit.MINUTES);
         return Optional.ofNullable(repository.findHighestPriceBySymbolAndSymbolpairAndTime(pair, symbolPair, localDateTime));
+    }
+
+    public Map<String, BigDecimal> findAllForWarmup(String symbol, String symbolPair, List<LocalDateTime> hours) {
+        if (hours == null || hours.isEmpty()) return Collections.emptyMap();
+        return repository.findBySymbolAndPairAndHoursIn(symbol.toUpperCase(), symbolPair.toUpperCase(), hours)
+                .stream()
+                .collect(Collectors.toMap(
+                    ph -> ph.getSymbol() + ":" + ph.getSymbolpair() + ":"
+                          + ph.getTime().truncatedTo(ChronoUnit.HOURS),
+                    PriceHistory::getHigh,
+                    (a, b) -> a
+                ));
     }
 
 }

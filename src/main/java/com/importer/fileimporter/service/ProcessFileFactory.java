@@ -17,15 +17,11 @@ public class ProcessFileFactory {
     private final ProcessFileV2 processFileV2;
 
 
-    public FileInformationResponse processFile(MultipartFile file) throws IOException {
-        return processFileV2.processFile(file, null, "Binance");
-    }
-
     public FileInformationResponse processFile(MultipartFile file, List<String> symbols) throws IOException {
-        return processFileV2.processFile(file, symbols, "Binance");
+        return processFileV2.processFile(file, symbols, "Binance", "Binance");
     }
 
-    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio) throws IOException {
-        return processFileV2.processFile(file, symbols, portfolio);
+    public FileInformationResponse processFile(MultipartFile file, List<String> symbols, String portfolio, String fileType) throws IOException {
+        return processFileV2.processFile(file, symbols, portfolio, fileType);
     }
 }

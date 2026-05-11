@@ -35,16 +35,19 @@ public class CoinInformationService {
         List<Transaction> unprocessedTransactions = transactions.stream()
                 .filter(transaction -> !transaction.isProcessed())
                 .collect(Collectors.toList());
-        if (unprocessedTransactions.isEmpty()) {
-            log.warn("No unprocessed transactions found for symbol: {}", symbol);
-            return null;
+        
+        if (!unprocessedTransactions.isEmpty()) {
+            unprocessedTransactions.forEach(transactionProcessor::process);
         }
 
-        unprocessedTransactions.forEach(transactionProcessor::process);
-
         // Fetch the updated holding to build the response
-        Portfolio portfolio = unprocessedTransactions.get(0).getPortfolio();
+        Portfolio portfolio = transactions.get(0).getPortfolio();
         Holding holding = holdingService.getHolding(portfolio, symbol);
+
+        if (holding == null) {
+            log.warn("No holding found for symbol: {} in portfolio: {}", symbol, portfolio.getName());
+            return CoinInformationResponse.createEmpty(symbol);
+        }
 
         BigDecimal currentMarketPrice = pricingFacade.getCurrentMarketPrice(symbol);
         BigDecimal amount = holding.getAmount() != null ? holding.getAmount() : BigDecimal.ZERO;
