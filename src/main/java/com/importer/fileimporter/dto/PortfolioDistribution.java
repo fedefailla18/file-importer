@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,6 +18,8 @@ public class PortfolioDistribution {
     private BigDecimal totalUsdt;
     private BigDecimal totalBuySpentUsdt;
     private BigDecimal totalSellEarnedUsdt;
+    private LocalDateTime oldestTransactionDate;
+    private LocalDateTime newestTransactionDate;
 
     public int getTotalHoldings() {
         return holdings.size();

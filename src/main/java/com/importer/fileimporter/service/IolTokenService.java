@@ -1,7 +1,7 @@
 package com.importer.fileimporter.service;
 
-import com.github.ben-manes.caffeine.cache.Cache;
-import com.github.ben-manes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.importer.fileimporter.client.IolClient;
 import com.importer.fileimporter.dto.integration.iol.IolTokenResponse;
 import com.importer.fileimporter.entity.ExchangeName;

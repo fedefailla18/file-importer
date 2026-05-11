@@ -2,7 +2,9 @@ package com.importer.fileimporter.service;
 
 import com.importer.fileimporter.dto.BinanceApiTransactionAdapter;
 import com.importer.fileimporter.dto.integration.binance.BinanceAccountResponse;
+import com.importer.fileimporter.dto.integration.binance.BinanceDepositResponse;
 import com.importer.fileimporter.dto.integration.binance.BinanceTradeResponse;
+import com.importer.fileimporter.dto.integration.binance.BinanceWithdrawResponse;
 import com.importer.fileimporter.entity.ExchangeName;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
@@ -10,6 +12,7 @@ import com.importer.fileimporter.entity.User;
 import com.importer.fileimporter.entity.UserExchangeConfig;
 import com.importer.fileimporter.repository.UserExchangeConfigRepository;
 import com.importer.fileimporter.utils.DateUtils;
+import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -101,8 +104,87 @@ public class BinanceSyncService {
             }
         }
 
+        // Sync deposits and withdrawals since last checkpoint
+        long depositStart = lastSync != null ? lastSync : 0L;
+        syncIncrementalDeposits(apiKey, secretKey, portfolio, depositStart, newSyncTimestamp);
+        syncIncrementalWithdrawals(apiKey, secretKey, portfolio, depositStart, newSyncTimestamp);
+
         config.setLastSyncTimestamp(newSyncTimestamp);
         userExchangeConfigRepository.save(config);
+    }
+
+    private static final long WINDOW_90_DAYS = 90L * 24 * 60 * 60 * 1000;
+
+    private void syncIncrementalDeposits(String apiKey, String secretKey, Portfolio portfolio, long start, long end) {
+        for (long t = start; t < end; t += WINDOW_90_DAYS) {
+            long e = Math.min(t + WINDOW_90_DAYS, end);
+            try {
+                List<BinanceDepositResponse> deposits = binanceApiService.getDepositHistory(apiKey, secretKey, t, e);
+                if (deposits != null && !deposits.isEmpty()) {
+                    log.info("Syncing {} deposits for window {} - {}", deposits.size(), t, e);
+                    for (BinanceDepositResponse d : deposits) {
+                        Transaction tx = Transaction.builder()
+                                .dateUtc(DateUtils.toLocalDateTime(d.getInsertTime()))
+                                .side(OperationUtils.DEPOSIT_STRING)
+                                .symbol(d.getCoin())
+                                .executed(d.getAmount())
+                                .price(BigDecimal.ZERO)
+                                .pair(d.getCoin() + "EXTERNAL")
+                                .externalId(d.getTxId())
+                                .exchangeName(ExchangeName.BINANCE)
+                                .created(LocalDateTime.now())
+                                .createdBy("BinanceSyncService-Deposit")
+                                .portfolio(portfolio)
+                                .build();
+                        transactionProcessor.process(tx);
+                    }
+                }
+                Thread.sleep(rateLimitDelayMs);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                log.warn("Deposit sync interrupted");
+                return;
+            } catch (Exception ex) {
+                log.error("Error syncing deposits for window {} - {}: {}", t, e, ex.getMessage());
+            }
+        }
+    }
+
+    private void syncIncrementalWithdrawals(String apiKey, String secretKey, Portfolio portfolio, long start, long end) {
+        for (long t = start; t < end; t += WINDOW_90_DAYS) {
+            long e = Math.min(t + WINDOW_90_DAYS, end);
+            try {
+                List<BinanceWithdrawResponse> withdrawals = binanceApiService.getWithdrawHistory(apiKey, secretKey, t, e);
+                if (withdrawals != null && !withdrawals.isEmpty()) {
+                    log.info("Syncing {} withdrawals for window {} - {}", withdrawals.size(), t, e);
+                    for (BinanceWithdrawResponse w : withdrawals) {
+                        Transaction tx = Transaction.builder()
+                                .dateUtc(DateUtils.getLocalDateTime(w.getApplyTime()))
+                                .side(OperationUtils.WITHDRAW_STRING)
+                                .symbol(w.getCoin())
+                                .executed(w.getAmount())
+                                .price(BigDecimal.ZERO)
+                                .pair(w.getCoin() + "EXTERNAL")
+                                .feeAmount(w.getTransactionFee())
+                                .feeSymbol(w.getCoin())
+                                .externalId(w.getTxId() != null ? w.getTxId() : w.getId())
+                                .exchangeName(ExchangeName.BINANCE)
+                                .created(LocalDateTime.now())
+                                .createdBy("BinanceSyncService-Withdraw")
+                                .portfolio(portfolio)
+                                .build();
+                        transactionProcessor.process(tx);
+                    }
+                }
+                Thread.sleep(rateLimitDelayMs);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                log.warn("Withdrawal sync interrupted");
+                return;
+            } catch (Exception ex) {
+                log.error("Error syncing withdrawals for window {} - {}: {}", t, e, ex.getMessage());
+            }
+        }
     }
 
     private List<String[]> buildCandidatePairs(Set<String> investmentAssets) {

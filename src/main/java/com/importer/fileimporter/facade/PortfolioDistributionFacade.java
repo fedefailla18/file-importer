@@ -256,6 +256,18 @@ public class PortfolioDistributionFacade {
 
         portfolioDistribution.setTotalBuySpentUsdt(totalBuySpentUsdt);
         portfolioDistribution.setTotalSellEarnedUsdt(totalSellEarnedUsdt);
+
+        transactions.stream()
+                .map(Transaction::getDateUtc)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .ifPresent(portfolioDistribution::setOldestTransactionDate);
+
+        transactions.stream()
+                .map(Transaction::getDateUtc)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .ifPresent(portfolioDistribution::setNewestTransactionDate);
     }
 
     private BigDecimal getTransactionValueInUsdt(Transaction transaction) {

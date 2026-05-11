@@ -1,4 +1,5 @@
 package com.importer.fileimporter.service
+
 import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.config.integration.CryptoCompareConfig
 import org.springframework.beans.factory.annotation.Autowired
