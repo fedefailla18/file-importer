@@ -3,6 +3,7 @@ package com.importer.fileimporter.facade
 import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
+import com.importer.fileimporter.entity.User
 import com.importer.fileimporter.utils.IntegrationTestHelper
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
