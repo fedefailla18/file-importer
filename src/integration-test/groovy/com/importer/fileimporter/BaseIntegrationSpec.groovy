@@ -1,12 +1,21 @@
 package com.importer.fileimporter
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.importer.fileimporter.config.security.jwt.JwtService
+import com.importer.fileimporter.controller.TransactionController
+import com.importer.fileimporter.entity.User
+import com.importer.fileimporter.facade.CoinInformationFacade
 import com.importer.fileimporter.facade.PricingFacade
 import com.importer.fileimporter.repository.PortfolioRepository
 import com.importer.fileimporter.repository.PriceHistoryRepository
 import com.importer.fileimporter.repository.TransactionRepository
+import com.importer.fileimporter.repository.UserRepository
 import com.importer.fileimporter.service.FileImporterService
 import com.importer.fileimporter.service.HoldingService
 import com.importer.fileimporter.service.TransactionService
+import com.importer.fileimporter.service.usecase.CalculateAmountSpent
+import io.restassured.RestAssured
+import io.restassured.builder.RequestSpecBuilder
 import org.junit.ClassRule
 import org.postgresql.Driver
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,18 +23,17 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEnti
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.datasource.SimpleDriverDataSource
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
-import com.importer.fileimporter.entity.User
-import com.importer.fileimporter.repository.UserRepository
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.context.SecurityContextHolder
-import spock.lang.Shared
 import spock.lang.Specification
+
+import javax.persistence.EntityManager
 
 @Transactional
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -35,55 +43,68 @@ import spock.lang.Specification
 abstract class BaseIntegrationSpec extends Specification {
 
     @Autowired
-    FileImporterService fileImporterService
+    protected FileImporterService fileImporterService
 
     @Autowired
-    TransactionService transactionService
+    protected TransactionService transactionService
 
     @Autowired
-    TransactionRepository transactionRepository
+    protected TransactionRepository transactionRepository
 
     @Autowired
-    PortfolioRepository portfolioRepository
+    protected PortfolioRepository portfolioRepository
 
     @Autowired
-    PriceHistoryRepository priceHistoryRepository
+    protected PriceHistoryRepository priceHistoryRepository
 
     @Autowired
-    UserRepository userRepository
+    protected TestEntityManager entityManager
+    @Autowired
+    protected EntityManager entityManager1
 
     @Autowired
-    TestEntityManager entityManager
+    protected CalculateAmountSpent calculateAmountSpent
 
     @Autowired
-    PricingFacade pricingFacade
+    protected PricingFacade pricingFacade
 
     @Autowired
-    HoldingService holdingService
+    protected HoldingService holdingService
 
-    @Shared
-    User defaultUser
+    @Autowired
+    protected CoinInformationFacade coinInformationFacade
+
+    @Autowired
+    protected JwtService jwtService
+
+    @Autowired
+    protected MockMvc mockMvc
+
+    @Autowired
+    protected ObjectMapper objectMapper
+
+    @Autowired
+    protected TransactionController transactionController
+
+    @Autowired
+    protected UserRepository userRepository
+
+    @LocalServerPort
+    protected int port
 
     def setup() {
-        if (defaultUser == null) {
-            defaultUser = userRepository.findByUsername("default_user").orElseGet({
-                def user = User.builder()
-                        .username("default_user")
-                        .email("default@example.com")
-                        .password("change_me")
-                        .build()
-                userRepository.save(user)
-            })
+        RestAssured.port = port
+
+        User testUser = userRepository.findByUsername("Test").orElse(null)
+        if (testUser) {
+            String token = jwtService.generateToken(testUser)
+            // Configure RestAssured to include the token in all requests
+            RestAssured.requestSpecification = new RequestSpecBuilder()
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build()
         }
-        def auth = new UsernamePasswordAuthenticationToken(defaultUser, null, [])
-        SecurityContextHolder.getContext().setAuthentication(auth)
     }
 
-    def cleanup() {
-        SecurityContextHolder.clearContext()
-    }
-
-    // Define a PostgreSQL container
     @ClassRule
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13.1")
             .withDatabaseName("file_importer_schema")
@@ -92,6 +113,7 @@ abstract class BaseIntegrationSpec extends Specification {
             .withExposedPorts(60366)
 
     static  {
+
         postgres.setPortBindings(["60366:5432"])
         postgres.start()
         // Execute schema.sql to create the schema

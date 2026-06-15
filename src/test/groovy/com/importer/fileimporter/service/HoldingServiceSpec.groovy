@@ -5,7 +5,6 @@ import com.importer.fileimporter.entity.Holding
 import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Symbol
 import com.importer.fileimporter.repository.HoldingRepository
-import org.springframework.web.server.ResponseStatusException
 import spock.lang.Specification
 
 class HoldingServiceSpec extends Specification {
@@ -17,12 +16,12 @@ class HoldingServiceSpec extends Specification {
         given:
         def portfolio = new Portfolio(name: "Test Portfolio")
         def symbol = new Symbol(symbol: "BTC")
-        def amount = new BigDecimal("100")
+        def amount = 100
         def existingHolding = Holding.builder()
                 .id(UUID.randomUUID())
                 .symbol("BTC")
                 .portfolio(portfolio)
-                .amount(new BigDecimal("50"))
+                .amount(50)
                 .build()
 
         when:
@@ -33,7 +32,7 @@ class HoldingServiceSpec extends Specification {
         result.symbol == "BTC"
 
         and:
-        1 * holdingRepository.findBySymbolAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
         1 * holdingRepository.save(_) >> { Holding h ->
             assert h.amount == amount
             assert h.symbol == "BTC"
@@ -58,7 +57,7 @@ class HoldingServiceSpec extends Specification {
         result.symbol == "ETH"
 
         and:
-        1 * holdingRepository.findBySymbolAndPortfolioName("ETH", "Test Portfolio") >> Optional.empty()
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName("ETH", "Test Portfolio") >> Optional.empty()
         1 * holdingRepository.save(_) >> { Holding h ->
             assert h.amount == amount
             assert h.symbol == "ETH"
@@ -81,7 +80,7 @@ class HoldingServiceSpec extends Specification {
         def result = holdingService.getByPortfolioAndSymbol(portfolio, symbol)
 
         then:
-        1 * holdingRepository.findBySymbolAndPortfolioName(symbol, "Test Portfolio") >> holding
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(symbol, "Test Portfolio") >> holding
 
         and:
         result == holding
@@ -120,7 +119,7 @@ class HoldingServiceSpec extends Specification {
         def result = holdingService.updatePercentageHolding(holdingDto, portfolio)
 
         then:
-        1 * holdingRepository.findBySymbolAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
         1 * holdingRepository.save(_) >> { Holding h -> h }
 
         and:
@@ -132,33 +131,118 @@ class HoldingServiceSpec extends Specification {
         result.amountInUsdt == new BigDecimal("15000")
     }
 
-    def "test getHolding"() {
+    def "test resetHoldingsBySymbol"() {
         given:
-        def symbol = "BTC"
-        def holding = new Holding(symbol: "BTC")
+        def symbol = "ADA"
+        def holding1 = Holding.builder().symbol(symbol).amount(new BigDecimal("100")).build()
+        def holding2 = Holding.builder().symbol(symbol).amount(new BigDecimal("200")).build()
+        def holdings = [holding1, holding2]
+
+        1 * holdingRepository.findAllBySymbolIgnoreCase(symbol) >> holdings
+        // Capture the arguments saved for each holding
+        def savedHoldings = []
+        2 * holdingRepository.save(_) >> { Holding h ->
+            savedHoldings << h
+            h
+        }
 
         when:
-        def result = holdingService.getHolding(new Portfolio(), symbol)
+        def result = holdingService.resetHoldingsBySymbol(symbol)
 
         then:
-        1 * holdingRepository.findByPortfolioAndSymbol(_, symbol) >> Optional.of(holding)
-        result == holding
+        result == 2
+        savedHoldings.size() == 2
+        // Verify that all amounts were reset to zero for both holdings
+        savedHoldings.every { it.amount == BigDecimal.ZERO }
+        savedHoldings.every { it.amountInBtc == BigDecimal.ZERO }
+        savedHoldings.every { it.amountInUsdt == BigDecimal.ZERO }
+        savedHoldings.every { it.totalAmountBought == BigDecimal.ZERO }
+        savedHoldings.every { it.totalAmountSold == BigDecimal.ZERO }
+        savedHoldings.every { it.inventoryCostUsdt == BigDecimal.ZERO }
+        savedHoldings.every { it.currentPositionInUsdt == BigDecimal.ZERO }
+        savedHoldings.every { it.totalRealizedProfitUsdt == BigDecimal.ZERO }
+        savedHoldings.every { it.modifiedBy.contains("resetHoldingsBySymbol") }
     }
 
-    def "test getHolding - symbol not found returns new holding"() {
+    def """test updatePaidWithHolding logic - scenario: #scenario"""() {
         given:
-        def symbol = "BTC"
         def portfolio = new Portfolio(name: "Test Portfolio")
+        def paidWithSymbol = "USDT"
+        def existingHolding = Holding.builder()
+                .symbol(paidWithSymbol)
+                .portfolio(portfolio)
+                .amount(initialAmount)
+                .totalAmountSold(initialSold)
+                .build()
 
         when:
-        def result = holdingService.getHolding(portfolio, symbol)
+        holdingService.updatePaidWithHolding(isBuy, paidWithSymbol, paidAmount, portfolio)
 
         then:
-        1 * holdingRepository.findByPortfolioAndSymbol(portfolio, symbol) >> Optional.empty()
-        1 * holdingRepository.findBySymbolAndPortfolioName(symbol, "Test Portfolio") >> Optional.empty()
-        result != null
+        noExceptionThrown()
+
+
+        and: "The getOrCreate method should return an existing holding or create a new one"
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(paidWithSymbol, "Test Portfolio") >>
+                (isNewHolding ? Optional.empty() : Optional.of(existingHolding))
+
+        and: "we expect the save method to be called once, and we capture the holding to verify its state"
+        1 * holdingRepository.save(_) >> { Holding h ->
+            assert h.amount == expectedAmount
+            assert h.totalAmountSold == expectedSold
+            h
+        }
+
+        where:
+        scenario                                                            | isBuy | isNewHolding | initialAmount | initialSold          | paidAmount | expectedAmount         || expectedSold
+        "SELL: Receiving into existing holding should INCREASE amount"      | false | false        | 1000          | new BigDecimal("50") | 200        | new BigDecimal("800")  || new BigDecimal("250")
+        "SELL: Receiving into a new holding should INCREASE amount"         | false | true         | 0             | BigDecimal.ZERO      | 200        | new BigDecimal("-200") || new BigDecimal("200")
+        "SELL: A null paidAmount should not change the amount"              | false | false        | 1000          | new BigDecimal("50") | null       | new BigDecimal("1000") || new BigDecimal("50")
+        "SELL: A null initial 'totalAmountSold' should be handled"          | false | false        | 1000          | null                 | 200        | new BigDecimal("800")  || new BigDecimal("200")
+    }
+
+    def "test getOrCreateByPortfolioAndSymbol - existing holding"() {
+        given:
+        def portfolio = new Portfolio(name: "Test Portfolio")
+        def symbol = "BTC"
+        def existingHolding = Holding.builder()
+                .symbol(symbol)
+                .portfolio(portfolio)
+                .amount(new BigDecimal("1"))
+                .amountInUsdt(new BigDecimal("30000"))
+                .totalAmountSold(new BigDecimal("0.5"))
+                .totalAmountBought(new BigDecimal("1.5"))
+                .build()
+
+        when:
+        def result = holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol)
+
+        then:
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(symbol, "Test Portfolio") >> Optional.of(existingHolding)
+        0 * holdingRepository.save(_)
+
+        and:
+        result == existingHolding
+    }
+
+    def "test getOrCreateByPortfolioAndSymbol - new holding"() {
+        given:
+        def portfolio = new Portfolio(name: "Test Portfolio")
+        def symbol = "ETH"
+
+        when:
+        def result = holdingService.getOrCreateByPortfolioAndSymbol(portfolio, symbol)
+
+        then:
+        1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(symbol, "Test Portfolio") >> Optional.empty()
+        0 * holdingRepository.save(_)
+
+        and:
         result.symbol == symbol
         result.portfolio == portfolio
         result.amount == BigDecimal.ZERO
+        result.amountInUsdt == BigDecimal.ZERO
+        result.totalAmountSold == BigDecimal.ZERO
+        result.totalAmountBought == BigDecimal.ZERO
     }
 }

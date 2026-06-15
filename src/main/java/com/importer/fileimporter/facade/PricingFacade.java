@@ -76,13 +76,17 @@ public class PricingFacade {
     public Map<String, Double> getPrices(String symbol) {
         return priceCache.get(symbol, k -> {
             try {
-                Map<String, Number> price = getSymbolHistoricPriceHelper.getPrice(k);
+                Map<String, ?> price = getSymbolHistoricPriceHelper.getPrice(k);
                 Map<String, Double> priceAsDouble = new HashMap<>();
-
-                for (Map.Entry<String, Number> entry : price.entrySet()) {
-                    priceAsDouble.put(entry.getKey(), entry.getValue().doubleValue());
+                if (price == null || (price.get("Response") instanceof String && "Error".equals(price.get("Response")))) {
+                    log.error("Error in pricingFacade when getting prices. Symbol: " + k);
+                    return new HashMap<>();
                 }
-
+                for (Map.Entry<String, ?> entry : price.entrySet()) {
+                    if (entry.getValue() instanceof Number) {
+                        priceAsDouble.put(entry.getKey(), ((Number) entry.getValue()).doubleValue());
+                    }
+                }
                 return priceAsDouble;
             } catch (Exception e) {
                 log.error("Error in pricingFacade when getting prices. Symbol: " + k, e);

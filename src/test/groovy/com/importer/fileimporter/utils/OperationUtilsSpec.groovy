@@ -46,8 +46,8 @@ class OperationUtilsSpec extends Specification {
     def "test isBuy MexcTransactionAdapter"() {
         given:
         def row = [
-                "Pares": "BTC_USDT",
-                "Dirección": side]
+                "Pairs"    : "BTC_USDT",
+                "Direction": side]
         def adapter = new MexcTransactionAdapter(row)
 
         when:

@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @RestController
@@ -103,6 +104,7 @@ public class TransactionController {
         @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content)
     })
     @PostMapping(value = "/upload")
+    @Deprecated(since = "1.0.1", forRemoval = true)
     public FileInformationResponse uploadTransactions(
             @Parameter(description = "Transaction file to upload", required = true) @RequestBody MultipartFile file,
             @Parameter(description = "List of symbols to filter by") @RequestParam(required = false) List<String> symbols) throws IOException {
@@ -168,4 +170,37 @@ public class TransactionController {
         return transactionFacade.save(request);
     }
 
+    @Operation(summary = "Add a new transaction to a portfolio", description = "Manually add a new transaction to a specific portfolio")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Transaction successfully created",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Transaction.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid transaction data", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content)
+    })
+    @PostMapping("/{portfolio}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Transaction addTransactionToPortfolio(
+            @Parameter(description = "Transaction data", required = true) @RequestBody TransactionDto request,
+            @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolio) {
+        request.setPortfolioName(portfolio);
+        return transactionFacade.save(request);
+    }
+
+    @Operation(summary = "Unprocess transactions", description = "Unprocess all transactions for a specific symbol and reset holdings")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Transactions successfully unprocessed",
+                content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "400", description = "Invalid symbol", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content)
+    })
+    @PostMapping("/unprocess")
+    public ResponseEntity<String> unprocessTransactions(
+            @Parameter(description = "Symbol to unprocess transactions for", required = true) @RequestParam String symbol) {
+        Map<String, Integer> stringIntegerHashMap = transactionFacade.unprocessTransactions(symbol);
+
+        return ResponseEntity.ok(String.format("Successfully unprocessed %d transactions and reset %d holdings for symbol: %s",
+                stringIntegerHashMap.get("transactions"), stringIntegerHashMap.get("holdings"), symbol));
+    }
 }

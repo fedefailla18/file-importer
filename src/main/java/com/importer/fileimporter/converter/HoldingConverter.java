@@ -26,7 +26,7 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
                 .priceInUsdt(source.getPriceInUsdt())
                 .totalAmountBought(source.getTotalAmountBought())
                 .totalAmountSold(source.getTotalAmountSold())
-                .stableTotalCost(source.getStableTotalCost())
+                .inventoryCostUsdt(source.getInventoryCostUsdt())
                 .currentPositionInUsdt(source.getCurrentPositionInUsdt())
                 .totalRealizedProfitUsdt(source.getTotalRealizedProfitUsdt())
                 .build();

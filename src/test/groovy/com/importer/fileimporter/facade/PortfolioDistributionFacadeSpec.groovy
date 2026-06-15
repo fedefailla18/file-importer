@@ -89,8 +89,8 @@ class PortfolioDistributionFacadeSpec extends Specification {
         holding.totalAmountBought.subtract(holding.totalAmountSold) == new BigDecimal("0.025")
     }
 
-    def "groupHoldingsBySymbol should correctly merge holdings"() {
-        given: "Multiple holdings with the same symbol"
+    def "groupHoldingsBySymbol should correctly merge holdings with all fields"() {
+        given: "Multiple holdings with the same symbol including transaction history metrics"
         def holdings = [
             new Holding(
                 symbol: "BTC",
@@ -99,7 +99,12 @@ class PortfolioDistributionFacadeSpec extends Specification {
                 amountInUsdt: new BigDecimal("45000.75"),
                 amountInBtc: new BigDecimal("1.5"),
                 priceInUsdt: new BigDecimal("30000.5"),
-                priceInBtc: new BigDecimal("1.0")
+                priceInBtc: new BigDecimal("1.0"),
+                totalAmountBought: new BigDecimal("2.0"),
+                totalAmountSold: new BigDecimal("0.5"),
+                    inventoryCostUsdt: new BigDecimal("40000.0"),
+                currentPositionInUsdt: new BigDecimal("45000.0"),
+                totalRealizedProfitUsdt: new BigDecimal("5000.0")
             ),
             new Holding(
                 symbol: "BTC",
@@ -108,7 +113,12 @@ class PortfolioDistributionFacadeSpec extends Specification {
                 amountInUsdt: new BigDecimal("15000.25"),
                 amountInBtc: new BigDecimal("0.5"),
                 priceInUsdt: new BigDecimal("30000.5"),
-                priceInBtc: new BigDecimal("1.0")
+                priceInBtc: new BigDecimal("1.0"),
+                totalAmountBought: new BigDecimal("1.0"),
+                totalAmountSold: new BigDecimal("0.5"),
+                    inventoryCostUsdt: new BigDecimal("20000.0"),
+                currentPositionInUsdt: new BigDecimal("15000.0"),
+                totalRealizedProfitUsdt: new BigDecimal("3000.0")
             )
         ]
 
@@ -116,13 +126,18 @@ class PortfolioDistributionFacadeSpec extends Specification {
         HoldingConverter.Mapper.createFrom(_ as Holding) >> { Holding h ->
             return HoldingDto.builder()
                 .symbol(h.symbol)
-                .portfolioName(h.portfolioName)
+                .portfolioName(h.portfolio.name)
                 .amount(h.amount)
                 .amountInUsdt(h.amountInUsdt)
                 .amountInBtc(h.amountInBtc)
                 .priceInUsdt(h.priceInUsdt)
                 .priceInBtc(h.priceInBtc)
                 .percentage(BigDecimal.ZERO)
+                .totalAmountBought(h.totalAmountBought)
+                .totalAmountSold(h.totalAmountSold)
+                .inventoryCostUsdt(h.inventoryCostUsdt)
+                .currentPositionInUsdt(h.currentPositionInUsdt)
+                .totalRealizedProfitUsdt(h.totalRealizedProfitUsdt)
                 .build()
         }
 
@@ -133,7 +148,7 @@ class PortfolioDistributionFacadeSpec extends Specification {
         result.size() == 1
         result.containsKey("BTC")
 
-        and: "The merged holding should have the sum of amounts"
+        and: "The merged holding should have the sum of amounts and all transaction history metrics"
         with(result.get("BTC")) {
             symbol == "BTC"
             portfolioName == "Portfolio1 - Portfolio2"
@@ -141,6 +156,13 @@ class PortfolioDistributionFacadeSpec extends Specification {
             // Due to the precision issue in addPreventingNull, these will be rounded down
             amountInUsdt.toString() == "60001"
             amountInBtc.toString() == "2"
+
+            // Verify transaction history metrics are correctly merged
+            totalAmountBought.toString() == "3"
+            totalAmountSold.toString() == "1"
+            inventoryCostUsdt.toString() == "60000"
+            currentPositionInUsdt.toString() == "60000"
+            totalRealizedProfitUsdt.toString() == "8000"
         }
     }
 

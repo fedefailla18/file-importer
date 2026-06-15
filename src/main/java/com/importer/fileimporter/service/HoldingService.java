@@ -7,6 +7,7 @@ import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Symbol;
 import com.importer.fileimporter.payload.request.AddHoldingRequest;
 import com.importer.fileimporter.repository.HoldingRepository;
+import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -34,11 +35,11 @@ public class HoldingService {
     }
 
     public Optional<Holding> getByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        return getBySymbolAndPortfolioName(portfolio, symbol);
+        return getBySymbolAndPortfolioName(portfolio.getName(), symbol);
     }
 
     public Holding getOrCreateByPortfolioAndSymbol(Portfolio portfolio, String symbol) {
-        Optional<Holding> bySymbolAndPortfolioName = getBySymbolAndPortfolioName(portfolio, symbol);
+        Optional<Holding> bySymbolAndPortfolioName = getBySymbolAndPortfolioName(portfolio.getName(), symbol);
         log.info("getting holding for: {}", bySymbolAndPortfolioName
                 .map(e -> e.getSymbol() + " - amount: " + e.getAmount())
                 .orElse(symbol + ". New Holding!"));
@@ -51,6 +52,41 @@ public class HoldingService {
                                 .totalAmountSold(BigDecimal.ZERO)
                                 .totalAmountBought(BigDecimal.ZERO)
                                 .build());
+    }
+
+    /**
+     * Updates the holding for the currency used to pay for a transaction.
+     * For buy transactions, it increases the amount of the paid with currency.
+     * For sell transactions, it decreases the amount of the paid with currency.
+     *
+     * @param isBuy          Whether the transaction is a buy (true) or sell (false)
+     * @param paidWithSymbol The symbol of the currency used to pay
+     * @param paidAmount     The amount paid in the paidWithSymbol currency
+     * @param portfolio      The portfolio associated with the transaction
+     */
+    public void updatePaidWithHolding(boolean isBuy, String paidWithSymbol, BigDecimal paidAmount, Portfolio portfolio) {
+        if (isBuy) {
+            throw new RuntimeException("Buy transactions should not be processed with updatePaidWithHolding");
+        }
+        Holding holding = getOrCreateByPortfolioAndSymbol(portfolio, paidWithSymbol);
+        BigDecimal oldAmount = holding.getAmount();
+        BigDecimal totalAmountSold = holding.getTotalAmountSold();
+
+        // For the paidWith currency:
+        // - When buying a coin, we're increasing the paidWith currency
+        // - When selling a coin, we're decreasing the paidWith currency
+        BigDecimal updatedAmount = OperationUtils.safeSubtract(oldAmount, paidAmount);
+
+        // totalAmountSold should only be updated for sell transactions
+        BigDecimal safePaidAmount = paidAmount != null ? paidAmount : BigDecimal.ZERO;
+        BigDecimal updatedTotalAmountSold =
+            (totalAmountSold != null ? totalAmountSold : BigDecimal.ZERO).add(safePaidAmount);
+
+        holding.setAmount(updatedAmount);
+        holding.setTotalAmountSold(updatedTotalAmountSold);
+
+        log.info("Updating {}. oldAmount = {}, updated amount = {}", paidWithSymbol, oldAmount, updatedAmount);
+        save(holding);
     }
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
@@ -99,17 +135,12 @@ public class HoldingService {
                 .build());
     }
 
-    public Holding getHolding(Portfolio portfolio, String symbol) {
-        return holdingRepository.findByPortfolioAndSymbol(portfolio, symbol)
-                .orElseGet(() -> getOrCreateByPortfolioAndSymbol(portfolio, symbol));
-    }
-
     public Holding save(Holding holding) {
         return holdingRepository.save(holding);
     }
 
     public List<HoldingDto> getBySymbol(String symbol) {
-        return holdingRepository.findAllBySymbol(symbol).stream()
+        return holdingRepository.findAllBySymbolIgnoreCase(symbol).stream()
                 .map(HoldingConverter.Mapper::createFrom)
                 .collect(Collectors.toList());
     }
@@ -120,7 +151,37 @@ public class HoldingService {
         return holdingRepository.saveAll(fromRequest);
     }
 
-    private Optional<Holding> getBySymbolAndPortfolioName(Portfolio portfolio, String symbol) {
-        return holdingRepository.findBySymbolAndPortfolioName(symbol, portfolio.getName());
+    public Optional<Holding> getBySymbolAndPortfolioName(String portfolio, String symbol) {
+        return holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(symbol, portfolio);
+    }
+
+    /**
+     * Resets the holdings for a given symbol.
+     * Sets all amounts to zero for all holdings with the given symbol.
+     *
+     * @param symbol The symbol to reset holdings for
+     * @return The number of holdings that were reset
+     */
+    public int resetHoldingsBySymbol(String symbol) {
+        List<Holding> holdings = holdingRepository.findAllBySymbolIgnoreCase(symbol);
+        int count = 0;
+
+        for (Holding holding : holdings) {
+            holding.setAmount(BigDecimal.ZERO);
+            holding.setAmountInBtc(BigDecimal.ZERO);
+            holding.setAmountInUsdt(BigDecimal.ZERO);
+            holding.setTotalAmountBought(BigDecimal.ZERO);
+            holding.setTotalAmountSold(BigDecimal.ZERO);
+            holding.setInventoryCostUsdt(BigDecimal.ZERO);
+            holding.setCurrentPositionInUsdt(BigDecimal.ZERO);
+            holding.setTotalRealizedProfitUsdt(BigDecimal.ZERO);
+            holding.setModified(LocalDateTime.now());
+            holding.setModifiedBy(this.getClass().getName() + ".resetHoldingsBySymbol");
+            save(holding);
+            count++;
+        }
+
+        log.info("Reset {} holdings for symbol: {}", count, symbol);
+        return count;
     }
 }

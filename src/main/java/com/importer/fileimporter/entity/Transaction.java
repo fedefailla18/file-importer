@@ -80,6 +80,7 @@ public class Transaction {
     @JoinColumn(name = "portfolio_id")
     private Portfolio portfolio;
 
+    @Builder.Default
     private boolean processed = false;
 
     private LocalDateTime lastProcessedAt;

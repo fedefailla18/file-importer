@@ -18,13 +18,13 @@ public class SymbolService {
     private final SymbolRepository symbolRepository;
 
     public Symbol findOrSaveSymbol(String symbol, String name) {
-        Optional<Symbol> bySymbol = symbolRepository.findBySymbol(symbol);
+        Optional<Symbol> bySymbol = symbolRepository.findBySymbolIgnoreCase(symbol);
         return bySymbol
                 .orElseGet(() -> saveBasicEntity(symbol, name));
     }
 
     public Symbol findSymbol(String symbol) {
-        return symbolRepository.findBySymbol(symbol)
+        return symbolRepository.findBySymbolIgnoreCase(symbol)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbol not created."));
     }
 
