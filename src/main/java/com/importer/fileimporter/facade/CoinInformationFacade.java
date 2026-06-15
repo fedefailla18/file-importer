@@ -39,9 +39,9 @@ public class CoinInformationFacade {
         Portfolio portfolio = portfolioService.getByName(portfolioName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
         List<Transaction> transactions = transactionService.findByPortfolio(portfolio);
-        Map<String, List<Transaction>> collect = transactions.stream()
+        Map<String, List<Transaction>> transactionsGroupedBySymbol = transactions.stream()
                 .collect(Collectors.groupingBy(Transaction::getSymbol));
-        return collect.entrySet().stream()
+        return transactionsGroupedBySymbol.entrySet().stream()
                 .map(this::getCoinInformationResponse)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());

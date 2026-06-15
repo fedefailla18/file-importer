@@ -22,11 +22,8 @@ import javax.transaction.NotSupportedException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.importer.fileimporter.utils.OperationUtils.BTC;
@@ -39,7 +36,6 @@ public class TransactionFacade {
 
     private final TransactionService transactionService;
     private final PricingFacade pricingFacade;
-    private final TransactionProcessor transactionProcessor;
     private final HoldingService holdingService;
     private final PortfolioService portfolioService;
 
@@ -54,8 +50,7 @@ public class TransactionFacade {
             // Fetch all portfolios and their holdings
             List<Portfolio> portfolios = portfolioService.findAll();
             for (Portfolio portfolio : portfolios) {
-                List<Holding> holdings = holdingService.getByPortfolio(portfolio);
-                holdingDtos.addAll(holdings.stream()
+                holdingDtos.addAll(holdingService.getByPortfolio(portfolio).stream()
                         .map(this::mapToTransactionHoldingDto)
                         .collect(Collectors.toList()));
             }
@@ -84,7 +79,7 @@ public class TransactionFacade {
                 .amountInBtc(amount.multiply(priceInBtc).setScale(8, RoundingMode.HALF_UP))
                 .priceInUsdt(priceInUsdt)
                 .amountInUsdt(amount.multiply(priceInUsdt).setScale(8, RoundingMode.HALF_UP))
-                .stableTotalCost(holding.getStableTotalCost())
+                .stableTotalCost(holding.getInventoryCostUsdt())
                 .totalRealizedProfitUsdt(holding.getTotalRealizedProfitUsdt())
                 .currentPositionInUsdt(amount.multiply(priceInUsdt).setScale(2, RoundingMode.HALF_UP))
                 .percentage(holding.getPercent())
@@ -104,7 +99,7 @@ public class TransactionFacade {
                 .amountInBtc(amount.multiply(priceInBtc).setScale(8, RoundingMode.HALF_UP))
                 .priceInUsdt(priceInUsdt)
                 .amountInUsdt(amount.multiply(priceInUsdt).setScale(8, RoundingMode.HALF_UP))
-                .stableTotalCost(holdingDto.getStableTotalCost())
+                .stableTotalCost(holdingDto.getInventoryCostUsdt())
                 .totalRealizedProfitUsdt(holdingDto.getTotalRealizedProfitUsdt())
                 .currentPositionInUsdt(amount.multiply(priceInUsdt).setScale(2, RoundingMode.HALF_UP))
                 .percentage(holdingDto.getPercentage())
@@ -113,20 +108,45 @@ public class TransactionFacade {
 
     public Transaction save(TransactionDto transactionDto) {
         Transaction transaction = TransactionConverter.Mapper.createTo(transactionDto);
-        if (transaction.getPrice() == null ||
-                Strings.isNullOrEmpty(transaction.getPaidWith()) ||
-                Strings.isNullOrEmpty(transaction.getPair())) {
+
+        if (transaction.getPrice() == null || transaction.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             BigDecimal priceInUsdt = pricingFacade.getPriceInUsdt(transaction.getSymbol(), transaction.getDateUtc());
             transaction.setPrice(priceInUsdt);
-            transaction.setPair(transaction.getSymbol() + USDT);
             transaction.setPaidWith(USDT);
             transaction.setPaidAmount(transaction.getExecuted().multiply(priceInUsdt));
         }
-        return transactionProcessor.process(transaction);
+
+        String portfolioName = transactionDto.getPortfolioName();
+
+        if (Strings.isNullOrEmpty(portfolioName)) {
+            portfolioName = "Default";
+        }
+
+        Portfolio portfolio = portfolioService.findOrSave(portfolioName);
+        transaction.setPortfolio(portfolio);
+        log.info("Transaction assigned to portfolio: {}", portfolioName);
+
+        String origin = this.getClass() + " - ADD TRANSACTION MANUALLY";
+        transaction.setCreatedBy(origin);
+        transaction.setModifiedBy(origin);
+        transaction.setCreated(LocalDateTime.now());
+        transaction.setModified(LocalDateTime.now());
+
+        return transactionService.save(transaction);
     }
 
     public void deleteTransactions() {
         transactionService.deleteTransactions();
+    }
+
+    public Map<String, Integer> unprocessTransactions(String symbol) {
+        int transactionsCount = transactionService.unprocessTransactionsBySymbol(symbol);
+        int holdingsCount = holdingService.resetHoldingsBySymbol(symbol);
+
+        return new HashMap<>() {{
+            put("transactions", transactionsCount);
+            put("holdings", holdingsCount);
+        }};
     }
 
     public Page<Transaction> filterTransactions(String symbol, String portfolioName, String side, String paidWith, String paidAmountOperator, BigDecimal paidAmount, LocalDate startDate, LocalDate endDate, UUID id, Pageable pageable) {

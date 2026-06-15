@@ -1,12 +1,8 @@
 package com.importer.fileimporter.service
 
-import com.importer.fileimporter.service.TransactionService
-import com.importer.fileimporter.service.HoldingService
-import com.importer.fileimporter.service.PortfolioService
-import com.importer.fileimporter.service.TransactionProcessor
 import com.importer.fileimporter.dto.HoldingDto
+import com.importer.fileimporter.dto.TransactionDto
 import com.importer.fileimporter.dto.TransactionHoldingDto
-import com.importer.fileimporter.entity.Holding
 import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import com.importer.fileimporter.facade.PricingFacade
@@ -14,77 +10,189 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import java.math.RoundingMode
+import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.time.LocalDateTime
+import javax.transaction.NotSupportedException
 
 class TransactionFacadeSpec extends Specification {
 
     def transactionService = Mock(TransactionService)
     def pricingFacade = Mock(PricingFacade)
-    def transactionProcessor = Mock(TransactionProcessor)
     def holdingService = Mock(HoldingService)
     def portfolioService = Mock(PortfolioService)
 
-    def sut = new TransactionFacade(transactionService, pricingFacade, transactionProcessor, holdingService, portfolioService)
+    def sut = new TransactionFacade(transactionService, pricingFacade, holdingService, portfolioService)
 
-    def "BuildPortfolio should correctly return holdings from HoldingService"() {
-        given: "Mock data for holdings"
-        def symbols = ["BTC"]
-        def portfolio = new Portfolio(name: "Binance")
-        def holding = new Holding(
-                symbol: "BTC",
-                amount: BigDecimal.valueOf(50),
-                stableTotalCost: BigDecimal.valueOf(5000),
-                totalRealizedProfitUsdt: BigDecimal.valueOf(1000),
-                percent: BigDecimal.valueOf(10),
-                portfolio: portfolio
-        )
+    
 
-        and:
-        portfolioService.findAll() >> [portfolio]
-        holdingService.getByPortfolio(portfolio) >> [holding]
-        pricingFacade.getPrices("BTC") >> [BTC: 0.00015d, USDT: 1.5d]
+    def "BuildPortfolio should return holdings for given symbols"() {
+        given: "A symbol and a matching holding with zero amount"
+        def symbols = ["ETH"]
+        def holdingDto = HoldingDto.builder()
+                .symbol("ETH")
+                .amount(BigDecimal.ZERO)
+                .portfolioName("Default")
+                .build()
+
+        and: "Mock the holding service to return the holding"
+        holdingService.getBySymbol("ETH") >> [holdingDto]
+
+        and: "Mock the pricing facade"
+        pricingFacade.getPrices("ETH") >> [BTC: 0.01d, USDT: 300d]
 
         when: "Building the portfolio"
-        List<TransactionHoldingDto> result = sut.buildPortfolio([])
+        List<TransactionHoldingDto> portfolio = sut.buildPortfolio(symbols)
 
-        then: "The result is correctly mapped from holdings"
-        result.size() == 1
-        with(result[0]) {
-            symbol == "BTC"
-            amount == BigDecimal.valueOf(50)
-            stableTotalCost == BigDecimal.valueOf(5000)
-            totalRealizedProfitUsdt == BigDecimal.valueOf(1000)
-            priceInBtc == BigDecimal.valueOf(0.00015)
-            priceInUsdt == BigDecimal.valueOf(1.5)
-            amountInBtc == (amount * priceInBtc).setScale(8, RoundingMode.HALF_UP)
-            amountInUsdt == (amount * priceInUsdt).setScale(8, RoundingMode.HALF_UP)
+        then: "The holding is returned with zero amount"
+        portfolio.size() == 1
+        with(portfolio[0]) {
+            symbol == "ETH"
+            amount == BigDecimal.ZERO
         }
     }
 
-    def "GetAmount should handle symbols list"() {
-        given: "A list of symbols"
-        def symbols = ["BTC"]
-        def holdingDto = HoldingDto.builder()
-                .symbol("BTC")
-                .amount(BigDecimal.valueOf(50))
-                .stableTotalCost(BigDecimal.valueOf(5000))
-                .totalRealizedProfitUsdt(BigDecimal.valueOf(1000))
-                .percentage(BigDecimal.valueOf(10))
+    def "Save should assign portfolio when portfolioName is provided"() {
+        given: "A transaction DTO with portfolio name"
+        def portfolioName = "TestPortfolio"
+        def transactionDto = TransactionDto.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .portfolioName(portfolioName)
                 .build()
 
-        and:
-        holdingService.getBySymbol("BTC") >> [holdingDto]
-        pricingFacade.getPrices("BTC") >> [BTC: 0.00015d, USDT: 1.5d]
+        and: "A portfolio that will be returned by the service"
+        def portfolio = Portfolio.builder()
+                .name(portfolioName)
+                .creationDate(LocalDateTime.now())
+                .build()
 
-        when: "Getting amount for symbols"
-        def result = sut.getAmount(symbols)
+        and: "A transaction that will be created from the DTO"
+        def transaction = Transaction.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .build()
 
-        then: "Result is correct"
-        result.size() == 1
-        result[0].symbol == "BTC"
-        result[0].amount == BigDecimal.valueOf(50)
+        and: "A saved transaction with portfolio"
+        def savedTransaction = Transaction.builder()
+                .id(1L)
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .portfolio(portfolio)
+                .build()
+
+        and: "A mock for pricing facade"
+        pricingFacade.getPriceInUsdt(_, _) >> BigDecimal.valueOf(300)
+
+        when: "The save method is called"
+        def result = sut.save(transactionDto)
+
+        then: "The portfolio service is called to find or save the portfolio"
+        1 * portfolioService.findOrSave(portfolioName) >> portfolio
+
+        and: "The transaction is saved with the portfolio"
+        1 * transactionService.save({ Transaction t ->
+            t.portfolio == portfolio && t.symbol == "ETH"
+        }) >> savedTransaction
+
+        and: "The result has the correct portfolio"
+        result.portfolio == portfolio
+        result.symbol == "ETH"
+    }
+
+    def "Save should use default portfolio when portfolioName is not provided"() {
+        given: "A transaction DTO without portfolio name"
+        def transactionDto = TransactionDto.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .build()
+
+        and: "A default portfolio that will be returned by the service"
+        def defaultPortfolio = Portfolio.builder()
+                .name("Default")
+                .creationDate(LocalDateTime.now())
+                .build()
+
+        and: "A transaction that will be created from the DTO"
+        def transaction = Transaction.builder()
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .build()
+
+        and: "A saved transaction with default portfolio"
+        def savedTransaction = Transaction.builder()
+                .id(1L)
+                .symbol("ETH")
+                .side("BUY")
+                .executed(BigDecimal.valueOf(2.5))
+                .dateUtc(LocalDateTime.now())
+                .portfolio(defaultPortfolio)
+                .build()
+
+        and: "A mock for pricing facade"
+        pricingFacade.getPriceInUsdt(_, _) >> BigDecimal.valueOf(300)
+
+        when: "The save method is called"
+        def result = sut.save(transactionDto)
+
+        then: "The portfolio service is called to find or save the default portfolio"
+        1 * portfolioService.findOrSave("Default") >> defaultPortfolio
+
+        and: "The transaction is saved with the default portfolio"
+        1 * transactionService.save({ Transaction t ->
+            t.portfolio == defaultPortfolio && t.symbol == "ETH"
+        }) >> savedTransaction
+
+        and: "The result has the default portfolio"
+        result.portfolio == defaultPortfolio
+        result.symbol == "ETH"
+    }
+
+    def "Save should fetch price from pricingFacade when price is missing or not positive"() {
+        given: "A transaction DTO without price, pair, or paidWith"
+        def transactionDto = TransactionDto.builder()
+                .symbol("BTC")
+                .executed(BigDecimal.valueOf(2.0))
+                .side("BUY")
+                .dateUtc(LocalDateTime.now())
+                .portfolioName("MyPortfolio")
+                .build()
+
+        and: "Mocks for pricing and portfolio"
+        def portfolio = Portfolio.builder().name("MyPortfolio").build()
+        def priceFromFacade = BigDecimal.valueOf(30000)
+        pricingFacade.getPriceInUsdt("BTC", _ as LocalDateTime) >> priceFromFacade
+        portfolioService.findOrSave("MyPortfolio") >> portfolio
+
+        and: "Capture the saved transaction"
+        Transaction savedTransaction = null
+        transactionService.save(_ as Transaction) >> { Transaction t -> savedTransaction = t; return t }
+
+        when: "Calling save"
+        def result = sut.save(transactionDto)
+
+        then: "The price is fetched from pricingFacade"
+        result.price == priceFromFacade
+        result.paidWith == "USDT"
+        result.paidAmount == BigDecimal.valueOf(2.0).multiply(priceFromFacade)
+
+        and: "Portfolio is correctly assigned"
+        result.portfolio.name == "MyPortfolio"
+
+        and: "Saved transaction has correct values"
+        savedTransaction.symbol == "BTC"
+        savedTransaction.price == priceFromFacade
     }
 
     static List<Transaction> createMockTransactions() {

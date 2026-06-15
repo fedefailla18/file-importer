@@ -2,6 +2,7 @@ package com.importer.fileimporter.controller;
 
 import com.importer.fileimporter.dto.HoldingDto;
 import com.importer.fileimporter.dto.PortfolioDistribution;
+import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.facade.PortfolioDistributionFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,6 +34,11 @@ public class PortfolioController {
     @GetMapping("/names")
     public List<String> getAllPortfolio() {
         return portfolioDistributionFacade.getAllPortfolioNames();
+    }
+
+    @PostMapping
+    public Portfolio createPortfolio(@RequestParam String portfolioName) {
+        return portfolioDistributionFacade.createPortfolio(portfolioName);
     }
 
     @PostMapping("/distribution")

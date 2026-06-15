@@ -13,9 +13,3 @@ spring:
     user: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     contexts: integration-test
-
-#logging:
-#  level:
-#    org:
-#      liquibase: DEBUG
-#      springframework: DEBUG

@@ -24,19 +24,16 @@ import java.util.stream.Collectors;
 public class ProcessFileV2 extends ProcessFile {
 
     private final PortfolioService portfolioService;
-    private final TransactionProcessor transactionProcessor;
     private final CoinInformationService coinInformationService;
     private final TransactionService transactionService;
 
     public ProcessFileV2(PortfolioService portfolioService,
                          FileImporterService fileImporterService,
                          TransactionAdapterFactory transactionAdapterFactory,
-                         TransactionProcessor transactionProcessor,
                          CoinInformationService coinInformationService,
                          TransactionService transactionService) {
         super(fileImporterService, transactionAdapterFactory);
         this.portfolioService = portfolioService;
-        this.transactionProcessor = transactionProcessor;
         this.coinInformationService = coinInformationService;
         this.transactionService = transactionService;
     }
@@ -54,7 +51,7 @@ public class ProcessFileV2 extends ProcessFile {
                 String symbol = transactionData.getSymbol();
                 if (symbol != null && !symbol.isEmpty()) {
                     Transaction transaction = mapToTransaction(transactionData, portfolio);
-                    transactionProcessor.process(transaction);
+                    transactionService.save(transaction);
                     processedSymbols.add(symbol);
                 }
             } catch (Exception e) {
