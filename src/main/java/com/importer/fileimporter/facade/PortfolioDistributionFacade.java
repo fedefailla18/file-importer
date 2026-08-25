@@ -64,6 +64,10 @@ public class PortfolioDistributionFacade {
                 .collect(Collectors.toList());
     }
 
+    public Portfolio createPortfolio(String portfolioName) {
+        return portfolioService.findOrSave(portfolioName);
+    }
+
     public HoldingDto addPortfolioHolding(AddHoldingRequest request) {
         Symbol savedSymbol = symbolService.findOrSaveSymbol(request.getSymbol(), request.getName());
 
@@ -76,41 +80,8 @@ public class PortfolioDistributionFacade {
     }
 
     public HoldingDto getHolding(String portfolioName, String symbol) {
-        Optional<Portfolio> portfolio = getByName(portfolioName);
-        return portfolio.flatMap(p ->
-                        Optional.ofNullable(holdingService.getHolding(p, symbol))
-                                .map(holding -> {
-                                    Map<String, Double> price = pricingFacade.getPrices(holding.getSymbol());
-                                    BigDecimal btcPrice = Optional.ofNullable(price.get(BTC))
-                                            .map(BigDecimal::valueOf)
-                                            .orElse(BigDecimal.ZERO);
-                                    BigDecimal usdtPrice = Optional.ofNullable(price.get(USDT))
-                                            .map(BigDecimal::valueOf)
-                                            .orElse(BigDecimal.ZERO);
-                                    BigDecimal amount = Optional.ofNullable(holding.getAmount()).orElse(BigDecimal.ZERO);
-
-                                    BigDecimal currentPos = usdtPrice.multiply(amount);
-                                    BigDecimal holdingCost = holding.getStableTotalCost() != null
-                                            ? holding.getStableTotalCost() : BigDecimal.ZERO;
-
-                                    return HoldingDto.builder()
-                                            .symbol(holding.getSymbol())
-                                            .portfolioName(p.getName())
-                                            .amount(amount)
-                                            .priceInBtc(btcPrice)
-                                            .priceInUsdt(usdtPrice)
-                                            .amountInBtc(BTC.equals(holding.getSymbol()) ? amount : btcPrice.multiply(amount))
-                                            .amountInUsdt(USDT.equals(holding.getSymbol()) ? amount : usdtPrice.multiply(amount))
-                                            .percentage(holding.getPercent())
-                                            .totalAmountBought(holding.getTotalAmountBought())
-                                            .totalAmountSold(holding.getTotalAmountSold())
-                                            .stableTotalCost(holding.getStableTotalCost())
-                                            .currentPositionInUsdt(currentPos)
-                                            .totalRealizedProfitUsdt(holding.getTotalRealizedProfitUsdt())
-                                            .unrealizedProfitUsdt(currentPos.subtract(holdingCost))
-                                            .build();
-                                }))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
+        return holdingService.getBySymbolAndPortfolioName(portfolioName, symbol)
+                .map(HoldingConverter.Mapper::createFrom).get();
     }
 
     private Optional<Portfolio> getByName(String portfolioName) {
@@ -230,9 +201,8 @@ public class PortfolioDistributionFacade {
                             .totalAmountBought(e.getTotalAmountBought())
                             .totalAmountSold(e.getTotalAmountSold())
                             .totalRealizedProfitUsdt(e.getTotalRealizedProfitUsdt())
-                            .stableTotalCost(e.getStableTotalCost())
-                            .currentPositionInUsdt(currentPositionInUsdt)
-                            .unrealizedProfitUsdt(unrealizedProfitUsdt)
+                            .inventoryCostUsdt(e.getInventoryCostUsdt())
+                            .currentPositionInUsdt(e.getCurrentPositionInUsdt())
                             .build());
                 }
         );
@@ -318,29 +288,49 @@ public class PortfolioDistributionFacade {
         return portfolioDistribution;
     }
 
-    // this could be in PortfolioDistribution or other new class
+    /**
+     * Groups holdings by symbol and merges their values.
+     * This method is used to aggregate holdings across different portfolios.
+     *
+     * @param holdings The list of holdings to group
+     * @return A map of symbol to aggregated HoldingDto
+     */
     public Map<String, HoldingDto> groupHoldingsBySymbol(List<Holding> holdings) {
         return holdings.stream()
                 .collect(Collectors.toMap(Holding::getSymbol, // Group holdings by symbol
                         HoldingConverter.Mapper::createFrom,
                         (e1, e2) -> {
-                            log.info("Holding1:" + e1.getSymbol() + " - Holding2:" + e2.getSymbol());
+                            log.info("Merging holdings - Holding1:" + e1.getSymbol() + " - Holding2:" + e2.getSymbol());
+
+                            // Calculate prices (average of the two holdings)
                             BigDecimal priceInUsdt = (e1.getPriceInUsdt() != null && e2.getPriceInUsdt() != null) ?
-                                    e1.getPriceInUsdt().add(e2.getPriceInUsdt()) :
-                                    BigDecimal.ZERO;
+                                    e1.getPriceInUsdt().add(e2.getPriceInUsdt()).divide(new BigDecimal(2), 8, RoundingMode.HALF_UP) :
+                                    (e1.getPriceInUsdt() != null ? e1.getPriceInUsdt() : e2.getPriceInUsdt());
+
                             BigDecimal priceInBtc = (e1.getPriceInBtc() != null && e2.getPriceInBtc() != null) ?
-                                    e1.getPriceInBtc().add(e2.getPriceInBtc()) : BigDecimal.ZERO;
+                                    e1.getPriceInBtc().add(e2.getPriceInBtc()).divide(new BigDecimal(2), 8, RoundingMode.HALF_UP) :
+                                    (e1.getPriceInBtc() != null ? e1.getPriceInBtc() : e2.getPriceInBtc());
+
                             BigDecimal percentage = (e1.getPercentage() != null && e2.getPercentage() != null) ?
-                                    e1.getPercentage().add(e2.getPercentage()) : BigDecimal.ZERO;
+                                    e1.getPercentage().add(e2.getPercentage()) : 
+                                    (e1.getPercentage() != null ? e1.getPercentage() : e2.getPercentage());
+
+                            // Build the merged holding with all fields properly aggregated
                             return HoldingDto.builder()
                                     .symbol(e1.getSymbol())
                                     .portfolioName(e1.getPortfolioName() + " - " + e2.getPortfolioName())
                                     .priceInUsdt(priceInUsdt)
                                     .priceInBtc(priceInBtc)
-                                    .amount(e1.getAmount().add(e2.getAmount()))
+                                    .amount(addPreventingNull(e1.getAmount(), e2.getAmount()))
                                     .amountInUsdt(addPreventingNull(e1.getAmountInUsdt(), e2.getAmountInUsdt()))
                                     .amountInBtc(addPreventingNull(e1.getAmountInBtc(), e2.getAmountInBtc()))
                                     .percentage(percentage)
+                                    // Include transaction history metrics
+                                    .totalAmountBought(addPreventingNull(e1.getTotalAmountBought(), e2.getTotalAmountBought()))
+                                    .totalAmountSold(addPreventingNull(e1.getTotalAmountSold(), e2.getTotalAmountSold()))
+                                    .inventoryCostUsdt(addPreventingNull(e1.getInventoryCostUsdt(), e2.getInventoryCostUsdt()))
+                                    .currentPositionInUsdt(addPreventingNull(e1.getCurrentPositionInUsdt(), e2.getCurrentPositionInUsdt()))
+                                    .totalRealizedProfitUsdt(addPreventingNull(e1.getTotalRealizedProfitUsdt(), e2.getTotalRealizedProfitUsdt()))
                                     .build();
                         }
                 ));

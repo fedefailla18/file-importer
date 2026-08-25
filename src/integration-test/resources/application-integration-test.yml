@@ -24,9 +24,3 @@ crypto-compare:
 jwt:
   secret: 5ed583b57732d0308978b2c241ab25d01ec857347433396fb2da4286547fcae8
   expiration: 86400000
-
-#logging:
-#  level:
-#    org:
-#      liquibase: DEBUG
-#      springframework: DEBUG

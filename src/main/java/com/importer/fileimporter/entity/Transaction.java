@@ -88,6 +88,7 @@ public class Transaction {
     @Column(name = "exchange_name", length = 20)
     private ExchangeName exchangeName;
 
+    @Builder.Default
     private boolean processed = false;
 
     private LocalDateTime lastProcessedAt;

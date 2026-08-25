@@ -1,24 +1,26 @@
 package com.importer.fileimporter.dto;
 
 import com.importer.fileimporter.utils.OperationUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.Map;
 
+@Slf4j
 public class MexcTransactionAdapter extends TransactionCoinName {
 
-    private static final String PARES_KEY = "Pares";
-    private static final String TIEMPO_KEY = "Tiempo";
-    private static final String TIPO_KEY = "Tipo";
-    private static final String DIRECCION_KEY = "Dirección";
-    private static final String PRECIO_PROMEDIO_COMPLETO_KEY = "Precio Promedio Completo";
-    private static final String PRECIO_DE_ORDEN_KEY = "Precio de Orden";
-    private static final String CANTIDAD_COMPLETA_KEY = "Cantidad Completa";
-    private static final String CANTIDAD_DE_ORDEN_KEY = "Cantidad de Orden";
-    private static final String MONTO_KEY = "Monto de Orden";
-    private static final String ESTADO_KEY = "Estado";
-    private static final String VENTA_STRING = "Venta";
-    private static final String COMPRA_STRING = "Compra";
+    private static final String PARES_KEY = "Pairs"; //"Pares";
+    private static final String TIEMPO_KEY = "Time"; //"Tiempo";
+    private static final String TIPO_KEY = "Type"; //"Tipo";
+    private static final String DIRECCION_KEY = "Direction"; //"Dirección";
+    private static final String PRECIO_PROMEDIO_COMPLETO_KEY = "Average Filled Price"; //"Precio Promedio Completo";
+    private static final String PRECIO_DE_ORDEN_KEY = "Order Price"; //"Precio de Orden";
+    private static final String CANTIDAD_COMPLETA_KEY = "Filled Quantity"; //"Cantidad Completa";
+    private static final String CANTIDAD_DE_ORDEN_KEY = "Order Quantity"; //"Cantidad de Orden";
+    private static final String MONTO_KEY = "Order Amount"; //"Monto de Orden";
+    private static final String ESTADO_KEY = "Status"; //"Estado";
+    private static final String VENTA_STRING = "Sell"; //"Venta";
+    private static final String COMPRA_STRING = "Buy"; //"Compra";
 
 
     private final Map<?, ?> row;
@@ -45,17 +47,26 @@ public class MexcTransactionAdapter extends TransactionCoinName {
 
     @Override
     public String getSide() {
-        String direccion = row.get(DIRECCION_KEY).toString();
-        return VENTA_STRING.equalsIgnoreCase(direccion) ? OperationUtils.SELL_STRING : OperationUtils.BUY_STRING;
+        return row.get(DIRECCION_KEY).toString();
     }
 
     @Override
     public BigDecimal getPrice() {
-        return new BigDecimal(row.get(PRECIO_PROMEDIO_COMPLETO_KEY).toString());
+        try {
+            return new BigDecimal(row.get(PRECIO_PROMEDIO_COMPLETO_KEY).toString());
+        } catch (Exception e) {
+            log.warn(String.format("Can't convert %s", row.get(PRECIO_DE_ORDEN_KEY).toString()), e);
+            return null;
+        }
     }
 
     public BigDecimal getPrecioDeOrden() {
-        return new BigDecimal(row.get(PRECIO_DE_ORDEN_KEY).toString());
+        try {
+            return new BigDecimal(row.get(PRECIO_DE_ORDEN_KEY).toString());
+        } catch (Exception e) {
+            log.warn(String.format("Can't convert %s", row.get(PRECIO_DE_ORDEN_KEY).toString()), e);
+            return null;
+        }
     }
 
     @Override

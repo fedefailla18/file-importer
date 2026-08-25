@@ -29,7 +29,6 @@ import static com.importer.fileimporter.utils.OperationUtils.USDT;
 public class ProcessFileV2 extends ProcessFile {
 
     private final PortfolioService portfolioService;
-    private final TransactionProcessor transactionProcessor;
     private final CoinInformationService coinInformationService;
     private final TransactionService transactionService;
     private final HistoricalPriceCacheService historicalPriceCacheService;
@@ -38,14 +37,12 @@ public class ProcessFileV2 extends ProcessFile {
     public ProcessFileV2(PortfolioService portfolioService,
                          FileImporterService fileImporterService,
                          TransactionAdapterFactory transactionAdapterFactory,
-                         TransactionProcessor transactionProcessor,
                          CoinInformationService coinInformationService,
                          TransactionService transactionService,
                          HistoricalPriceCacheService historicalPriceCacheService,
                          PriceHistoryService priceHistoryService) {
         super(fileImporterService, transactionAdapterFactory);
         this.portfolioService = portfolioService;
-        this.transactionProcessor = transactionProcessor;
         this.coinInformationService = coinInformationService;
         this.transactionService = transactionService;
         this.historicalPriceCacheService = historicalPriceCacheService;
@@ -63,22 +60,19 @@ public class ProcessFileV2 extends ProcessFile {
 
         Set<String> processedSymbols = new HashSet<>();
 
-        if (rows != null) {
-            rows.forEach(row -> {
-                try {
-                    TransactionData transactionData = getAdapter(row, fileType);
-                    String symbol = transactionData.getSymbol();
-                    if (symbol != null && !symbol.isEmpty()) {
-                        Transaction transaction = mapToTransaction(transactionData, portfolio);
-                        transaction.setFeeSymbol(transactionData.getFeeSymbol());
-                        transactionProcessor.process(transaction);
-                        processedSymbols.add(symbol);
-                    }
-                } catch (Exception e) {
-                    log.error("[ERROR_LOG] Error processing row: {}", e.getMessage(), e);
+        rows.forEach(row -> {
+            try {
+                TransactionData transactionData = getAdapter(row, portfolio.getName());
+                String symbol = transactionData.getSymbol();
+                if (symbol != null && !symbol.isEmpty()) {
+                    Transaction transaction = mapToTransaction(transactionData, portfolio);
+                    transactionService.save(transaction);
+                    processedSymbols.add(symbol);
                 }
-            });
-        }
+            } catch (Exception e) {
+                log.error("[ERROR_LOG] Error processing row: {}", e.getMessage(), e);
+            }
+        });
 
         List<CoinInformationResponse> coinInfos = processedSymbols.stream()
                 .map(symbol -> coinInformationService.getCoinInformationResponse(symbol, transactionService.findByPortfolioAndSymbol(portfolio, symbol)))

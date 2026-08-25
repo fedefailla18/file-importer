@@ -139,4 +139,23 @@ public class TransactionService {
     public void deleteByPortfolio(Portfolio portfolio) {
         transactionRepository.deleteAllByPortfolio(portfolio);
     }
+
+    public int unprocessTransactionsBySymbol(String symbol) {
+        List<Transaction> transactions = getAllBySymbol(symbol);
+        int count = 0;
+
+        for (Transaction transaction : transactions) {
+            if (transaction.isProcessed()) {
+                transaction.setProcessed(false);
+                transaction.setLastProcessedAt(null);
+                transaction.setModified(LocalDateTime.now());
+                transaction.setModifiedBy(this.getClass().getName() + ".unprocessTransactionsBySymbol");
+                save(transaction);
+                count++;
+            }
+        }
+
+        log.info("Unprocessed {} transactions for symbol: {}", count, symbol);
+        return count;
+    }
 }

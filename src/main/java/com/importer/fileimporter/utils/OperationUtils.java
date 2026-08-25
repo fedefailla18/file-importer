@@ -23,6 +23,9 @@ public class OperationUtils {
     public static final Predicate<String> IS_DEPOSIT;
     public static final Predicate<String> IS_WITHDRAW;
 
+    private static final List<String> BUY_ALIASES = List.of(BUY_STRING, "COMPRA");
+    private static final List<String> SELL_ALIASES = List.of(SELL_STRING, "VENTA");
+
     static {
         IS_BUY = BUY_STRING::equalsIgnoreCase;
         IS_DEPOSIT = DEPOSIT_STRING::equalsIgnoreCase;
@@ -42,7 +45,11 @@ public class OperationUtils {
     }
 
     public boolean isBuy(String side) {
-        return IS_BUY.test(side);
+        return BUY_ALIASES.stream().anyMatch(alias -> alias.equalsIgnoreCase(side));
+    }
+
+    public boolean isSell(String side) {
+        return SELL_ALIASES.stream().anyMatch(alias -> alias.equalsIgnoreCase(side));
     }
 
     public boolean isSell(String side) {
@@ -64,7 +71,12 @@ public class OperationUtils {
     public BigDecimal sumAmount(BigDecimal currentAmount, BigDecimal paidAmount, String side) {
         currentAmount = getSafeValue(currentAmount);
         paidAmount = getSafeValue(paidAmount);
-        return isBuy(side) ? currentAmount.add(paidAmount) : currentAmount.subtract(paidAmount);
+        if (isBuy(side)) {
+            return currentAmount.add(paidAmount);
+        } else if (isSell(side)) {
+            return currentAmount.subtract(paidAmount);
+        }
+        return currentAmount;
     }
 
     public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, String side) {
@@ -74,7 +86,11 @@ public class OperationUtils {
     public BigDecimal accumulateExecutedAmount(BigDecimal currentAmount, BigDecimal executed, Boolean isBuy) {
         return isBuy ?
                 getSafeValue(currentAmount).add(getSafeValue(executed)) :
-                getSafeValue(currentAmount).subtract(getSafeValue(executed));
+                safeSubtract(currentAmount, executed);
+    }
+
+    public static BigDecimal safeSubtract(BigDecimal currentAmount, BigDecimal executed) {
+        return getSafeValue(currentAmount).subtract(getSafeValue(executed));
     }
 
     public BigDecimal sumBigDecimal(BigDecimal bigDecimal1, BigDecimal bigDecimal2) {
@@ -83,7 +99,7 @@ public class OperationUtils {
         return safeValue1.add(safeValue2);
     }
 
-    private BigDecimal getSafeValue(BigDecimal value) {
+    public BigDecimal getSafeValue(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
     }
 

@@ -66,7 +66,8 @@ public class GetSymbolHistoricPriceHelper {
     @NotNull
     private Map<String, Number> getPricesAtDate(String symbol, String ...symbols) {
         String toSymbols = String.join(",", symbols);
-        return cryptoCompareProxy.getData(symbol, toSymbols);
+        Map<?, ?> data = cryptoCompareProxy.getData(symbol, toSymbols);
+        return (Map<String, Number>) data;
     }
 
     private BigDecimal getPriceBySymbol(String symbolPair, BigDecimal price, LocalDateTime dateTime, String symbol) {

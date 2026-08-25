@@ -1,7 +1,6 @@
 package com.importer.fileimporter.facade;
 
 import com.importer.fileimporter.dto.CoinInformationResponse;
-import com.importer.fileimporter.dto.PortfolioProcessingResult;
 import com.importer.fileimporter.entity.Portfolio;
 import com.importer.fileimporter.entity.Transaction;
 import com.importer.fileimporter.service.CoinInformationService;
@@ -36,25 +35,16 @@ public class CoinInformationFacade {
                 .collect(Collectors.toList());
     }
 
-    public PortfolioProcessingResult getPortfolioTransactionsInformation(String portfolioName) {
+    public List<CoinInformationResponse> getPortfolioTransactionsInformation(String portfolioName) {
         Portfolio portfolio = portfolioService.getByName(portfolioName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
         List<Transaction> transactions = transactionService.findByPortfolio(portfolio);
-
-        int unprocessedCount = (int) transactions.stream().filter(t -> !t.isProcessed()).count();
-
-        Map<String, List<Transaction>> bySymbol = transactions.stream()
+        Map<String, List<Transaction>> transactionsGroupedBySymbol = transactions.stream()
                 .collect(Collectors.groupingBy(Transaction::getSymbol));
-        List<CoinInformationResponse> coinInformation = bySymbol.entrySet().stream()
+        return transactionsGroupedBySymbol.entrySet().stream()
                 .map(this::getCoinInformationResponse)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-
-        return PortfolioProcessingResult.builder()
-                .coinInformation(coinInformation)
-                .processedCount(unprocessedCount)
-                .totalTransactions(transactions.size())
-                .build();
     }
 
     public CoinInformationResponse getTransactionsInformationBySymbol(String symbol) {
