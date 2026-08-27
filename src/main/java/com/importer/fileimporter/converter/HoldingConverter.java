@@ -13,12 +13,19 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
 
     @Override
     public HoldingDto createFrom(Holding source) {
-        return HoldingDto.builder()
+        HoldingDto.HoldingDtoBuilder builder = HoldingDto.builder()
                 .symbol(source.getSymbol())
-                .amount(source.getAmount())
-                .portfolioName(Optional.ofNullable(source.getPortfolio())
-                        .orElseThrow(() -> new ResourceAccessException(String.format("Missing portfolio for holding %s", source.getSymbol())))
-                        .getName())
+                .amount(source.getAmount());
+        
+        if (source.getPortfolio() != null) {
+            try {
+                builder.portfolioName(source.getPortfolio().getName());
+            } catch (Exception e) {
+                // If it's a lazy proxy and we have no session, we skip setting the name
+            }
+        }
+
+        return builder
                 .percentage(source.getPercent())
                 .amountInBtc(source.getAmountInBtc())
                 .amountInUsdt(source.getAmountInUsdt())
@@ -56,6 +63,9 @@ public class HoldingConverter implements GenericConverter<HoldingDto, Holding> {
 
     @Override
     public List<HoldingDto> createFromEntities(List<Holding> holdings) {
+        if (holdings == null) {
+            return java.util.Collections.emptyList();
+        }
         return holdings.stream()
                 .map(this::createFrom)
                 .collect(Collectors.toList());

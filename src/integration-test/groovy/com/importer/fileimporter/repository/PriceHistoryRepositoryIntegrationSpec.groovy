@@ -3,6 +3,7 @@ package com.importer.fileimporter.repository
 import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.utils.PriceHistoryFactory
 
+@org.springframework.transaction.annotation.Transactional
 class PriceHistoryRepositoryIntegrationSpec extends BaseIntegrationSpec {
 
     def "Save and retrieve PriceHistory"() {

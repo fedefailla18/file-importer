@@ -24,8 +24,8 @@ public class TransactionDto {
     private BigDecimal price;
     private BigDecimal executed;
     private String symbol;
-    private String payedWith;
-    private BigDecimal payedAmount;
+    private String paidWith;
+    private BigDecimal paidAmount;
     private String fee;
     private BigDecimal feeAmount;
     private String feeSymbol;
@@ -33,7 +33,7 @@ public class TransactionDto {
     private String createdBy;
     private LocalDateTime modified;
     private String modifiedBy;
+    private String portfolioName;
     private boolean processed;
     private LocalDateTime lastProcessedAt;
-    private String portfolioName;
 }

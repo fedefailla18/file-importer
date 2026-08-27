@@ -84,4 +84,5 @@ public class HoldingDto {
      * This is the sum of all sell transaction values minus their cost basis.
      */
     private BigDecimal totalRealizedProfitUsdt;
+    private BigDecimal unrealizedProfitUsdt;
 }

@@ -10,6 +10,9 @@ import com.importer.fileimporter.payload.request.AddHoldingRequest;
 import com.importer.fileimporter.service.HoldingService;
 import com.importer.fileimporter.service.PortfolioService;
 import com.importer.fileimporter.service.SymbolService;
+import com.importer.fileimporter.service.TransactionService;
+import com.importer.fileimporter.entity.Transaction;
+import com.importer.fileimporter.utils.OperationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -52,6 +55,7 @@ public class PortfolioDistributionFacade {
     private final PortfolioService portfolioService;
     private final HoldingService holdingService;
     private final PricingFacade pricingFacade;
+    private final TransactionService transactionService;
 
     public List<String> getAllPortfolioNames() {
         List<Portfolio> portfolios = portfolioService.getAll();
@@ -93,12 +97,10 @@ public class PortfolioDistributionFacade {
         }
         Portfolio portfolio = getByName(name)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found."));
-        return PortfolioDistribution.builder()
-                .portfolioName(portfolio.getName())
-                .holdings(HoldingConverter.Mapper.createFromEntities(portfolio.getHoldings()))
-                .build();
+        return calculatePortfolioInBtcAndUsdt(portfolio);
     }
 
+    @Transactional
     public PortfolioDistribution calculatePortfolioInBtcAndUsdt(String name) {
         if (!StringUtils.hasText(name)) {
             return calculatePortfolioInBtcAndUsdt();
@@ -106,10 +108,17 @@ public class PortfolioDistributionFacade {
         if (Objects.equals(name.toLowerCase(Locale.ROOT), "all")) {
             return calculateAllPortfolioInBtcAndUsdt();
         }
-        Portfolio portfolio = getByName(name)
+        Portfolio portfolio = portfolioService.getByName(name)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
-        if (portfolio.getHoldings().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio does not hold any holdings. Try calculate holdings first.");
+        
+        List<Holding> holdings = holdingService.getByPortfolio(portfolio);
+        if (holdings == null || holdings.isEmpty()) {
+            return PortfolioDistribution.builder()
+                    .portfolioName(portfolio.getName())
+                    .exchangeName(portfolio.getExchangeName())
+                    .holdings(new ArrayList<>())
+                    .totalUsdt(BigDecimal.ZERO)
+                    .build();
         }
         return calculatePortfolioInBtcAndUsdt(portfolio);
     }
@@ -125,32 +134,49 @@ public class PortfolioDistributionFacade {
         final List<PortfolioDistribution> collect = portfolios.stream()
                 .map(this::calculatePortfolioInBtcAndUsdt)
                 .collect(Collectors.toList());
+        if (collect.isEmpty()) {
+            return PortfolioDistribution.builder()
+                    .portfolioName("Default")
+                    .holdings(new ArrayList<>())
+                    .totalUsdt(BigDecimal.ZERO)
+                    .build();
+        }
         return collect.stream().findFirst().get();
     }
 
     public PortfolioDistribution calculatePortfolioInBtcAndUsdt(Portfolio portfolio) {
         PortfolioDistribution portfolioDistribution = PortfolioDistribution.builder()
                 .portfolioName(portfolio.getName())
+                .exchangeName(portfolio.getExchangeName())
                 .holdings(new ArrayList<>())
+                .totalBuySpentUsdt(BigDecimal.ZERO)
+                .totalSellEarnedUsdt(BigDecimal.ZERO)
                 .build();
 
         addHoldingsToPortfolioDistribution(portfolio, portfolioDistribution);
+        addTransactionTotalsToPortfolioDistribution(portfolio, portfolioDistribution);
 
         BigDecimal totalUsdt = portfolioDistribution.getTotalInUsdt();
         portfolioDistribution.setTotalUsdt(totalUsdt);
-        portfolioDistribution.getHoldings().forEach(
-                e -> {
-                    e.setPercentage(e.getAmountInUsdt()
-                            .divide(totalUsdt, 7, RoundingMode.DOWN)
-                            .multiply(new BigDecimal(100)));
-                    updateHolding(e, portfolio);
-                }
-        );
+        if (totalUsdt != null && totalUsdt.compareTo(BigDecimal.ZERO) > 0) {
+            portfolioDistribution.getHoldings().forEach(
+                    e -> {
+                        e.setPercentage(e.getAmountInUsdt()
+                                .divide(totalUsdt, 7, RoundingMode.DOWN)
+                                .multiply(new BigDecimal(100)));
+                        updateHolding(e, portfolio);
+                    }
+            );
+        }
         return portfolioDistribution;
     }
 
     private void addHoldingsToPortfolioDistribution(Portfolio portfolio, PortfolioDistribution portfolioDistribution) {
-        portfolio.getHoldings().stream()
+        List<Holding> holdings = portfolio.getHoldings();
+        if (holdings == null) {
+            holdings = holdingService.getByPortfolio(portfolio);
+        }
+        holdings.stream()
                 .filter(excludeWhenAmountIsAlmostZero())
                 .forEach(e -> {
                     Map<String, Double> price = pricingFacade.getPrices(e.getSymbol());
@@ -158,6 +184,9 @@ public class PortfolioDistributionFacade {
                             Optional.ofNullable(price.get(BTC)).map(BigDecimal::valueOf).orElse(BigDecimal.ZERO);
                     BigDecimal usdtprice =
                             Optional.ofNullable(price.get(USDT)).map(BigDecimal::valueOf).orElse(BigDecimal.ZERO);
+                    BigDecimal currentPositionInUsdt = usdtprice.multiply(e.getAmount());
+                    BigDecimal costBasis = e.getInventoryCostUsdt() != null ? e.getInventoryCostUsdt() : BigDecimal.ZERO;
+                    BigDecimal unrealizedProfitUsdt = currentPositionInUsdt.subtract(costBasis);
 
                     // TODO: use converter to create this HoldingDto.
                     portfolioDistribution.getHoldings().add(HoldingDto.builder()
@@ -179,8 +208,60 @@ public class PortfolioDistributionFacade {
         );
     }
 
+    private void addTransactionTotalsToPortfolioDistribution(
+            Portfolio portfolio,
+            PortfolioDistribution portfolioDistribution
+    ) {
+        List<Transaction> transactions = transactionService.findByPortfolio(portfolio);
+
+        BigDecimal totalBuySpentUsdt = transactions.stream()
+                .filter(transaction -> OperationUtils.isBuy(transaction.getSide()))
+                .map(this::getTransactionValueInUsdt)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalSellEarnedUsdt = transactions.stream()
+                .filter(transaction -> OperationUtils.SELL_STRING.equals(transaction.getSide()))
+                .map(this::getTransactionValueInUsdt)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        portfolioDistribution.setTotalBuySpentUsdt(totalBuySpentUsdt);
+        portfolioDistribution.setTotalSellEarnedUsdt(totalSellEarnedUsdt);
+
+        transactions.stream()
+                .map(Transaction::getDateUtc)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .ifPresent(portfolioDistribution::setOldestTransactionDate);
+
+        transactions.stream()
+                .map(Transaction::getDateUtc)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .ifPresent(portfolioDistribution::setNewestTransactionDate);
+    }
+
+    private BigDecimal getTransactionValueInUsdt(Transaction transaction) {
+        if (transaction == null || transaction.getExecuted() == null) {
+            return BigDecimal.ZERO;
+        }
+
+        if (OperationUtils.isStable(transaction.getPaidWith()) && transaction.getPaidAmount() != null) {
+            return transaction.getPaidAmount();
+        }
+
+        BigDecimal resolvedPrice = pricingFacade.getPriceInUsdt(transaction.getSymbol(), transaction.getDateUtc());
+        if (resolvedPrice == null || resolvedPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            resolvedPrice = transaction.getPrice() != null ? transaction.getPrice() : BigDecimal.ZERO;
+        }
+
+        return transaction.getExecuted().multiply(resolvedPrice);
+    }
+
     private Predicate<Holding> excludeWhenAmountIsAlmostZero() {
-        return holding -> new BigDecimal("0.03").compareTo(holding.getTotalAmountBought().subtract(holding.getTotalAmountSold())) < 0;
+        return holding -> {
+            BigDecimal amount = Optional.ofNullable(holding.getAmount()).orElse(BigDecimal.ZERO);
+            return amount.abs().compareTo(new BigDecimal("0.00000001")) > 0;
+        };
     }
 
     private HoldingDto updateHolding(HoldingDto e, Portfolio portfolio) {

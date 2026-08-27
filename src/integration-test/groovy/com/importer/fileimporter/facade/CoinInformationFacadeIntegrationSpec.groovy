@@ -8,6 +8,7 @@ import com.importer.fileimporter.utils.IntegrationTestHelper
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
+@org.springframework.transaction.annotation.Transactional
 class CoinInformationFacadeIntegrationSpec extends BaseIntegrationSpec {
 
 

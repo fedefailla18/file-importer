@@ -4,7 +4,7 @@ This guide provides instructions for documenting APIs in the File Importer proje
 
 ## Overview
 
-We use [SpringDoc OpenAPI](https://springdoc.org/) to generate API documentation based on annotations in the code. This documentation is automatically exposed through Swagger UI at `http://localhost:8080/swagger-ui.html` when the application is running.
+We use [SpringDoc OpenAPI](https://springdoc.org/) to generate API documentation based on annotations in the code. This documentation is automatically exposed through Swagger UI at `http://localhost:9080/swagger-ui.html` when the application is running.
 
 ## Basic Annotations
 

@@ -11,7 +11,7 @@ import java.util.Map;
 @UtilityClass
 public class ProcessFileUtils {
 
-    public BigDecimal getBigDecimalWithScale(Number number) {
+    public static BigDecimal getBigDecimalWithScale(Number number) {
         if (number == null) {
             throw new IllegalArgumentException("Number cannot be null");
         }
@@ -30,7 +30,7 @@ public class ProcessFileUtils {
         return bigDecimal.setScale(10, RoundingMode.UP);
     }
 
-    public String getSymbolFromNumber(String valueString) {
+    public static String getSymbolFromNumber(String valueString) {
         if (valueString == null || valueString.trim().isEmpty()) {
             throw new IllegalArgumentException("Value string cannot be null or empty");
         }

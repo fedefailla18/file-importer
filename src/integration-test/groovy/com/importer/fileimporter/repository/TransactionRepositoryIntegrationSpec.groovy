@@ -4,10 +4,12 @@ import com.importer.fileimporter.BaseIntegrationSpec
 import com.importer.fileimporter.entity.Portfolio
 import com.importer.fileimporter.entity.Transaction
 import org.springframework.data.domain.Pageable
+import org.springframework.transaction.annotation.Transactional
 
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+@Transactional
 class TransactionRepositoryIntegrationSpec extends BaseIntegrationSpec {
 
     def "find transactions by symbol and portfolio in date range"() {

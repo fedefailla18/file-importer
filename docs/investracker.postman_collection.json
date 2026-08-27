@@ -1,0 +1,417 @@
+{
+	"info": {
+		"name": "InvestTracker V2",
+		"description": "Complete API Collection for InvestTracker",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+									"    console.log(\"JWT Token saved to Collection Variables\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"fedefailla\",\n    \"password\": \"your_password_here\"\n}"
+						},
+						"url": "{{baseUrl}}/api/auth/login"
+					}
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"fedefailla\",\n    \"email\": \"fedefailla@example.com\",\n    \"password\": \"your_password_here\"\n}"
+						},
+						"url": "{{baseUrl}}/api/auth/register"
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Binance Integration",
+			"item": [
+				{
+					"name": "Save API Config",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"exchangeName\": \"BINANCE\",\n    \"apiKey\": \"YOUR_KEY\",\n    \"apiSecret\": \"YOUR_SECRET\"\n}"
+						},
+						"url": "{{baseUrl}}/api/exchange/config"
+					}
+				},
+				{
+					"name": "Full Historical Sync",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/transaction/sync/binance/full?portfolio=MyBinance"
+					}
+				},
+				{
+					"name": "Trigger Exhaustive Orders Sync (Async)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/sync-all"
+					}
+				},
+				{
+					"name": "Check Exhaustive Sync Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/sync-status"
+					}
+				},
+				{
+					"name": "Get Synced Raw Orders (DB)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/raw-orders?symbol=BTCUSDT"
+					}
+				},
+				{
+					"name": "Direct Orders Query (GET /allOrders)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+ 					"url": "{{baseUrl}}/api/integration/binance/orders?symbol=BTCUSDT"
+					}
+				},
+				{
+					"name": "Direct Trades Query (GET /myTrades)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/my-trades?symbol=BTCUSDT"
+					}
+				},
+				{
+					"name": "Direct Deposits Query (GET /deposits)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/deposits"
+					}
+				},
+				{
+					"name": "Direct Withdrawals Query (GET /withdrawals)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/binance/withdrawals"
+					}
+				},
+				{
+					"name": "Direct Fiat Orders Query (GET /fiat-orders)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/integration/binance/fiat-orders?transactionType=0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"integration",
+								"binance",
+								"fiat-orders"
+							],
+							"query": [
+								{
+									"key": "transactionType",
+									"value": "0",
+									"description": "0: deposit, 1: withdraw"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Direct Fiat Payments Query (GET /fiat-payments)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/integration/binance/fiat-payments?transactionType=0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"integration",
+								"binance",
+								"fiat-payments"
+							],
+							"query": [
+								{
+									"key": "transactionType",
+									"value": "0",
+									"description": "0: buy, 1: sell"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. MexC Integration",
+			"item": [
+				{
+					"name": "Save API Config",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"exchangeName\": \"MEXC\",\n    \"apiKey\": \"YOUR_KEY\",\n    \"apiSecret\": \"YOUR_SECRET\"\n}"
+						},
+						"url": "{{baseUrl}}/api/exchange/config"
+					}
+				},
+				{
+					"name": "Full Historical Sync",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/transaction/sync/mexc/full?portfolio=MyMexC"
+					}
+				},
+				{
+					"name": "Trigger Exhaustive Orders Sync (Async)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/sync-all"
+					}
+				},
+				{
+					"name": "Check Exhaustive Sync Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/sync-status"
+					}
+				},
+				{
+					"name": "Get Synced Raw Orders (DB)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/raw-orders?symbol=BTCUSDT"
+					}
+				},
+				{
+					"name": "Direct Orders Query (GET /allOrders)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/mexc/orders?symbol=BTCUSDT"
+					}
+				}
+			]
+		},
+		{
+			"name": "4. IOL Integration",
+			"item": [
+				{
+					"name": "Save API Config (Username/Password)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"exchangeName\": \"IOL\",\n    \"apiKey\": \"YOUR_USERNAME\",\n    \"apiSecret\": \"YOUR_PASSWORD\"\n}"
+						},
+						"url": "{{baseUrl}}/api/exchange/config"
+					}
+				},
+				{
+					"name": "Login to IOL",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/exchange/iol/login"
+					}
+				},
+				{
+					"name": "Get Account Statement (Balances)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/account-statement"
+					}
+				},
+				{
+					"name": "Get Portfolio (Argentina)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/portfolio/argentina"
+					}
+				},
+				{
+					"name": "Get Portfolio (USA)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/portfolio/estados_unidos"
+					}
+				},
+				{
+					"name": "Get List of Operations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/operations"
+					}
+				},
+				{
+					"name": "Get Profile Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/integration/iol/profile"
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Holdings & Portfolios",
+			"item": [
+				{
+					"name": "Get All Holdings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/holdings"
+					}
+				},
+				{
+					"name": "Get Portfolio Distribution",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/portfolio/distribution"
+					}
+				},
+				{
+					"name": "List Portfolio Names",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/api/portfolio/names"
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Transactions",
+			"item": [
+				{
+					"name": "Filter Transactions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+						],
+						"url": "{{baseUrl}}/transaction/filter?portfolioName=MyBinance&size=20"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:9080", "type": "string" },
+		{ "key": "jwt_token", "value": "", "type": "string" }
+	]
+}

@@ -109,6 +109,10 @@ public class TransactionFacade {
     public Transaction save(TransactionDto transactionDto) {
         Transaction transaction = TransactionConverter.Mapper.createTo(transactionDto);
 
+        if (transaction.getPortfolio() == null && transactionDto.getPortfolioName() != null) {
+            transaction.setPortfolio(portfolioService.findOrSave(transactionDto.getPortfolioName()));
+        }
+
         if (transaction.getPrice() == null || transaction.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             BigDecimal priceInUsdt = pricingFacade.getPriceInUsdt(transaction.getSymbol(), transaction.getDateUtc());
             transaction.setPrice(priceInUsdt);

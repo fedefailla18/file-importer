@@ -1,38 +1,35 @@
 package com.importer.fileimporter.utils
 
+import com.fasterxml.jackson.dataformat.csv.CsvMapper
+import com.fasterxml.jackson.dataformat.csv.CsvSchema
+
 class IntegrationTestHelper {
 
     static List<Map<String, String>> readCsvFile() {
-        List<Map<String, String>> rows = []
-
         File file = getFile()
         println "Reading file from path: ${file.getAbsolutePath()}"
 
-        file.eachLine { line, lineNumber ->
-            if (lineNumber == 1) return // Skip the header line
-            def fields = line.split(',').collect { it.replace('"', '') }
-            rows << [
-                    'Date(UTC)': fields[0],
-                    'Pair'     : fields[1],
-                    'Side'     : fields[2],
-                    'Price'    : fields[3],
-                    'Executed' : fields[4],
-                    'Amount'   : fields[5],
-                    'Fee'      : fields[6]
-            ]
-        }
-        return rows
+        CsvMapper mapper = new CsvMapper()
+        CsvSchema schema = CsvSchema.emptySchema().withHeader().withColumnSeparator((char)',').withQuoteChar((char)'"')
+        
+        return mapper.readerFor(Map.class).with(schema).readValues(file).readAll() as List<Map<String, String>>
     }
 
     static def getFile() {
-        URL resourceUrl = IntegrationTestHelper.class.getResource('/integrationTest/sample_transactions.csv')
+        String path = '/integrationTest/bnb-sample_transactions.csv'
+        URL resourceUrl = IntegrationTestHelper.class.getResource(path)
 
-        if (resourceUrl == null) {
-            println "Resource URL is null. File not found!"
-            throw new IllegalStateException("File not found: /integrationTest/sample_transactions.csv")
+        if (resourceUrl != null) {
+            return new File(resourceUrl.toURI())
         }
 
-        File file = new File(resourceUrl.toURI())
-        file
+        // Fallback to project root relative path
+        File file = new File("src/integration-test/resources" + path)
+        if (file.exists()) {
+            return file
+        }
+
+        println "File not found in classpath or project root: ${path}"
+        throw new IllegalStateException("File not found: " + path)
     }
 }

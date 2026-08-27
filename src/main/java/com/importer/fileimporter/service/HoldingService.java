@@ -90,6 +90,7 @@ public class HoldingService {
     }
 
     public List<Holding> getByPortfolio(Portfolio portfolio) {
+        if (portfolio == null) return java.util.Collections.emptyList();
         return holdingRepository.findAllByPortfolio(portfolio);
     }
 
@@ -102,6 +103,9 @@ public class HoldingService {
         holding.setPriceInBtc(e.getPriceInBtc());
         holding.setAmountInBtc(e.getAmountInBtc());
         holding.setAmountInUsdt(e.getAmountInUsdt());
+        holding.setCurrentPositionInUsdt(e.getCurrentPositionInUsdt() != null
+                ? e.getCurrentPositionInUsdt()
+                : e.getAmountInUsdt());
         holding.setModified(LocalDateTime.now());
         holding.setModifiedBy("Updating percentage-updatePercentageHolding");
         Holding saved = holdingRepository.save(holding);
@@ -155,13 +159,6 @@ public class HoldingService {
         return holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(symbol, portfolio);
     }
 
-    /**
-     * Resets the holdings for a given symbol.
-     * Sets all amounts to zero for all holdings with the given symbol.
-     *
-     * @param symbol The symbol to reset holdings for
-     * @return The number of holdings that were reset
-     */
     public int resetHoldingsBySymbol(String symbol) {
         List<Holding> holdings = holdingRepository.findAllBySymbolIgnoreCase(symbol);
         int count = 0;

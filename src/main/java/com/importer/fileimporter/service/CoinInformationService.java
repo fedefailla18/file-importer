@@ -38,11 +38,7 @@ public class CoinInformationService {
         List<Transaction> unprocessedTransactions = transactions.stream()
                 .filter(transaction -> !transaction.isProcessed())
                 .collect(Collectors.toList());
-        if (unprocessedTransactions.isEmpty()) {
-            log.warn("No unprocessed transactions found for symbol: {}", symbol);
-            return null;
-        }
-
+        
         return calculateAndSetStableMetrics(symbol, unprocessedTransactions);
     }
 
@@ -75,7 +71,6 @@ public class CoinInformationService {
             markTransactionProcessed(transaction);
         }
 
-        // Transfer final state from InventoryState to the response DTO
         response.setAmount(inventoryState.amountHeld);
         response.setStableTotalCost(inventoryState.inventoryCostUsdt);
         response.setTotalRealizedProfitUsdt(inventoryState.realizedProfitUsdt);

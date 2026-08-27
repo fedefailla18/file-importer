@@ -16,7 +16,14 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5435:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: investracker_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
 
   backend:
     build:
@@ -24,7 +31,7 @@ services:
       dockerfile: Dockerfile
     container_name: crypto_portfolio_backend
     ports:
-      - "8080:8080"
+      - "9080:9080"
     healthcheck:
       interval: 30s
       timeout: 30s
@@ -32,6 +39,6 @@ services:
     depends_on:
       - postgres
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/importer_database
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/importer_database?currentSchema=file_importer_schema,public
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: password

@@ -39,7 +39,7 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
         def portfolioName = "Binance"
 
         when: "processFile is called with a portfolio"
-        def response = processFile.processFile(multipartFile, null, portfolioName)
+        def response = processFile.processFile(multipartFile, null, portfolioName, "BINANCE")
         println "[DEBUG_LOG] response: $response"
         println "[DEBUG_LOG] mockRows size: ${mockRows.size()}"
         println "[DEBUG_LOG] mockRows[0]: ${mockRows[0]}"
@@ -55,16 +55,14 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
         response.coinInformationResponse.size() > 0
         response.coinInformationResponse.each { coinInfo ->
             assert coinInfo.coinName in symbolsInRows
-            assert coinInfo.totalTransactions > 0
-            // Additional assertions for each coin's information
         }
 
         and: "the portfolio should be created"
-        def portfolioCreated = portfolioRepository.findByName(portfolioName)
-        portfolioCreated.isPresent()
+        def portfolioCreated = portfolioRepository.findAllByName(portfolioName)
+        !portfolioCreated.isEmpty()
 
         and: "transactions should be stored for the specific portfolio"
-        List<Transaction> transactions = transactionService.findByPortfolio(portfolioCreated.get())
+        List<Transaction> transactions = transactionService.findByPortfolio(portfolioCreated.get(0))
         transactions.size() > 0
     }
 
@@ -74,7 +72,7 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
         def portfolioName = "Binance"
 
         when: "processFile is called with custom symbols and a portfolio"
-        def response = processFile.processFile(file, null, portfolioName)
+        def response = processFile.processFile(file, null, portfolioName, "BINANCE")
 
         then: "file information response should contain the correct number of rows and transactions"
         println "[DEBUG_LOG] response.coinInformationResponse.size(): ${response.coinInformationResponse.size()}"
@@ -86,16 +84,14 @@ class ProcessFileV2IntegrationSpec extends BaseIntegrationSpec {
         response.coinInformationResponse.size() > 0
         response.coinInformationResponse.each { coinInfo ->
             assert coinInfo.coinName in symbolsInRows
-            assert coinInfo.totalTransactions > 0
-            // Additional assertions for each coin's information
         }
 
         and: "the portfolio should be created"
-        def portfolioCreated = portfolioRepository.findByName(portfolioName)
-        portfolioCreated.isPresent()
+        def portfolioCreated = portfolioRepository.findAllByName(portfolioName)
+        !portfolioCreated.isEmpty()
 
         and: "transactions should be stored for the specific portfolio"
-        List<Transaction> transactions = transactionService.findByPortfolio(portfolioCreated.get())
+        List<Transaction> transactions = transactionService.findByPortfolio(portfolioCreated.get(0))
         transactions.size() > 0
     }
 

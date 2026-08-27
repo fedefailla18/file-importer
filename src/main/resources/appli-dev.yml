@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5435/importer_database?currentSchema=file_importer_schema,public}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    enabled: true
+    default-schema: file_importer_schema
+    liquibase-schema: public
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    contexts: development
+
+logging:
+  level:
+    com.importer.fileimporter: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

@@ -41,6 +41,8 @@ class HoldingServiceSpec extends Specification {
             assert h.modifiedBy == "Modifying holding"
             h
         }
+        result.amount == amount
+        result.symbol == "BTC"
     }
 
     def "test saveSymbolHolding - new holding"() {
@@ -68,6 +70,8 @@ class HoldingServiceSpec extends Specification {
             assert h.modifiedBy == "Adding holding"
             h
         }
+        result.amount == amount
+        result.symbol == "ETH"
     }
 
     def "test getBySymbolAndPortfolioName"() {
@@ -122,7 +126,6 @@ class HoldingServiceSpec extends Specification {
         1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName("BTC", "Test Portfolio") >> Optional.of(existingHolding)
         1 * holdingRepository.save(_) >> { Holding h -> h }
 
-        and:
         result.symbol == "BTC"
         result.percentage == new BigDecimal("50")
         result.priceInUsdt == new BigDecimal("30000")
@@ -180,7 +183,6 @@ class HoldingServiceSpec extends Specification {
 
         then:
         noExceptionThrown()
-
 
         and: "The getOrCreate method should return an existing holding or create a new one"
         1 * holdingRepository.findBySymbolIgnoreCaseAndPortfolioName(paidWithSymbol, "Test Portfolio") >>

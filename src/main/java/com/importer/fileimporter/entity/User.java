@@ -1,6 +1,8 @@
 package com.importer.fileimporter.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -38,6 +40,8 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @RequiredArgsConstructor
+@Builder
+@AllArgsConstructor
 public class User implements UserDetails {
 
     @Id

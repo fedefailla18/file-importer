@@ -98,8 +98,33 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    public java.util.Optional<Transaction> saveIfAbsent(Transaction transaction) {
+        if (transaction.getExternalId() != null && transaction.getPortfolio() != null) {
+            java.util.Optional<Transaction> existing = transactionRepository.findByPortfolioAndExchangeNameAndExternalId(
+                    transaction.getPortfolio(), transaction.getExchangeName(), transaction.getExternalId());
+            if (existing.isPresent()) {
+                log.debug("Skipping duplicate transaction: {} {} (External ID: {})", 
+                        transaction.getExchangeName(), transaction.getSymbol(), transaction.getExternalId());
+                return java.util.Optional.empty();
+            }
+        }
+        return java.util.Optional.of(transactionRepository.save(transaction));
+    }
+
+    public void flush() {
+        transactionRepository.flush();
+    }
+
     public void deleteTransactions() {
         transactionRepository.deleteAll();
+    }
+
+    public void deleteById(Long id) {
+        transactionRepository.deleteById(id);
+    }
+
+    public java.util.Optional<Transaction> findById(Long id) {
+        return transactionRepository.findById(id);
     }
 
     public List<Transaction> findByPortfolio(Portfolio portfolio) {
@@ -110,13 +135,11 @@ public class TransactionService {
         return transactionRepository.findAllByPortfolioAndSymbol(portfolio, symbol);
     }
 
-    /**
-     * Unprocesses all transactions for a given symbol.
-     * Sets the processed flag to false for all transactions with the given symbol.
-     *
-     * @param symbol The symbol to unprocess transactions for
-     * @return The number of transactions that were unprocessed
-     */
+    @javax.transaction.Transactional
+    public void deleteByPortfolio(Portfolio portfolio) {
+        transactionRepository.deleteAllByPortfolio(portfolio);
+    }
+
     public int unprocessTransactionsBySymbol(String symbol) {
         List<Transaction> transactions = getAllBySymbol(symbol);
         int count = 0;

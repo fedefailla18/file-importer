@@ -43,4 +43,12 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, UUID
 
     boolean existsBySymbolAndSymbolpairAndTime(String symbol, String symbolpair, LocalDateTime time);
 
+    @Query(value = "SELECT * FROM price_history ph " +
+            "WHERE ph.symbol = :symbol AND ph.symbolpair = :symbolPair " +
+            "AND DATE_TRUNC('hour', ph.time) IN :hours",
+            nativeQuery = true)
+    List<PriceHistory> findBySymbolAndPairAndHoursIn(@Param("symbol") String symbol,
+                                                      @Param("symbolPair") String symbolPair,
+                                                      @Param("hours") List<LocalDateTime> hours);
+
 }
