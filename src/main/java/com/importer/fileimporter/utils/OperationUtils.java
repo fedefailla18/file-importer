@@ -52,10 +52,6 @@ public class OperationUtils {
         return SELL_ALIASES.stream().anyMatch(alias -> alias.equalsIgnoreCase(side));
     }
 
-    public boolean isSell(String side) {
-        return SELL_STRING.equalsIgnoreCase(side);
-    }
-
     public boolean isDeposit(String side) {
         return IS_DEPOSIT.test(side);
     }
@@ -99,7 +95,7 @@ public class OperationUtils {
         return safeValue1.add(safeValue2);
     }
 
-    public BigDecimal getSafeValue(BigDecimal value) {
+    public static BigDecimal getSafeValue(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
     }
 

@@ -42,7 +42,7 @@ public class BinanceSyncService {
     private final BinanceApiService binanceApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
-    private final TransactionProcessor transactionProcessor;
+    private final TransactionService transactionService;
     private final PortfolioService portfolioService;
 
     @Transactional
@@ -86,7 +86,7 @@ public class BinanceSyncService {
                         BinanceApiTransactionAdapter adapter = new BinanceApiTransactionAdapter(trade, baseAsset, quoteAsset);
                         Transaction transaction = mapToTransaction(adapter, portfolio);
                         transaction.setFeeSymbol(adapter.getFeeSymbol());
-                        transactionProcessor.process(transaction);
+                        transactionService.saveIfAbsent(transaction);
                     }
                 }
                 Thread.sleep(rateLimitDelayMs);
@@ -136,7 +136,7 @@ public class BinanceSyncService {
                                 .createdBy("BinanceSyncService-Deposit")
                                 .portfolio(portfolio)
                                 .build();
-                        transactionProcessor.process(tx);
+                        transactionService.saveIfAbsent(tx);
                     }
                 }
                 Thread.sleep(rateLimitDelayMs);
@@ -173,7 +173,7 @@ public class BinanceSyncService {
                                 .createdBy("BinanceSyncService-Withdraw")
                                 .portfolio(portfolio)
                                 .build();
-                        transactionProcessor.process(tx);
+                        transactionService.saveIfAbsent(tx);
                     }
                 }
                 Thread.sleep(rateLimitDelayMs);

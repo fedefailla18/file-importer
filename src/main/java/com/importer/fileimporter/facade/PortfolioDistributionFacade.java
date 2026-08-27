@@ -185,7 +185,7 @@ public class PortfolioDistributionFacade {
                     BigDecimal usdtprice =
                             Optional.ofNullable(price.get(USDT)).map(BigDecimal::valueOf).orElse(BigDecimal.ZERO);
                     BigDecimal currentPositionInUsdt = usdtprice.multiply(e.getAmount());
-                    BigDecimal costBasis = e.getStableTotalCost() != null ? e.getStableTotalCost() : BigDecimal.ZERO;
+                    BigDecimal costBasis = e.getInventoryCostUsdt() != null ? e.getInventoryCostUsdt() : BigDecimal.ZERO;
                     BigDecimal unrealizedProfitUsdt = currentPositionInUsdt.subtract(costBasis);
 
                     // TODO: use converter to create this HoldingDto.

@@ -26,7 +26,7 @@ public class MexcFullSyncService {
     private final MexcApiService mexcApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
-    private final TransactionProcessor transactionProcessor;
+    private final TransactionService transactionService;
     private final PortfolioService portfolioService;
     private final RawResponseService rawResponseService;
 
@@ -86,7 +86,7 @@ public class MexcFullSyncService {
                                 .createdBy("MexcFullSync-Deposit")
                                 .portfolio(portfolio)
                                 .build();
-                        transactionProcessor.process(tx);
+                        transactionService.saveIfAbsent(tx);
                     }
                 }
             } catch (Exception ex) {
@@ -120,7 +120,7 @@ public class MexcFullSyncService {
                                 .createdBy("MexcFullSync-Withdraw")
                                 .portfolio(portfolio)
                                 .build();
-                        transactionProcessor.process(tx);
+                        transactionService.saveIfAbsent(tx);
                     }
                 }
             } catch (Exception ex) {
@@ -179,7 +179,7 @@ public class MexcFullSyncService {
                                     .createdBy("MexcFullSync-Spot")
                                     .portfolio(portfolio)
                                     .build();
-                            transactionProcessor.process(tx);
+                            transactionService.saveIfAbsent(tx);
                             lastTradeId = tr.getId();
                         }
                         if (trades.size() < 1000) hasMore = false;

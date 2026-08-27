@@ -39,10 +39,6 @@ public class CoinInformationService {
                 .filter(transaction -> !transaction.isProcessed())
                 .collect(Collectors.toList());
         
-        if (!unprocessedTransactions.isEmpty()) {
-            unprocessedTransactions.forEach(transactionProcessor::process);
-        }
-
         return calculateAndSetStableMetrics(symbol, unprocessedTransactions);
     }
 

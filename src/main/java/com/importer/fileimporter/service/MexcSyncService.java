@@ -34,7 +34,7 @@ public class MexcSyncService {
     private final MexcApiService mexcApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
-    private final TransactionProcessor transactionProcessor;
+    private final TransactionService transactionService;
     private final PortfolioService portfolioService;
 
     @Transactional
@@ -75,7 +75,7 @@ public class MexcSyncService {
                     log.info("Syncing {} MexC trades for {}", trades.size(), pair.getSymbol());
                     for (MexcTradeResponse trade : trades) {
                         Transaction transaction = mapToTransaction(trade, pair, portfolio);
-                        transactionProcessor.process(transaction);
+                        transactionService.saveIfAbsent(transaction);
                     }
                 }
             } catch (Exception e) {

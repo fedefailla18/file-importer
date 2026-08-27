@@ -25,7 +25,7 @@ public class BinanceFullSyncService {
     private final BinanceApiService binanceApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
     private final EncryptionService encryptionService;
-    private final TransactionProcessor transactionProcessor;
+    private final TransactionService transactionService;
     private final PortfolioService portfolioService;
     private final RawResponseService rawResponseService;
 
@@ -92,7 +92,7 @@ public class BinanceFullSyncService {
                                 .createdBy("BinanceFullSync-Deposit")
                                 .portfolio(portfolio)
                                 .build();
-                        transactionProcessor.process(tx);
+                        transactionService.saveIfAbsent(tx);
                     }
                 }
             } catch (Exception ex) {
@@ -126,7 +126,7 @@ public class BinanceFullSyncService {
                                 .createdBy("BinanceFullSync-Withdraw")
                                 .portfolio(portfolio)
                                 .build();
-                        transactionProcessor.process(tx);
+                        transactionService.saveIfAbsent(tx);
                     }
                 }
             } catch (Exception ex) {
@@ -165,7 +165,7 @@ public class BinanceFullSyncService {
                                     .createdBy("BinanceFullSync-FiatOrder")
                                     .portfolio(portfolio)
                                     .build();
-                            transactionProcessor.process(tx);
+                            transactionService.saveIfAbsent(tx);
                         }
                     }
                 } catch (Exception ex) {
@@ -202,7 +202,7 @@ public class BinanceFullSyncService {
                                 .createdBy("BinanceFullSync-Convert")
                                 .portfolio(portfolio)
                                 .build();
-                        transactionProcessor.process(tx);
+                        transactionService.saveIfAbsent(tx);
                     }
                 }
             } catch (Exception ex) {
@@ -267,7 +267,7 @@ public class BinanceFullSyncService {
                                     .createdBy("BinanceFullSync-Spot")
                                     .portfolio(portfolio)
                                     .build();
-                            transactionProcessor.process(tx);
+                            transactionService.saveIfAbsent(tx);
                             lastTradeId = tr.getId();
                         }
                         if (trades.size() < 1000) hasMore = false;

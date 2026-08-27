@@ -12,11 +12,11 @@ public class DateUtils {
 
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    public LocalDateTime getLocalDateTime(String date) {
+    public static LocalDateTime getLocalDateTime(String date) {
         return LocalDateTime.parse(date, formatter);
     }
 
-    public LocalDateTime toLocalDateTime(long timestamp) {
+    public static LocalDateTime toLocalDateTime(long timestamp) {
         return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"));
     }
 }
