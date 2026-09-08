@@ -48,6 +48,10 @@ cd docker && docker-compose up -d   # Spins up PostgreSQL 13.1 (port 5435) + Red
 cd docker && ./start-db.sh          # Alternative: PostgreSQL only
 ```
 
+The `Dockerfile` at repo root is a **multi-stage build** — it compiles the jar from source (`./gradlew bootJar`, skipping tests) in a build stage, then copies it into a slim runtime image. It does not depend on a host-side `./gradlew build` having been run first; `docker build .` (or `docker compose build`) is self-sufficient and always reflects current source. Both stages use non-`-alpine` / `-jre-alpine` Temurin tags specifically because several `-alpine` Temurin tags are amd64-only and this needs to build natively on Apple Silicon too — check `docker manifest inspect <tag>` before changing either base image.
+
+`project-hub/docker-compose.yml`'s `crypto-db`/`crypto-redis`/`crypto-api`/`crypto-ui` services (driven by `project-hub/wp`, e.g. `./wp run docker`) build this same Dockerfile and point at this **same** Postgres data directory (`docker/data`) on a **different** container (`crypto-db` vs this file's `postgres`) — don't run both docker-compose files' postgres service at the same time; only one process can hold the data directory's lock.
+
 The script tears down existing containers, cleans the data volume, and rebuilds. Database: `importer_database`, schema: `file_importer_schema`. Redis is used as the historical price cache (no TTL — entries persist forever).
 
 ## Architecture
