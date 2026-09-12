@@ -55,6 +55,10 @@ public class WebSecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
+        // 3000 is CRA's default (plain `npm start`/`pnpm start`); 3001 is what `wp`/docker-compose
+        // use (PORT=3001 override, see project-hub/wp and project-hub/docker-compose.yml). Allow
+        // both rather than assuming which one someone starts the FE with.
+        config.addAllowedOrigin("http://localhost:3000");
         config.addAllowedOrigin("http://localhost:3001");
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
