@@ -64,19 +64,28 @@ public class BinanceIntegrationController {
         long startMillis = parseStartDate(startDate);
         long endMillis = endTime != null ? endTime : System.currentTimeMillis();
 
+        // /api/v3/allOrders 400s if both startTime and endTime are set and more than 24h
+        // apart (confirmed against Binance's own docs, 2026-09-12 — this endpoint never
+        // actually tolerated the SIX_MONTHS_MS window it used to loop with). Page by
+        // orderId instead — startTime only on the first call, then orderId cursor — and
+        // filter the requested [startMillis, endMillis] window in-memory afterward.
         List<BinanceOrderResponse> allOrders = new ArrayList<>();
-        long currentStart = startMillis;
-
-        while (currentStart < endMillis) {
-            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
-            List<BinanceOrderResponse> orders = binanceApiService.getAllOrders(apiKey, secretKey, symbol, currentStart, currentEnd, null);
-            if (orders != null) {
-                allOrders.addAll(orders);
-            }
-            currentStart = currentEnd;
+        Long lastOrderId = null;
+        while (true) {
+            List<BinanceOrderResponse> page = lastOrderId == null
+                    ? binanceApiService.getAllOrders(apiKey, secretKey, symbol, startMillis, null, null)
+                    : binanceApiService.getAllOrders(apiKey, secretKey, symbol, null, null, lastOrderId + 1);
+            if (page == null || page.isEmpty()) break;
+            allOrders.addAll(page);
+            lastOrderId = page.get(page.size() - 1).getOrderId();
+            if (page.size() < ORDERS_PAGE_LIMIT) break;
         }
 
-        return ResponseEntity.ok(allOrders);
+        List<BinanceOrderResponse> inWindow = allOrders.stream()
+                .filter(o -> o.getTime() != null && o.getTime() >= startMillis && o.getTime() <= endMillis)
+                .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(inWindow);
     }
 
     @GetMapping("/my-trades")
@@ -94,19 +103,31 @@ public class BinanceIntegrationController {
         long startMillis = parseStartDate(startDate);
         long endMillis = endTime != null ? endTime : System.currentTimeMillis();
 
+        // /api/v3/myTrades 400s if both startTime and endTime are set and more than 24h
+        // apart — this is exactly the bug reported 2026-09-12 (real Binance error log,
+        // confirmed against Binance's own docs: "time between startTime and endTime can't
+        // be longer than 24 hours"). SIX_MONTHS_MS was never a valid window for this
+        // endpoint. Page by trade id instead, like BinanceApiService.getAllMyTrades()/
+        // BinanceFullSyncService.syncSpotTrades() already do correctly elsewhere in this
+        // codebase — startTime only on the first call, then id cursor — and filter the
+        // requested [startMillis, endMillis] window in-memory afterward.
         List<BinanceTradeResponse> allTrades = new ArrayList<>();
-        long currentStart = startMillis;
-
-        while (currentStart < endMillis) {
-            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
-            List<BinanceTradeResponse> trades = binanceApiService.getMyTrades(apiKey, secretKey, symbol, currentStart, currentEnd, null);
-            if (trades != null) {
-                allTrades.addAll(trades);
-            }
-            currentStart = currentEnd;
+        Long lastTradeId = null;
+        while (true) {
+            List<BinanceTradeResponse> page = lastTradeId == null
+                    ? binanceApiService.getMyTrades(apiKey, secretKey, symbol, startMillis, null, null)
+                    : binanceApiService.getMyTrades(apiKey, secretKey, symbol, null, null, lastTradeId + 1);
+            if (page == null || page.isEmpty()) break;
+            allTrades.addAll(page);
+            lastTradeId = page.get(page.size() - 1).getId();
+            if (page.size() < ORDERS_PAGE_LIMIT) break;
         }
 
-        return ResponseEntity.ok(allTrades);
+        List<BinanceTradeResponse> inWindow = allTrades.stream()
+                .filter(t -> t.getTime() != null && t.getTime() >= startMillis && t.getTime() <= endMillis)
+                .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(inWindow);
     }
 
     @GetMapping("/deposits")
@@ -126,8 +147,11 @@ public class BinanceIntegrationController {
         List<BinanceDepositResponse> allDeposits = new ArrayList<>();
         long currentStart = startMillis;
 
+        // Binance caps deposit history requests at a 90-day window when both timestamps
+        // are set (confirmed against Binance's own docs, 2026-09-12) — was SIX_MONTHS_MS
+        // (180 days) here, which would 400 the same way /myTrades did above.
         while (currentStart < endMillis) {
-            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            long currentEnd = Math.min(currentStart + NINETY_DAYS_MS, endMillis);
             List<BinanceDepositResponse> deposits = binanceApiService.getDepositHistory(apiKey, secretKey, currentStart, currentEnd);
             if (deposits != null) {
                 allDeposits.addAll(deposits);
@@ -155,8 +179,9 @@ public class BinanceIntegrationController {
         List<BinanceWithdrawResponse> allWithdrawals = new ArrayList<>();
         long currentStart = startMillis;
 
+        // Same 90-day Binance limit as deposit history, above.
         while (currentStart < endMillis) {
-            long currentEnd = Math.min(currentStart + SIX_MONTHS_MS, endMillis);
+            long currentEnd = Math.min(currentStart + NINETY_DAYS_MS, endMillis);
             List<BinanceWithdrawResponse> withdrawals = binanceApiService.getWithdrawHistory(apiKey, secretKey, currentStart, currentEnd);
             if (withdrawals != null) {
                 allWithdrawals.addAll(withdrawals);
@@ -263,7 +288,13 @@ public class BinanceIntegrationController {
                 .orElseThrow(() -> new IllegalArgumentException("Binance API keys not configured for user"));
     }
 
+    // Used for /fiat-orders and /fiat-payments only now — Binance doesn't document a hard
+    // error for a wide window on these two (unlike myTrades/allOrders/deposit/withdraw,
+    // all fixed above), just an undocumented ~90-day practical data retention some users
+    // have reported. Left as-is since there's no confirmed 400 here; revisit if one shows up.
     private static final long SIX_MONTHS_MS = 180L * 24 * 60 * 60 * 1000;
+    private static final long NINETY_DAYS_MS = 90L * 24 * 60 * 60 * 1000;
+    private static final int ORDERS_PAGE_LIMIT = 1000;
     private static final String DEFAULT_START_DATE = "2020-01-01";
 
     private long parseStartDate(String startDateStr) {
