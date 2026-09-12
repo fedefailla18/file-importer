@@ -18,10 +18,11 @@
 
 - [ ] **Update affected documentation:**
     - [ ] `CLAUDE.md` if dev environment changed
-    - [ ] `scenarios.md` if BDD scenarios changed
-    - [ ] `PROJECT_PLAN.md` if architectural phases changed
-    - [ ] API guide if endpoints changed
+    - [ ] `docs/accounting-scenarios.md` if BDD scenarios changed
+    - [ ] `docs/roadmap.md` if architectural phases changed
+    - [ ] `docs/exchange-integrations.md` or `docs/architecture.md` if endpoints changed
 
 - [ ] **Add @Deprecated annotations:**
   ```java
   @Deprecated(since = "VERSION", forRemoval = true, message = "Link to PR or issue explaining replacement")
+  ```

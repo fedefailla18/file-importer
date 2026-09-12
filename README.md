@@ -1,12 +1,12 @@
-# File-importer
-File-importer (InvestTracker) is a specialized Spring Boot application designed for crypto investors to track their portfolio's performance, cost basis, and realized/unrealized gains.
+# InvestTracker
+InvestTracker is a specialized Spring Boot application designed for crypto investors to track their portfolio's performance, cost basis, and realized/unrealized gains. (Renamed from `file-importer` 2026-09-12 — it started as a single-purpose "upload a file, parse transactions" tool and grew into this.)
 
 It was born from the need to accurately account for historical transactions, especially through volatile market cycles (like the 2021 bull run and subsequent dips), providing a clear view of how a portfolio appreciates or depreciates over time.
 
 ## Core Features
 
 - **Historical Ingestion**: Support for importing large volumes of transaction data from exchanges (Binance, MEXC) via CSV/Excel.
-- **Multi-Exchange Sync**: Automatically sync your trading history directly from Binance, MEXC, and IOL. [See Integrations Guide](docs/exchange-integrations-guide.md).
+- **Multi-Exchange Sync**: Automatically sync your trading history directly from Binance, MEXC, and IOL. [See Exchange Integrations Guide](docs/exchange-integrations.md).
 - **Accurate Accounting**: Precise cost basis tracking (Average Cost) and Realized Profit/Loss calculation.
 - **Portfolio Valuation**: Real-time (cached) market value tracking in USDT.
 - **DIP Analytics**: Track your "buying the dip" efficiency by monitoring your average entry prices.
@@ -20,7 +20,15 @@ To get prices in real time we use CryptoCompare. You will need an API key:
 ## Getting Started
 
 ### Authentication
-InvestTracker requires authentication for most endpoints. See the [Authentication Guide](docs/authentication-guide.md) for instructions on how to register and login.
+InvestTracker requires authentication for most endpoints. See the [Authentication Guide](docs/authentication.md) for instructions on how to register and login.
+
+### More documentation
+- [Architecture & Engineering Standard](docs/architecture.md) — layers, coding standards, request flows, core API reference
+- [Accounting Scenarios](docs/accounting-scenarios.md) — the BDD spec for cost basis / P&L / capital tracking
+- [Exchange Integrations](docs/exchange-integrations.md) — Binance, MexC, IOL setup and sync
+- [Testing & Coverage](docs/testing.md)
+- [Roadmap](docs/roadmap.md)
+- [Deploy Guide](docs/deploy-guide.md)
 
 ## API Documentation
 
@@ -58,4 +66,4 @@ To generate all test coverage reports:
 
         ./gradlew jacocoAllTestReport
 
-For more information on test coverage and how to improve it, see the [Test Coverage Guide](docs/test-coverage-guide.md).
+For more information on test coverage and how to improve it, see the [Testing & Coverage Guide](docs/testing.md).

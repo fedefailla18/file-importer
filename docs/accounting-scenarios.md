@@ -1,4 +1,6 @@
-# BDD Scenarios
+# Accounting BDD Scenarios
+
+> Renamed from `scenarios.md` 2026-09-12 as part of the docs reorganization (feature/use-case based structure — see [architecture.md](architecture.md), [exchange-integrations.md](exchange-integrations.md)). Content otherwise unchanged except the two corrections marked below.
 
 ## Feature: Transaction Ingestion and Holding Calculation
 
@@ -331,8 +333,9 @@ This answers: "If I had held my sold positions instead of selling, what would th
 ## Tech Lead Analysis: Current Flow Completeness
 
 ### Flow Under Review
+> **Correction (2026-09-12):** `TransactionProcessor` doesn't exist anymore — removed by PR #60 in favor of on-demand lazy evaluation. See [architecture.md](architecture.md) for the current flow ownership. The table below still reflects real, current test coverage; only the class name in the diagram is stale.
 ```
-Upload / Sync → TransactionProcessor.process() → Holding update
+Upload / Sync → [lazy: CoinInformationService on read] → Holding update
     → CoinInformationService → CoinInformationFacade
     → PortfolioDistributionFacade → PortfolioDistribution response
 ```
@@ -367,7 +370,7 @@ Upload / Sync → TransactionProcessor.process() → Holding update
 
 ### ⚠️ Known Implementation Gaps vs. PO Requirements
 
-1. **Fee NOT included in cost basis** (Scenario H1): `TransactionProcessor` stores `feeAmount` on the `Transaction` but does NOT add it to `stableTotalCost`. This means cost basis is understated for fee-bearing trades.
+1. **Fee NOT included in cost basis** (Scenario H1): `feeAmount` is stored on the `Transaction` entity but is NOT added to `stableTotalCost`/`inventoryCostUsdt` anywhere in the accounting flow. This means cost basis is understated for fee-bearing trades. Still open as of 2026-09-12.
 
 2. **No opportunity cost calculation** (Group F): There is no concept of "what could I have earned if I hadn't sold." This would require storing per-trade sold-quantity × sell-price and comparing with current market price. **This is a product gap, not a data model bug.**
 
@@ -375,6 +378,6 @@ Upload / Sync → TransactionProcessor.process() → Holding update
 
 4. **`unrealizedProfit` is ephemeral**: Computed in `CoinInformationService` at query time from current market price, but NOT persisted on the `Holding` entity. If the pricing API is slow or fails, the UI gets stale/zero unrealized P&L.
 
-5. **UST is in the STABLE list — this is a live bug**: `OperationUtils.STABLE` contains `"UST"`, which is the Terra stablecoin that collapsed in May 2022 (later renamed USTC). Any trade received in UST after the depeg is being valued at $1 instead of its actual market price (~$0.01), overstating realized gains by ~100×. This needs to be removed from the STABLE list or made conditional on trade date.
+5. ~~**UST is in the STABLE list — this is a live bug**~~ **RESOLVED (verified 2026-09-12)**: `OperationUtils.STABLE` no longer contains `UST`/`USTC` (the Terra stablecoin that collapsed in May 2022). This section originally flagged trades in UST being valued at $1 instead of actual market price (~$0.01) as a live, unresolved bug — confirmed fixed as of this audit.
 
 6. **Total portfolio P&L is not a single response field**: The frontend must combine `totalRealizedProfitUsdt` (sum across coins from `CoinInformationResponse`) + `unrealizedProfit` (sum across coins) to display total P&L. There is no pre-computed `totalPortfolioPnl` field.
