@@ -21,6 +21,7 @@ import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -30,12 +31,20 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BinanceSyncService {
 
-    private static final Set<String> QUOTE_CURRENCIES = Set.of(
-            "USDT", "BUSD", "USDC", "BTC", "ETH", "BNB", "FDUSD", "USDS", "DAI", "TUSD", "EUR", "TRY"
-    );
+    // Currencies to pair candidate assets against when building symbols (e.g. "BTCUSDT").
     private static final List<String> QUOTE_CURRENCIES_ORDERED = List.of(
             "USDT", "BTC", "ETH", "BNB", "BUSD", "USDC", "FDUSD"
     );
+    // Assets that are never worth syncing trade history *for* (stablecoins/fiat) — NOT the
+    // same set as QUOTE_CURRENCIES_ORDERED above. BTC/ETH/BNB can be quote currencies for
+    // other pairs AND legitimate investment assets in their own right (see
+    // OperationUtils.GRAND_SYMBOLS), so they must not be excluded here.
+    private static final Set<String> NON_INVESTMENT_ASSETS;
+    static {
+        Set<String> assets = new HashSet<>(OperationUtils.STABLE);
+        assets.addAll(Set.of("EUR", "TRY"));
+        NON_INVESTMENT_ASSETS = assets;
+    }
     // Package-private so unit tests can set it to 0 without Spring context
     long rateLimitDelayMs = 200L;
 
@@ -63,7 +72,7 @@ public class BinanceSyncService {
         Set<String> investmentAssets = accountInfo.getBalances().stream()
                 .filter(b -> b.getFree().add(b.getLocked()).compareTo(BigDecimal.ZERO) > 0)
                 .map(BinanceAccountResponse.AssetBalance::getAsset)
-                .filter(asset -> !QUOTE_CURRENCIES.contains(asset))
+                .filter(asset -> !NON_INVESTMENT_ASSETS.contains(asset))
                 .collect(Collectors.toSet());
 
         log.info("Found {} investment assets for user {}: {}", investmentAssets.size(), user.getUsername(), investmentAssets);

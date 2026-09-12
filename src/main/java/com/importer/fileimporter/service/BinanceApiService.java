@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import javax.crypto.Mac;
@@ -83,8 +84,11 @@ public class BinanceApiService {
                 return executeRequest(endpoint, method, queryString, apiKey, typeReference, retryCount + 1);
             }
             
-            apiLoggingService.log("BINANCE", endpoint, method, queryString, 
-                    500, e.getMessage(), null);
+            String errorDetail = e instanceof WebClientResponseException
+                    ? ((WebClientResponseException) e).getResponseBodyAsString()
+                    : e.getMessage();
+            apiLoggingService.log("BINANCE", endpoint, method, queryString,
+                    500, errorDetail, null);
             throw e;
         }
     }
