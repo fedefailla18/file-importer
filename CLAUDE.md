@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-InvestTracker (`file-importer`) is a Spring Boot application built for crypto investors to manage and track their portfolios. It specializes in historical transaction ingestion, precise cost-basis accounting, and tracking realized/unrealized profit/loss across market cycles.
+InvestTracker is a Spring Boot application built for crypto investors to manage and track their portfolios. It specializes in historical transaction ingestion, precise cost-basis accounting, and tracking realized/unrealized profit/loss across market cycles.
+
+**Naming history:** the project started as a single-purpose "upload a file, parse transactions" tool (hence the original name, `file-importer`) and grew into this. Renamed to `investracker` 2026-09-12 — GitHub repo, local directory, `settings.gradle` (`rootProject.name`), and `spring.application.name` all say `investracker` now. Two things were deliberately **not** renamed, since changing them has real risk/cost for zero user-facing benefit: the Java package (`com.importer.fileimporter`) and the Postgres schema (`file_importer_schema`) — both still carry the old name. Don't be surprised by the mismatch; it's intentional, not leftover debris.
 
 ## Build & Run Commands
 
@@ -187,7 +189,7 @@ Read-only integration with the Argentine broker InvertirOnline. The BE authentic
 
 **Service**: `IolIntegrationService` — orchestrates calls to `IolApiService` and maps raw IOL API responses into FE-ready DTOs (applies USD exchange rates where applicable).
 
-**API client**: `IolApiService` — `WebClient`-based; obtains a bearer token via `POST https://api.invertironline.com/token` with the user's credentials before every request chain.
+**API client**: `IolApiService` is a thin wrapper delegating to `IolClient` — a **Feign client** (`@FeignClient`, not `WebClient`; corrected 2026-09-12), which handles the actual HTTP calls. `IolTokenService` obtains the bearer token via `POST https://api.invertironline.com/token` with the user's credentials, cached 14 minutes via Caffeine (IOL tokens expire at 15), before every request chain.
 
 **DTOs** (`dto/integration/iol/`): `IolProfileResponse`, `IolAccountStatementResponse`, `IolPortfolioResponse`, `IolOperationResponse` — all classes expose `exchangeRate` and USD-converted amounts alongside the original ARS values.
 

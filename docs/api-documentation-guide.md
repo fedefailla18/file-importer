@@ -1,6 +1,6 @@
 # API Documentation Guide
 
-This guide provides instructions for documenting APIs in the File Importer project using OpenAPI 3.0 annotations.
+This guide provides instructions for documenting APIs in InvestTracker using OpenAPI 3.0 annotations.
 
 ## Overview
 

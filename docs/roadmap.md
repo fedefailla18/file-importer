@@ -13,11 +13,11 @@ This roadmap outlines the strategic steps to evolve InvestTracker into a world-c
     - Implement caching for historical prices to reduce API consumption and improve performance (In-memory caching with Caffeine and optimized DB scans).
 3.  **Cleanup Legacy Code**: (DONE)
     - Remove `ProcessFileV1` as `ProcessFileV2` covers all use cases.
-    - Eliminate unused DTOs and old utility methods (Removed `CalculateAmountSpent`).
+    - ~~Eliminate unused DTOs and old utility methods (Removed `CalculateAmountSpent`)~~ **Correction (2026-09-12): this didn't happen.** `CalculateAmountSpent.java` and its Spock spec both still exist and are actively used by `CoinInformationService`. This line was aspirational, not completed.
 4.  **Test & Verification (Mandatory)**: (DONE)
     - Fix regression in `BinanceTransactionAdapter` for quoted CSV values.
     - Align `HoldingServiceSpec` and `ProcessFileV2Spec` with the new architecture.
-    - Ensure BDD scenarios in `docs/scenarios.md` are covered by automated tests.
+    - Ensure BDD scenarios in `docs/accounting-scenarios.md` are covered by automated tests.
 
 ## Phase 2: Feature Expansion (2 - 4 Months)
 **Goal**: Add value for advanced crypto investors.
@@ -45,11 +45,21 @@ This roadmap outlines the strategic steps to evolve InvestTracker into a world-c
     - Social login integration.
 3.  **Real-time Updates**:
     - WebSocket integration for live price updates in the UI (if a frontend exists).
-4.  **Exchange Syncing (Read-only API Keys)**:
-    - Automate transaction ingestion by connecting directly to Binance/MEXC/Coinbase APIs via read-only keys.
+4.  ~~**Exchange Syncing (Read-only API Keys)**~~ **DONE (verified 2026-09-12), was listed here as future but isn't**: Binance, MexC, and IOL (InvertirOnline) are all implemented — incremental + full-historical sync for Binance/MexC, live-fetch for IOL. See [exchange-integrations.md](exchange-integrations.md). Coinbase is not implemented.
 5.  **Test & Verification (Mandatory)**:
     - Load testing for high-volume transaction syncing.
     - Security audit and penetration testing for multi-tenancy isolation.
+
+---
+
+## Open Items (consolidated 2026-09-12 from retired docs)
+
+Surviving still-true items pulled in when `PROJECT_PLAN.md`, `PROJECT_TASKS.md`, `docs/tasks.md`, `docs/bookmarks.md`, and `docs/PR-60-MIGRATION-GUIDE.md` were deleted as redundant/stale — see [architecture.md](architecture.md)'s naming-history note and [accounting-scenarios.md](accounting-scenarios.md)'s gap list for full context on each.
+
+1. **Finish the `stableTotalCost` → `inventoryCostUsdt` rename.** PR #60 started this but only migrated some layers — both names currently coexist (`stableTotalCost` in `CoinInformationResponse`/`TransactionHoldingDto`/`AddHoldingRequest`/`TransactionFacade`/`CalculateAmountSpent`, `inventoryCostUsdt` in `HoldingDto`/`HoldingConverter`/`Holding`/`PortfolioDistributionFacade`/`CoinInformationService`). Pick one name and finish migrating every layer.
+2. **Add fee amount to cost basis.** `feeAmount` is stored on `Transaction` for reference but never added to `stableTotalCost`/`inventoryCostUsdt` — cost basis is understated for fee-bearing trades (accounting-scenarios.md Scenario H1).
+3. **Security package has 0% test coverage** (`JwtAuthenticationFilter`, `JwtService`, `UserDetailsImpl`, `UserDetailsServiceImpl`, `AuthController`) — see [testing.md](testing.md). Highest-value gap: a silent regression here is a security incident, not just a wrong number.
+4. **`HoldingService` performance**: multiple DB calls per holding update — worth batching/optimizing as transaction volume grows.
 
 ---
 

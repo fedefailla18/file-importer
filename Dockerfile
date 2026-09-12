@@ -19,7 +19,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copy the built JAR file into the container
-COPY --from=build /app/build/libs/file-importer-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/build/libs/investracker-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the port your app runs on (9080 per application.yml)
 EXPOSE 9080

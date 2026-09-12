@@ -1,4 +1,4 @@
-rootProject.name = 'file-importer'
+rootProject.name = 'investracker'
 include 'Groovy'
 
 //exclude(':docker')  // Exclude the 'docker' subproject or folder

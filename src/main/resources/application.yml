@@ -8,7 +8,7 @@ logging:
       springframework=DEBUG:
 spring:
   application:
-    name: file-importer
+    name: investracker
   datasource:
     url: jdbc:postgresql://localhost:5435/importer_database?currentSchema=file_importer_schema,public;
     username: root
