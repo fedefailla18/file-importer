@@ -27,9 +27,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MexcSyncService {
 
-    private static final Set<String> QUOTE_CURRENCIES = Set.of(
-            "USDT", "USDC", "BTC", "ETH", "MX", "DAI", "TUSD", "EUR", "TRY"
-    );
+    // Assets that are never worth syncing trade history *for* (stablecoins/fiat) — BTC/ETH/MX
+    // are legitimate investment assets in their own right (see OperationUtils.GRAND_SYMBOLS)
+    // even though they're also commonly used as quote currencies for other pairs, so they must
+    // not be excluded here (same fix as BinanceSyncService — see NON_INVESTMENT_ASSETS there).
+    private static final Set<String> NON_INVESTMENT_ASSETS;
+    static {
+        Set<String> assets = new java.util.HashSet<>(OperationUtils.STABLE);
+        assets.addAll(Set.of("EUR", "TRY"));
+        NON_INVESTMENT_ASSETS = assets;
+    }
 
     private final MexcApiService mexcApiService;
     private final UserExchangeConfigRepository userExchangeConfigRepository;
@@ -50,7 +57,7 @@ public class MexcSyncService {
         Set<String> investmentAssets = accountInfo.getBalances().stream()
                 .filter(b -> b.getFree().add(b.getLocked()).compareTo(BigDecimal.ZERO) > 0)
                 .map(MexcAccountResponse.AssetBalance::getAsset)
-                .filter(asset -> !QUOTE_CURRENCIES.contains(asset))
+                .filter(asset -> !NON_INVESTMENT_ASSETS.contains(asset))
                 .collect(Collectors.toSet());
 
         BinanceExchangeInfoResponse exchangeInfo = mexcApiService.getExchangeInfo();

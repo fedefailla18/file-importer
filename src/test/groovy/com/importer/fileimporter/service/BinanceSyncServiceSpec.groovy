@@ -104,15 +104,15 @@ class BinanceSyncServiceSpec extends Specification {
         1 * userExchangeConfigRepository.save(config)
     }
 
-    def "should not fetch any trades when all assets are quote currencies"() {
+    def "should not fetch any trades when all assets are stablecoins/fiat"() {
         given:
         def config = configFor("api-key")
         userExchangeConfigRepository.findByUserAndExchangeName(user, ExchangeName.BINANCE) >> Optional.of(config)
         encryptionService.decrypt("encrypted-secret") >> "plain-secret"
         portfolioService.findOrSave("TestPortfolio") >> portfolio
         binanceApiService.getServerTime() >> System.currentTimeMillis()
-        // User holds only USDT and BTC — both are quote currencies, 0 investment assets
-        binanceApiService.getAccountInfo("api-key", "plain-secret") >> accountWith(["USDT", "BTC"])
+        // User holds only USDT and DAI — true stablecoins, 0 investment assets
+        binanceApiService.getAccountInfo("api-key", "plain-secret") >> accountWith(["USDT", "DAI"])
 
         when:
         service.sync(user, "TestPortfolio")
@@ -120,6 +120,30 @@ class BinanceSyncServiceSpec extends Specification {
         then:
         0 * binanceApiService.getMyTrades(*_)
         1 * config.setLastSyncTimestamp(_ as Long)
+    }
+
+    def "should still treat BTC/ETH/BNB holdings as investment assets to sync"() {
+        // Regression test: BTC/ETH/BNB can also be quote currencies for OTHER pairs, but a
+        // BTC (or ETH/BNB) balance itself must never be excluded from sync — it's a real
+        // investment asset (see OperationUtils.GRAND_SYMBOLS). Previously excluded via a
+        // QUOTE_CURRENCIES set that wrongly conflated "valid quote currency" with "not an
+        // investment", silently zeroing out sync results for anyone holding mostly BTC.
+        given:
+        def config = configFor("api-key")
+        userExchangeConfigRepository.findByUserAndExchangeName(user, ExchangeName.BINANCE) >> Optional.of(config)
+        encryptionService.decrypt("encrypted-secret") >> "plain-secret"
+        portfolioService.findOrSave("TestPortfolio") >> portfolio
+        binanceApiService.getServerTime() >> System.currentTimeMillis()
+        binanceApiService.getAccountInfo("api-key", "plain-secret") >> accountWith(["BTC"])
+        binanceApiService.getMyTrades("api-key", "plain-secret", "BTCUSDT", null) >> [trade("BTCUSDT")]
+        binanceApiService.getMyTrades("api-key", "plain-secret", _, null) >> []
+
+        when:
+        service.sync(user, "TestPortfolio")
+
+        then:
+        (1.._) * binanceApiService.getMyTrades(*_)
+        1 * transactionProcessor.process(_)
     }
 
     def "should skip -1121 invalid symbol errors silently and continue with other pairs"() {

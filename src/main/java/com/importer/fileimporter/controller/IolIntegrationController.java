@@ -7,19 +7,40 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/integration/iol")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "IOL Integration", description = "Endpoints for fetching account and portfolio data from InvertirOnline")
 public class IolIntegrationController {
 
     private final com.importer.fileimporter.service.IolIntegrationService iolIntegrationService;
+
+    /**
+     * IolErrorDecoder re-throws IOL's own HTTP status verbatim (e.g. 401 when IOL rejects the
+     * stored username/password during token refresh). If that reaches the client as-is, the
+     * FE's global axios interceptor treats ANY 401 as "this app's session expired" and logs the
+     * user out entirely — even though it's IOL's credentials, not the app's JWT, that failed.
+     * Remap to 424 (Failed Dependency) so an IOL-side auth failure surfaces as an IOL-specific
+     * error instead of ejecting the user from the whole app.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<String> handleIolError(ResponseStatusException ex) {
+        log.error("IOL integration error: {}", ex.getMessage());
+        HttpStatus status = (ex.getStatus() == HttpStatus.UNAUTHORIZED || ex.getStatus() == HttpStatus.FORBIDDEN)
+                ? HttpStatus.FAILED_DEPENDENCY
+                : HttpStatus.BAD_GATEWAY;
+        return ResponseEntity.status(status).body(ex.getReason());
+    }
 
     @GetMapping("/account-statement")
     @Operation(summary = "Get IOL account statement (balances)")
