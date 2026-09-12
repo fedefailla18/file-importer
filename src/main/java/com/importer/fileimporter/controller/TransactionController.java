@@ -119,7 +119,7 @@ public class TransactionController {
     @PostMapping(value = "/upload")
     @Deprecated(since = "1.0.1", forRemoval = true)
     public FileInformationResponse uploadTransactions(
-            @Parameter(description = "Transaction file to upload", required = true) @RequestBody MultipartFile file,
+            @Parameter(description = "Transaction file to upload", required = true) @RequestParam("file") MultipartFile file,
             @Parameter(description = "List of symbols to filter by") @RequestParam(required = false) List<String> symbols) throws IOException {
         if (file.isEmpty()) {
             return null;
@@ -137,7 +137,7 @@ public class TransactionController {
     })
     @PostMapping(value = "/upload/{portfolio}")
     public FileInformationResponse uploadTransactionsWithPortfolio(
-            @Parameter(description = "Transaction file to upload", required = true) @RequestBody MultipartFile file,
+            @Parameter(description = "Transaction file to upload", required = true) @RequestParam("file") MultipartFile file,
             @Parameter(description = "List of symbols to filter by") @RequestParam(required = false) List<String> symbols,
             @Parameter(description = "Portfolio name", required = true) @PathVariable String portfolio,
             @Parameter(description = "File type (BINANCE, MEXC)") @RequestParam(required = false, defaultValue = "Binance") String fileType) throws IOException {
